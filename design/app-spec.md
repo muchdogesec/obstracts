@@ -28,6 +28,7 @@ A profile is created by a staff user in the Django staff interface. It consists 
 * extractions: list of 0 or more extractions (via txt2stix api) to applied when profile run
 * whitelists: list of 0 or more whitelists (via txt2stix api) to applied when profile run
 * aliases: list of 0 or more aliases (via txt2stix api) to applied when profile run
+* relationship mode: the relationship mode to be used with txt2stix
 
 A profile cannot be modified or deleted.
 
@@ -220,7 +221,7 @@ Same as txt2stix.
 
 ##### POST Create a Feed
 
-Same as history4feed. But body also accepts `profile_id` in the request body
+Same as history4feed. But body also accepts `profile_id` in the request body;
 
 ```json
 {
