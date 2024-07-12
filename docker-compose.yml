@@ -1,0 +1,69 @@
+version: "3.8"
+
+# include:
+#   - ./history4feed/docker-compose.yml
+   
+services:
+    obstracts:
+        image: obstracts
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        build: .
+        command: >
+                bash -c "python manage.py makemigrations &&
+                            python manage.py migrate &&
+                            python manage.py runserver 0.0.0.0:8000 #gunicorn obstracts.wsgi:application --bind 0.0.0.0:8000"
+        volumes:
+            - .:/usr/src/app/
+        ports:
+            - 8001:8000
+        environment:
+            - DJANGO_SETTINGS_MODULE=obstracts.settings
+            - DEBUG=1
+            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+            - CELERY_BROKER_URL=redis://redis:6379/10
+        env_file:
+            - ./.env
+        depends_on:
+            - obstracts_celery
+
+    obstracts_celery:
+        image: obstracts
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        build: .
+        command: >
+                bash -c "
+                  celery -A obstracts.cjob worker -l INFO
+                  "
+        volumes:
+            - .:/usr/src/app
+        environment:
+            - DJANGO_SETTINGS_MODULE=obstracts.settings
+            - DEBUG=1
+            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+            - CELERY_BROKER_URL=redis://redis:6379/10
+            - result_backend=redis://redis:6379/11
+        env_file:
+            - ./.env
+
+    pgdb:
+        image: postgres
+        env_file:
+          - ./.env
+        ports:
+            - 5432:5432
+
+        volumes:
+            - pgdata:/var/lib/postgresql/data/
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+            interval: 10s
+            retries: 5
+            start_period: 30s
+            timeout: 10s
+    redis:
+        image: "redis:alpine"
+
+volumes:
+    pgdata:

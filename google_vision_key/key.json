@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "helical-beaker-402911",
+  "private_key_id": "e4030c5d1a8950ebb8094c07dfe81d2b079cbaf2",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC6ponLgOmeOJTs\nDY11nBwT3fLgz5Xjr6AKU//zk/midax0TUCBeuOnrVlNQutiZgjrU3d4oIt8iiVE\nRNpyNVmX1azHawNMGtKs7dCHbm47hhyuyIjT6VTjlzyMUNJwgwsYFWBxET2gwJ9Y\n9YVw21YYYkKU6/zlosyajkkNE8doEFTZzxZSc5U3peFvzt7wPfu2Ccl3kky4FIZi\nfKG4ApURtsRhAy+3iIb60nLz9b8VfEKpqFkHM2QIIN5swfx5xSqOW3Ysb9OlRfzV\nov98e4Ja0q0yXnje3bwiOAXE9WlfIolGSYS1eFjF9PlCy15ewgvlK6jmXtNAJk2K\n/q/vLmvVAgMBAAECggEAKOMI7eGeK3j5FHGOkpwhIW/9/6Wxj7gd7o1ClQTOCzrM\nTYjLr+Fv48ALPyvA3OP9obE9y1id3aj0a21KzfhmWSanS+LjDMWWb2fEBZrY/mSN\nPXNz17n2DMoJKzKcOqXWJQ8vumz8q01uyqGz+sotZLeHntBILLSaLeQr1/fEd4S2\nkKXabGrJp2QmpmH4lZWTptQntynsEByc8qTKPwJJxO34TmqhHwdn+slEuY3wQFdi\n1jsbyDggikn3Dn1SWxocnd8n8XXjX/iklWKQD0t81FbWtK6AMtOuF3zLfqc+p2fL\n99zK/QwZvUGlg5XbLcQgCNculiuH3//dCNx0pJvjeQKBgQDbMGSsCeD4zLKkPQdS\n6B1Wdi0rF/bLHWOgBQzQjJFhfRnj/3pL+WJeRhcAZWWLbLTzX3mpReTBTLmfqoqG\nLwMnb5aJq3lTyuDDHrECaZ/aQp+KiXYfkdDI4Qrnc69Bpnt9Eu3bmPSFTzpuel0b\nAjIPYDzYEpifYW85Sbw1m9mTzQKBgQDZ/zcxDSzWm/Jp4VNON17TZnZmkAuluy/F\n7bTYtjSUzQiGF0ZSf6kzkRF+0cu3BtpguQ7XyDEh7cq27K+EunUyeAJDvXTS7P+P\nXrOD6r+ogfwdNRJvM6If+D25iWHp/kmFdH97sj1HF9sVx2TyGD9M5JjyfyH8woFV\nP5aOMGzAKQKBgQDXIdRtlvScvizITq4VjYTeC/ehSFAOY7YYpVxChPVcPjFfOq2K\nTCdkaF7DIMJd6kBgbuE2Z0dzAh9eu0BjG1l5J2kVjpvyxjl8yW7q80jWLHXyv6CU\ns8W8pETTjxQA16p0xFN5KdM11OGA9dDUZX9E4CxX10i9hiBolhqIc4NGMQKBgQC/\nCKb+BjSv0LNLU9kj5uPjT5wcXsjGMFY6FgfwDSPg7hg1IbpPW24UMWFqiEEEIC5I\nqoM2V0mvGOoXCSz6nEdNtdsOL71rhaKiqfOYe6P+8AHWOobwCgheCbVVnO3AF0Wo\nfKGm7VhDr8UevcBZYyQ9pundP8mx7WVXJkUyT39NmQKBgQCxCRMxxFkwFutTG4v5\naeZ207f4q/Zj0H02fiqep+Y6nTtjXnZA8+vgHZdXk2SIl3VxyzTa1pWsPKRMfdL8\nNjaFiwiZKKKjWwk1LxHA/+d7ulA5Gz/DNlvvBvZhcZLWi9ZZvzh/2nQ+Y0B+zjyv\nhxzaH6cWYZ+F5/5JQMkRSkwwtw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "file2txt-dev@helical-beaker-402911.iam.gserviceaccount.com",
+  "client_id": "108948272730526079016",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/file2txt-dev%40helical-beaker-402911.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
