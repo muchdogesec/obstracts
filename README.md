@@ -47,6 +47,17 @@ sudo docker-compose build
 sudo docker-compose up
 ```
 
+#### ArangoDB install
+
+Note, this script will not install an ArangoDB instance.
+
+If you're new to ArangoDB, [you can install the community edition quickly by following the instructions here](https://arangodb.com/community-server/).
+
+If you are running ArangoDB locally, be sure to set `ARANGODB_HOST='host.docker.internal'` in the `.env` file otherwise you will run into networking errors.
+
+#### Running in production
+
+Note, if you intend on using this in production, you should also modify the variables in the `.env` file for `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASS`, `DJANGO_SECRET` and `DEBUG` (to `False`)
 
 ## Useful supporting tools
 
