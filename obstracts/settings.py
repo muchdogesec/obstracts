@@ -150,16 +150,14 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Obstracts API",
     "DESCRIPTION": dedent(
         """
-        Subscribe to cyber-security blogs and have the turned into structured intelligence (as STIX objects)
+        Obstracts takes a blog ATOM or RSS feed and converts into structured threat intelligence.
     """
     ),
     "VERSION": "1.0.0",
     "CONTACT": {
         "email": "noreply@dogesec.com",
         "url": "https://github.com/muchdogesec/obstracts",
-    },
-    # OTHER SETTINGS
-    "TAGS": [],
+    }
 }
 
 
