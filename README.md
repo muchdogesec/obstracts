@@ -46,3 +46,16 @@ sudo docker-compose build
 ```shell
 sudo docker-compose up
 ```
+
+
+## Useful supporting tools
+
+* [An up-to-date list of threat intel blogs that post cyber threat intelligence research](https://github.com/muchdogesec/awesome_threat_intel_blogs)
+
+## Support
+
+[Minimal support provided via the DOGESEC community](https://community.dogesec.com/).
+
+## License
+
+[AGPLv3](/LICENSE).
