@@ -12,16 +12,17 @@ services:
         command: >
                 bash -c "python manage.py makemigrations &&
                             python manage.py migrate &&
-                            python manage.py runserver 0.0.0.0:8001 #gunicorn obstracts.wsgi:application --bind 0.0.0.0:8001"
+                            gunicorn obstracts.wsgi:application --bind 0.0.0.0:8000"
         volumes:
             - .:/usr/src/app/
         ports:
-            - 8001:8001
+            - 8001:8000
         environment:
             - DJANGO_SETTINGS_MODULE=obstracts.settings
             - DEBUG=1
             - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
             - CELERY_BROKER_URL=redis://redis:6379/10
+            - POSTGRES_HOST=pgdb
         env_file:
             - ./.env
         depends_on:
@@ -39,6 +40,7 @@ services:
         volumes:
             - .:/usr/src/app
         environment:
+            - POSTGRES_HOST=pgdb
             - DJANGO_SETTINGS_MODULE=obstracts.settings
             - DEBUG=1
             - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
