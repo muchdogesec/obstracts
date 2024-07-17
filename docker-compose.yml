@@ -16,7 +16,7 @@ services:
         volumes:
             - .:/usr/src/app/
         ports:
-            - 8001:8000
+            - 8001:8001
         environment:
             - DJANGO_SETTINGS_MODULE=obstracts.settings
             - DEBUG=1
