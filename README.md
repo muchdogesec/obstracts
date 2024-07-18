@@ -14,7 +14,7 @@ It works at a high level like so:
 2. Obstracts uses history4feed as a microservice to handle the download and storage of posts.
 3. The HTML from history4feed for each blog post is converted to markdown using file2txt in `html` mode
 4. The markdown is run through txt2stix where txt2stix pattern extractions/whitelists/aliases are run based on staff defined profile
-5. STIX bundles are generated for each post of the blog, and stored in a collection called `obstracts`
+5. STIX bundles are generated for each post of the blog, and stored in an ArangoDB database called `obstracts_database` and Collections names matching the blog
 6. A user can access the bundle data or specific objects in the bundle via the API
 7. As new posts are added to remote blogs, user makes request to update blog and these are requested by history4feed
 
