@@ -28,14 +28,13 @@ router.register('profiles', views.ProfileView, "profile-view")
 router.register('feeds', views.FeedView, "feed-view")
 router.register('jobs', views.JobView, "job-view")
 router.register('objects', views.ObjectsView, "objects-view")
-txt2stix_router = routers.SimpleRouter()
-txt2stix_router.register('extractors', views.ExtractorsView, "extractors-view")
-txt2stix_router.register('whitelists', views.WhitelistsView, "whitelists-view")
-txt2stix_router.register('aliases', views.AliasesView, "aliases-view")
+# txt2stix views
+router.register('extractors', views.ExtractorsView, "extractors-view")
+router.register('whitelists', views.WhitelistsView, "whitelists-view")
+router.register('aliases', views.AliasesView, "aliases-view")
 
 urlpatterns = [
     path(f'api/{API_VERSION}/', include(router.urls)),
-    path(f'api/{API_VERSION}/txt2stix/', include(txt2stix_router.urls)),
     path('admin/', admin.site.urls),
 
     # YOUR PATTERNS
