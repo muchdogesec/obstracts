@@ -86,20 +86,14 @@ class ArangoDBHelper:
 
 
     client = ArangoClient(
-        hosts=f"http://{settings.ARANGODB_HOST}:{settings.ARANGODB_PORT}"
+        hosts=settings.ARANGODB_HOST_URL
     )
-    # verify that database exists
-    client.db(
-        settings.ARANGODB_DATABASE,
-        username=settings.ARANGODB_USERNAME,
-        password=settings.ARANGODB_PASSWORD,
-        verify=True,
-    )
+    DB_NAME = f"{settings.ARANGODB_DATABASE}_database"
 
-    def __init__(self) -> None:
-        self.collection = settings.ARANGODB_COLLECTION
+    def __init__(self, collection) -> None:
+        self.collection = collection
         self.db = self.client.db(
-            settings.ARANGODB_DATABASE,
+            self.DB_NAME,
             username=settings.ARANGODB_USERNAME,
             password=settings.ARANGODB_PASSWORD,
         )
@@ -135,12 +129,12 @@ class ArangoDBHelper:
             "phone-number",
         ])
         bind_vars = {
-                "@collection": f"{self.collection}_vertex_collection",
+                "@collection": self.collection,
                 "types": list(types),
         }
         query = """
             FOR doc in @@collection
-                FILTER CONTAINS(@types, doc.type)
+                FILTER CONTAINS(@types, doc.type) AND doc._is_latest
 
 
                 LIMIT @offset, @count
@@ -166,12 +160,12 @@ class ArangoDBHelper:
             "location",
         ])
         bind_vars = {
-            "@collection": f"{self.collection}_vertex_collection",
+            "@collection": self.collection,
             "types": list(types),
         }
         query = """
             FOR doc in @@collection
-                FILTER CONTAINS(@types, doc.type)
+                FILTER CONTAINS(@types, doc.type) AND doc._is_latest
 
 
                 LIMIT @offset, @count
@@ -188,11 +182,11 @@ class ArangoDBHelper:
         query = """
             LET vertices = (
                 FOR doc in @@vertex_collection
-                FILTER doc.id == @id
+                FILTER doc.id == @id AND doc._is_latest
             )
             LET edges = (
                 FOR doc in @@edge_collection
-                FILTER doc.id == @id
+                FILTER doc.id == @id AND doc._is_latest
             )
 
             FOR doc in APPEND(vertices, edges)
@@ -204,14 +198,15 @@ class ArangoDBHelper:
 
     def get_sros(self, page, count=50):
         bind_vars = {
-            "@collection": f"{self.collection}_edge_collection",
+            "@collection": self.collection,
         }
         query = """
             FOR doc in @@collection
-                FILTER doc.type == 'relationship'
+                FILTER doc.type == 'relationship' AND doc._is_latest
 
 
                 LIMIT @offset, @count
                 RETURN doc
         """
         return self.get_paginated_response(self.execute_query(query, bind_vars=bind_vars, page=page, count=count), page_number=page, page_size=count)
+    

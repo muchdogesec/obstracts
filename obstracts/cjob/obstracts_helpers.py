@@ -3,6 +3,8 @@ import logging
 import os
 from pathlib import Path
 import shutil
+
+from obstracts.cjob import arango_view_helper
 from ..server import models
 from ..server.serializers import ProfileSerializer
 import tempfile
@@ -28,11 +30,15 @@ def process_post_file2txt(post, job: models.Job):
 
 
 class ObstractsProcessor:
+    VIEW_NAME = "obstracts"
     TLP_LEVEL = 'clear'
+
+    view_object = None
     def __init__(self, post, job: models.Job) -> None:
         self.job = job
         self.post_id = post['id']
         self.profile = self.job.profile
+        self.collection_name = self.job.feed.collection_name
         self.h4fpost = post
         self.tmpdir = Path(tempfile.mkdtemp(prefix='obstracts_'))
         self.filename = self.tmpdir/f"post_{self.post_id}.html"
@@ -96,12 +102,29 @@ class ObstractsProcessor:
         s2a = Stix2Arango(
             file=str(self.bundle_file),
             database=settings.ARANGODB_DATABASE,
-            collection=settings.ARANGODB_COLLECTION,
+            collection=self.collection_name,
             stix2arango_note=f"obstracts-post--{self.post_id}",
             ignore_embedded_relationships=False,
+            host_url=settings.ARANGODB_HOST_URL,
+            username=settings.ARANGODB_USERNAME,
+            password=settings.ARANGODB_PASSWORD,
         )
-        return s2a.run()
+        arango_view_helper.link_one_collection(s2a.arango.db, settings.VIEW_NAME, f"{self.collection_name}_edge_collection")
+        arango_view_helper.link_one_collection(s2a.arango.db, settings.VIEW_NAME, f"{self.collection_name}_vertex_collection")
+        s2a.run()
+    
+    @classmethod
+    def get_view(cls, s2a: Stix2Arango):
+        if cls.view_object:
+            return cls.view_object
+        try:
+            cls.view_object = s2a.arango.db.create_view(cls.VIEW_NAME, "arangosearch", {})
+        except BaseException as e:
+            logging.exception(e)
+            cls.view_object = s2a.arango.db.view(cls.VIEW_NAME)
+        return cls.view_object
 
+    
 
     def __del__(self):
         shutil.rmtree(self.tmpdir)

@@ -149,7 +149,7 @@ class FeedView(viewsets.ViewSet):
         resp = self.make_request(request, "/api/v1/feeds/")
         if resp.status_code == 200:
             out = json.loads(resp.content)
-            tasks.new_task(out["job_id"], out["id"], profile_id)
+            tasks.new_task(out, profile_id)
         return resp
 
     def list(self, request, *args, **kwargs):
@@ -165,16 +165,16 @@ class FeedView(viewsets.ViewSet):
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
         )
 
-    @utils.extend_schema(request=FeedSerializer)
-    def partial_update(self, request, *args, **kwargs):
-        profile_id = self.parse_profile(request)
-        resp = self.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
-        )
-        if resp.status_code == 200:
-            out = json.loads(resp.content)
-            tasks.new_task(out["job_id"], out["id"], profile_id)
-        return resp
+    # @utils.extend_schema(request=FeedSerializer)
+    # def partial_update(self, request, *args, **kwargs):
+    #     profile_id = self.parse_profile(request)
+    #     resp = self.make_request(
+    #         request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
+    #     )
+    #     if resp.status_code == 200:
+    #         out = json.loads(resp.content)
+    #         tasks.new_task(out, profile_id)
+    #     return resp
 
     @decorators.action(detail=True, methods=["GET"])
     def posts(self, request, *args, **kwargs):
@@ -208,7 +208,7 @@ class ObjectsView(viewsets.ViewSet):
     @decorators.action(detail=False, methods=["GET"])
     def scos(self, request, *args, **kwargs):
         page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper().get_scos(page, count)
+        return ArangoDBHelper(settings.VIEW_NAME).get_scos(page, count)
 
     @utils.extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
@@ -217,7 +217,7 @@ class ObjectsView(viewsets.ViewSet):
     @decorators.action(detail=False, methods=["GET"])
     def sdos(self, request, *args, **kwargs):
         page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper().get_sdos(page, count)
+        return ArangoDBHelper(settings.VIEW_NAME).get_sdos(page, count)
     
     @utils.extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
@@ -226,7 +226,7 @@ class ObjectsView(viewsets.ViewSet):
     @decorators.action(detail=False, methods=["GET"])
     def sros(self, request, *args, **kwargs):
         page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper().get_sros(page, count)
+        return ArangoDBHelper(settings.VIEW_NAME).get_sros(page, count)
     
     @utils.extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
@@ -234,4 +234,4 @@ class ObjectsView(viewsets.ViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper().get_objects_by_id(kwargs.get(self.lookup_url_kwarg), page, count)
+        return ArangoDBHelper(settings.VIEW_NAME).get_objects_by_id(kwargs.get(self.lookup_url_kwarg), page, count)

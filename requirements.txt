@@ -124,4 +124,4 @@ zipp==3.19.2; python_version >= '3.8'
 
 https://github.com/muchdogesec/txt2stix/archive/obstracts.zip
 https://github.com/muchdogesec/file2txt/archive/beta.zip
-https://github.com/muchdogesec/stix2arango/archive/main.zip
+https://github.com/muchdogesec/stix2arango/archive/main.zip?v=1

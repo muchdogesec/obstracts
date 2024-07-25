@@ -10,9 +10,11 @@ services:
             - "host.docker.internal:host-gateway"
         build: .
         command: >
-                bash -c "python manage.py makemigrations &&
+                bash -c "
+                    python obstracts/cjob/arango_view_helper.py &&
+                    python manage.py makemigrations &&
                             python manage.py migrate &&
-                            gunicorn obstracts.wsgi:application --bind 0.0.0.0:8000"
+                            gunicorn obstracts.wsgi:application --bind 0.0.0.0:8000" --reload
         volumes:
             - .:/usr/src/app/
         ports:
@@ -53,6 +55,13 @@ services:
                 condition: service_healthy
             redis:
                 condition: service_started
+
+    obstracts_scheduler:
+        extends: obstracts_celery
+        command: >
+                bash -c "
+                celery -A obstracts.cjob beat -l INFO 
+                "
 
     pgdb:
         image: postgres

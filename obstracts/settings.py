@@ -138,6 +138,10 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+from celery.schedules import crontab
+
+# CELERY_SCHEDULE = crontab(minute="*/10") #every ten minutes
+CELERY_SCHEDULE = crontab(hour="*/6") #every six hours
 
 REST_FRAMEWORK = {
     # YOUR SETTINGS
@@ -162,9 +166,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 
-ARANGODB_DATABASE   = os.getenv('ARANGODB_DATABASE')
-ARANGODB_COLLECTION = os.getenv('ARANGODB_COLLECTION')
-ARANGODB_HOST       = os.getenv('ARANGODB_HOST')
-ARANGODB_PORT       = os.getenv('ARANGODB_PORT')
+ARANGODB_DATABASE   = "obstracts"
+VIEW_NAME = "obstracts_view"
 ARANGODB_USERNAME   = os.getenv('ARANGODB_USERNAME')
 ARANGODB_PASSWORD   = os.getenv('ARANGODB_PASSWORD')
+ARANGODB_HOST_URL   = os.getenv("ARANGODB_HOST_URL")
