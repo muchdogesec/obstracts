@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import pagination, response
 from rest_framework.filters import OrderingFilter, BaseFilterBackend
 from django.utils.encoding import force_str
@@ -7,8 +8,8 @@ from rest_framework import response
 
 
 class Pagination(pagination.PageNumberPagination):
-    max_page_size = 1000
-    page_size = 100
+    max_page_size = settings.MAXIMUM_PAGE_SIZE
+    page_size = settings.DEFAULT_PAGE_SIZE
     page_size_query_param = 'page_size'
     def __init__(self, results_key) -> None:
         self.results_key = results_key
@@ -17,7 +18,7 @@ class Pagination(pagination.PageNumberPagination):
     def get_paginated_response(self, data):
         
         return response.Response({
-            'page_size': self.page_size,
+            'page_size': self.get_page_size(self.request),
             'page_number': self.page.number,
             'page_results_count': len(self.page),
             'total_results_count': self.page.paginator.count,
