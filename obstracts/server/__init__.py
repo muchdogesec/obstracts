@@ -1,0 +1,1 @@
+from .autoschema import ObstractsAutoSchema

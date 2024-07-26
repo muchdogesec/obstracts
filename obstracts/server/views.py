@@ -33,6 +33,7 @@ from ..cjob import tasks
 
 # Create your views here.
 class ProfileView(viewsets.ModelViewSet):
+    openapi_tags = ["profiles"]
     serializer_class = ProfileSerializer
     http_method_names = ["get", "post", "delete"]
     pagination_class = Pagination("profiles")
@@ -48,7 +49,7 @@ class ProfileView(viewsets.ModelViewSet):
         return models.Profile.objects
 
 
-class ValuesView(viewsets.GenericViewSet):
+class txt2stixView(viewsets.GenericViewSet):
     serializer_class = T2SSerializer
     lookup_url_kwarg = "id"
 
@@ -82,22 +83,26 @@ class ValuesView(viewsets.GenericViewSet):
         return Response(item)
 
 
-@utils.extend_schema_view(tags=["txt2stix"])
-class ExtractorsView(ValuesView):
+class ExtractorsView(txt2stixView):
+    openapi_tags = ["extractors"]
     lookup_url_kwarg = "extractor_id"
 
     def get_all(self):
         return self.all_extractors(["lookup", "pattern", "ai"])
 
 
-class WhitelistsView(ValuesView):
+class WhitelistsView(txt2stixView):
     lookup_url_kwarg = "whitelist_id"
+    openapi_tags = ["whitelists"]
+
 
     def get_all(self):
         return self.all_extractors(["whitelist"])
 
 
-class AliasesView(ValuesView):
+class AliasesView(txt2stixView):
+    openapi_tags = ["aliases"]
+
     lookup_url_kwarg = "alias_id"
 
     def get_all(self):
@@ -106,6 +111,8 @@ class AliasesView(ValuesView):
 
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
+    openapi_tags = ["feeds"]
+
 
     def parse_profile(self, request):
         try:
@@ -186,6 +193,7 @@ class FeedView(viewsets.ViewSet):
 class JobView(viewsets.ModelViewSet):
     http_method_names = ["get"]
     serializer_class = JobSerializer
+    openapi_tags = ["jobs"]
 
     def get_queryset(self):
         return models.Job.objects
@@ -199,6 +207,7 @@ def make_h4f_request(path, method="GET", params=None, body=None, headers={}):
 
 class ObjectsView(viewsets.ViewSet):
     
+    openapi_tags = ["objects"]
     lookup_url_kwarg = "id"
 
     @utils.extend_schema(

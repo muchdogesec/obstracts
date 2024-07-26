@@ -145,7 +145,7 @@ CELERY_SCHEDULE = crontab(hour="*/6") #every six hours
 
 REST_FRAMEWORK = {
     # YOUR SETTINGS
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "obstracts.server.ObstractsAutoSchema",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": [],
 }
