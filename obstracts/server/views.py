@@ -26,12 +26,30 @@ import txt2stix.txt2stix
 import requests
 from django.conf import settings
 from drf_spectacular import utils, types
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from . import models
 
 from ..cjob import tasks
 
 
-# Create your views here.
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search profiles",
+        description="Profiles determine how txt2stix processes each blog post in a feed. A profile consists of an extractors, aliases, and/or whitelists. You can search for existing profiles here.",
+    ),
+    retrieve=extend_schema(
+        summary="Get a profile",
+        description="View the configuration of an existing profile. Note, existing profiles cannot be modified.",
+    ),
+    create=extend_schema(
+        summary="Create a new profile",
+        description="Add a new Profile that can be applied to new Feeds. A profile consists of an extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints. Required fields are name, extractions (at least one extraction ID), relationship_mode (either ai or standard, defines how relationship between extractions should be created), and extract_text_from_image (boolean, defines if image text should be considered for extraction).",
+    ),
+    destroy=extend_schema(
+        summary="Delete a profile",
+        description="Delete an existing profile. Note, you cannot delete a profile if it is currently being used with an active Feed.",
+    ),
+)
 class ProfileView(viewsets.ModelViewSet):
     openapi_tags = ["profiles"]
     serializer_class = ProfileSerializer
@@ -82,7 +100,16 @@ class txt2stixView(viewsets.GenericViewSet):
             return ErrorResp(404, "item not found")
         return Response(item)
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search Extractors",
+        description="Extractors are what extract the data from the text which is then converted into STIX objects.",
+    ),
+    retrieve=extend_schema(
+        summary="Get an extractor",
+        description="Get a specific Extractor.",
+    ),
+)
 class ExtractorsView(txt2stixView):
     openapi_tags = ["extractors"]
     lookup_url_kwarg = "extractor_id"
@@ -90,16 +117,33 @@ class ExtractorsView(txt2stixView):
     def get_all(self):
         return self.all_extractors(["lookup", "pattern", "ai"])
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search for Whitelists",
+        description="In many cases files will have IoC extractions that are not malicious. e.g. `google.com` (and thus they don't want them to be extracted). Whitelists provide a list of values to be compared to extractions. If a whitelist value matches an extraction, that extraction is removed. To see the values used in this Whitelist, visit the URL shown as the value for the `file` key",
+    ),
+    retrieve=extend_schema(
+        summary="Get a whitelist",
+        description="Get a specific Whitelist. To see the values used in this Whitelist, visit the URL shown as the value for the `file` key",
+    ),
+)
 class WhitelistsView(txt2stixView):
     lookup_url_kwarg = "whitelist_id"
     openapi_tags = ["whitelists"]
 
-
     def get_all(self):
         return self.all_extractors(["whitelist"])
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search for aliases",
+        description="Aliases replace strings in the blog post with values defined in the Alias. Aliases are applied before extractions. For example, an alias of `USA` with a value `United States` will change all records of `USA` in the blog post with `United States`. To see the values used in this Alias, visit the URL shown as the value for the `file` key",
+    ),
+    retrieve=extend_schema(
+        summary="Get an Alias",
+        description="Get a specific Alias. To see the values used in this Alias, visit the URL shown as the value for the `file` key",
+    ),
+)
 class AliasesView(txt2stixView):
     openapi_tags = ["aliases"]
 
@@ -108,11 +152,32 @@ class AliasesView(txt2stixView):
     def get_all(self):
         return self.all_extractors(["alias"])
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search for Feeds",
+        description="Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.",
+    ),
+    retrieve=extend_schema(
+        summary="Get a Feed",
+        description="Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required."
+    ),
+    posts=extend_schema(
+        summary="Search for Posts in a Feed",
+        description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
+    ),
+    create=extend_schema(
+        request=FeedSerializer,
+        summary="Create a new Feed",
+        description="Use this endpoint to create to a new feed. The url value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned. Generally you should set retrieve_full_text to true. If you are certain the blog you are subscribing to has a full text feed already, you can safely set this to false. If url is already associated with an existing Feed, using it via this endpoint will trigger an update request for the blog. If you want to add the url with new settings, first delete it.",
+    ),
+    destroy=extend_schema(
+        summary="Delete a Feed",
+        description="Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed and cannot be reversed.",
+    ),
+)
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
     openapi_tags = ["feeds"]
-
 
     def parse_profile(self, request):
         try:
@@ -150,7 +215,6 @@ class FeedView(viewsets.ViewSet):
             content_type=resp.headers.get("content-type"),
         )
 
-    @utils.extend_schema(request=FeedSerializer)
     def create(self, request, *args, **kwargs):
         profile_id = self.parse_profile(request)
         resp = self.make_request(request, "/api/v1/feeds/")
@@ -172,7 +236,7 @@ class FeedView(viewsets.ViewSet):
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
         )
 
-    # @utils.extend_schema(request=FeedSerializer)
+    # @extend_schema(request=FeedSerializer)
     # def partial_update(self, request, *args, **kwargs):
     #     profile_id = self.parse_profile(request)
     #     resp = self.make_request(
@@ -190,6 +254,16 @@ class FeedView(viewsets.ViewSet):
         )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search Jobs",
+        description="""Jobs track the status of the request to get posts for Feeds. For every new Feed added and every update to a Feed requested a job will be created. The id of a job is printed in the POST and PATCH responses respectively, but you can use this endpoint to search for the id again, if required.""",
+    ),
+    retrieve=extend_schema(
+        summary="Get a Job",
+        description="""Using a Job ID you can retrieve information about its state via this endpoint. This is useful to see if a Job to get data is complete, how many posts were imported in the job, or if an error has occurred.""",
+    ),
+)
 class JobView(viewsets.ModelViewSet):
     http_method_names = ["get"]
     serializer_class = JobSerializer
@@ -205,12 +279,32 @@ def make_h4f_request(path, method="GET", params=None, body=None, headers={}):
     return requests.request(method, url, params=params, headers=headers, data=body)
 
 
+
+
+@extend_schema_view(
+    scos=extend_schema(
+        summary="Get a STIX Cyber Observable Object",
+        description="Search for observable objects.",
+    ),
+    retrieve=extend_schema(
+        summary="Get an object",
+        description="Get an Object using its ID. You can search for Object IDs using the GET Objects SDO, SCO, or SRO endpoints."
+    ),
+    sdos=extend_schema(
+        summary="Get a STIX Domain Object",
+        description="Search for domain objects.",
+    ),
+    sros=extend_schema(
+        summary="Get a STIX Relationship Object",
+        description="Search for relationship objects. This endpoint is particularly useful to search what other Objects an SCO or SDO is linked to.",
+    ),
+)
 class ObjectsView(viewsets.ViewSet):
-    
+
     openapi_tags = ["objects"]
     lookup_url_kwarg = "id"
 
-    @utils.extend_schema(
+    @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters(),
     )
@@ -219,7 +313,7 @@ class ObjectsView(viewsets.ViewSet):
         page, count = ArangoDBHelper.get_page_params(request)
         return ArangoDBHelper(settings.VIEW_NAME).get_scos(page, count)
 
-    @utils.extend_schema(
+    @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters(),
     )
@@ -227,8 +321,8 @@ class ObjectsView(viewsets.ViewSet):
     def sdos(self, request, *args, **kwargs):
         page, count = ArangoDBHelper.get_page_params(request)
         return ArangoDBHelper(settings.VIEW_NAME).get_sdos(page, count)
-    
-    @utils.extend_schema(
+
+    @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters(),
     )
@@ -236,11 +330,13 @@ class ObjectsView(viewsets.ViewSet):
     def sros(self, request, *args, **kwargs):
         page, count = ArangoDBHelper.get_page_params(request)
         return ArangoDBHelper(settings.VIEW_NAME).get_sros(page, count)
-    
-    @utils.extend_schema(
+
+    @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters(),
     )
     def retrieve(self, request, *args, **kwargs):
         page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper(settings.VIEW_NAME).get_objects_by_id(kwargs.get(self.lookup_url_kwarg), page, count)
+        return ArangoDBHelper(settings.VIEW_NAME).get_objects_by_id(
+            kwargs.get(self.lookup_url_kwarg), page, count
+        )
