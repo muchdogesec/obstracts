@@ -3,6 +3,7 @@ from .models import Profile, Job
 from drf_spectacular.utils import extend_schema_serializer
 
 class ProfileSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True)
     class Meta:
         model = Profile
         fields = '__all__'
