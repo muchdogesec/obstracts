@@ -8,9 +8,16 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class T2SSerializer(serializers.Serializer):
-    description = serializers.CharField()
     id = serializers.CharField()
+    name = serializers.CharField()
     type = serializers.CharField()
+    description = serializers.CharField()
+    notes = serializers.CharField()
+    file = serializers.CharField()
+    created = serializers.CharField()
+    modified = serializers.CharField()
+    created_by = serializers.CharField()
+    version = serializers.CharField()
 
 class JobSerializer(serializers.ModelSerializer):
     class Meta:

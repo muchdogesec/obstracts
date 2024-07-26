@@ -166,6 +166,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 
+TXT2STIX_INCLUDE_URL = "https://github.com/muchdogesec/txt2stix/blob/obstracts/includes/"
+
 ARANGODB_DATABASE   = "obstracts"
 VIEW_NAME = "obstracts_view"
 ARANGODB_USERNAME   = os.getenv('ARANGODB_USERNAME')

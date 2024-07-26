@@ -67,7 +67,8 @@ class ProfileView(viewsets.ModelViewSet):
         return models.Profile.objects
 
 
-class txt2stixView(viewsets.GenericViewSet):
+class txt2stixView(mixins.RetrieveModelMixin,
+                           mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = T2SSerializer
     lookup_url_kwarg = "id"
 
@@ -79,17 +80,27 @@ class txt2stixView(viewsets.GenericViewSet):
         ).values()
         for extractor in extractors:
             if extractor.type in types:
-                retval[extractor.slug] = dict(
-                    id=extractor.slug, name=extractor.name, type=extractor.type
-                )
+                retval[extractor.slug] = cls.cleanup_extractor(extractor)
+                if extractor.file:
+                    retval[extractor.slug]["file"] = urljoin(settings.TXT2STIX_INCLUDE_URL, str(extractor.file.relative_to(txt2stix.txt2stix.INCLUDES_PATH)))
+        return retval
+    
+    @classmethod
+    def cleanup_extractor(cls, dct: dict):
+        KEYS = ["name", "type", "description", "notes", "file", "created", "modified", "created_by", "version", "stix-mapping"]
+        retval = {"id": dct["slug"]}
+        for key in KEYS:
+            if key in dct:
+                retval[key] = dct[key]
         return retval
 
     def get_all(self):
         raise NotImplementedError("not implemented")
+    
 
     def list(self, request, *args, **kwargs):
-        items = self.get_all()
-        return Response(list(items.values()))
+        page = self.paginate_queryset(list(self.get_all().values()))
+        return self.get_paginated_response(page)
 
     def retrieve(self, request, *args, **kwargs):
         items = self.get_all()
@@ -113,6 +124,7 @@ class txt2stixView(viewsets.GenericViewSet):
 class ExtractorsView(txt2stixView):
     openapi_tags = ["extractors"]
     lookup_url_kwarg = "extractor_id"
+    pagination_class = Pagination("extractors")
 
     def get_all(self):
         return self.all_extractors(["lookup", "pattern", "ai"])
@@ -130,6 +142,7 @@ class ExtractorsView(txt2stixView):
 class WhitelistsView(txt2stixView):
     lookup_url_kwarg = "whitelist_id"
     openapi_tags = ["whitelists"]
+    pagination_class = Pagination("whitelists")
 
     def get_all(self):
         return self.all_extractors(["whitelist"])
@@ -146,6 +159,7 @@ class WhitelistsView(txt2stixView):
 )
 class AliasesView(txt2stixView):
     openapi_tags = ["aliases"]
+    pagination_class = Pagination("aliases")
 
     lookup_url_kwarg = "alias_id"
 

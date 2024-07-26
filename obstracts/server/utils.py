@@ -50,8 +50,8 @@ class Pagination(pagination.PageNumberPagination):
         }
 
     def __call__(self, *args, **kwargs):
-        return self
-
+        return self.__class__(results_key=self.results_key)
+    
 
 class Ordering(OrderingFilter):
     ordering_param = "sort"
