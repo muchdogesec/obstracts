@@ -14,7 +14,7 @@ services:
                     python obstracts/cjob/arango_view_helper.py &&
                     python manage.py makemigrations &&
                             python manage.py migrate &&
-                            gunicorn obstracts.wsgi:application --bind 0.0.0.0:8000 --reload
+                            gunicorn obstracts.wsgi:application  --reload --bind 0.0.0.0:8000
                     " 
         volumes:
             - .:/usr/src/app/

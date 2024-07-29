@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from rest_framework import viewsets, decorators, mixins, exceptions
 from rest_framework.request import Request
+from django.db.models import Model
 
 from obstracts.server.arango_helpers import ArangoDBHelper
 from .utils import (
@@ -13,13 +14,14 @@ from .utils import (
     Response,
     ErrorResp,
 )
-from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter
 from .serializers import (
+    H4fFeedSerializer,
+    H4fPostSerializer,
     ProfileSerializer,
     T2SSerializer,
     JobSerializer,
     FeedSerializer,
-    StixObjectSerializer,
 )
 import txt2stix.extractions
 import txt2stix.txt2stix
@@ -71,6 +73,9 @@ class txt2stixView(mixins.RetrieveModelMixin,
                            mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = T2SSerializer
     lookup_url_kwarg = "id"
+    
+    def get_queryset(self):
+        return None
 
     @classmethod
     def all_extractors(cls, types):
@@ -175,10 +180,6 @@ class AliasesView(txt2stixView):
         summary="Get a Feed",
         description="Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required."
     ),
-    posts=extend_schema(
-        summary="Search for Posts in a Feed",
-        description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
-    ),
     create=extend_schema(
         request=FeedSerializer,
         summary="Create a new Feed",
@@ -192,6 +193,36 @@ class AliasesView(txt2stixView):
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
     openapi_tags = ["feeds"]
+    serializer_class = H4fFeedSerializer
+    pagination_class = Pagination("feeds")
+
+
+
+    filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
+    ordering_fields = [
+        "datetime_added",
+        "title",
+        "url",
+        "count_of_posts",
+        "earliest_item_pubdate",
+        "latest_item_pubdate",
+    ]
+    ordering = ["-datetime_added"]
+    minmax_date_fields = ["earliest_item_pubdate", "latest_item_pubdate"]
+
+    class filterset_class(FilterSet):
+        title = Filter(
+            label="Filter by the content in feed title. Will search for titles that contain the value entered.",
+        )
+        description = Filter(
+            label="Filter by the content in feed description. Will search for descriptions that contain the value entered.",
+        )
+        url = Filter(
+            label="Filter by the content in a feeds URL. Will search for URLs that contain the value entered.",
+        )
+        id = BaseCSVFilter(
+            label="Filter by feed id(s), comma-separated, e.g 6c6e6448-04d4-42a3-9214-4f0f7d02694e,2bce5b30-7014-4a5d-ade7-12913fe6ac36",
+        )
 
     def parse_profile(self, request):
         try:
@@ -206,8 +237,9 @@ class FeedView(viewsets.ViewSet):
         except:
             raise exceptions.ValidationError(detail=f"no profile with id: {profile_id}")
         return profile_id
-
-    def make_request(self, request, path):
+    
+    @classmethod
+    def make_request(cls, request, path):
         request_kwargs = {
             "headers": {},
             "method": request.method,
@@ -260,13 +292,48 @@ class FeedView(viewsets.ViewSet):
     #         out = json.loads(resp.content)
     #         tasks.new_task(out, profile_id)
     #     return resp
+    
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search for Posts in a Feed",
+        description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve a post in a Feed",
+        description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
+    ),
+) 
+class PostView(viewsets.ViewSet):
+    serializer_class = H4fPostSerializer
+    lookup_url_kwarg = 'post_id'
+    openapi_tags = ["feeds"]
 
-    @decorators.action(detail=True, methods=["GET"])
-    def posts(self, request, *args, **kwargs):
-        return self.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/posts/"
+    pagination_class = Pagination("posts")
+    filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
+    ordering_fields = ["pubdate", "title"]
+    ordering = ["-pubdate"]
+    minmax_date_fields = ["pubdate"]
+
+    class filterset_class(FilterSet):
+        title = Filter(
+            label="Filter by the content in a posts title. Will search for titles that contain the value entered.",
+            lookup_expr="search",
         )
+        description = Filter(
+            label="Filter by the content in a posts description. Will search for descriptions that contain the value entered.",
+            lookup_expr="search",
+        )
+        job_id = Filter(label="Filter the Post by Job ID the Post was downloaded in.")
 
+    def list(self, request, *args, feed_id=None, **kwargs):
+        return FeedView.make_request(
+            request, f"/api/v1/feeds/{feed_id}/posts/"
+        )
+    
+    def retrieve(self, request, *args, feed_id=None, post_id=None):
+        return FeedView.make_request(
+            request, f"/api/v1/feeds/{feed_id}/posts/{post_id}"
+        )
 
 @extend_schema_view(
     list=extend_schema(

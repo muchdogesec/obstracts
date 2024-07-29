@@ -26,6 +26,8 @@ API_VERSION = "v1"
 router = routers.SimpleRouter()
 router.register('profiles', views.ProfileView, "profile-view")
 router.register('feeds', views.FeedView, "feed-view")
+router.register("feeds/<uuid:feed_id>/posts", views.PostView, "post-view")
+
 router.register('jobs', views.JobView, "job-view")
 router.register('objects', views.ObjectsView, "objects-view")
 # txt2stix views
@@ -42,3 +44,4 @@ urlpatterns = [
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
+
