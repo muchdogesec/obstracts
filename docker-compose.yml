@@ -4,7 +4,7 @@ version: "3.8"
 #   - ./history4feed/docker-compose.yml
    
 services:
-    obstracts:
+    obstracts_django:
         image: obstracts
         extra_hosts:
             - "host.docker.internal:host-gateway"
@@ -14,12 +14,12 @@ services:
                     python obstracts/cjob/arango_view_helper.py &&
                     python manage.py makemigrations &&
                             python manage.py migrate &&
-                            gunicorn obstracts.wsgi:application  --reload --bind 0.0.0.0:8000
+                            gunicorn obstracts.wsgi:application  --reload --bind 0.0.0.0:8001
                     " 
         volumes:
             - .:/usr/src/app/
         ports:
-            - 8001:8000
+            - 8001:8001
         environment:
             - DJANGO_SETTINGS_MODULE=obstracts.settings
             - DEBUG=1
@@ -64,7 +64,7 @@ services:
                 celery -A obstracts.cjob beat -l INFO 
                 "
 
-    pgdb:
+    obstracts_pgdb:
         image: postgres
         env_file:
           - ./.env
@@ -77,7 +77,7 @@ services:
             retries: 5
             start_period: 10s
             timeout: 10s
-    redis:
+    obstracts_redis:
         image: "redis:alpine"
 
 volumes:
