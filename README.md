@@ -82,7 +82,9 @@ To create an admin user in Django
 sudo docker-compose run django python manage.py createsuperuser
 ```
 
-There is currently no Django admin UI.
+You can access the django admin UI at:
+
+http://127.0.0.1:8001/admin
 
 ### Running in production
 
