@@ -72,7 +72,19 @@ e.g.
 * `graham_cluley_9288374-0298740-94875-vertex_collection`
 * `graham_cluley_9288374-0298740-94875-edge_collection`
 
-#### Running in production
+#### Note on Django
+
+The webserver is Django.
+
+To create an admin user in Django
+
+```shell
+sudo docker-compose run django python manage.py createsuperuser
+```
+
+There is currently no Django admin UI.
+
+### Running in production
 
 Note, if you intend on using this in production, you should also modify the variables in the `.env` file for `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASS`, `DJANGO_SECRET` and `DEBUG` (to `False`)
 
