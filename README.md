@@ -47,13 +47,30 @@ sudo docker-compose build
 sudo docker-compose up
 ```
 
+### Access the server
+
+The webserver (Django) should now be running on: http://127.0.0.1:8001/
+
+You can access the Swagger UI for the API in a browser at: http://127.0.0.1:8001/api/schema/swagger-ui/
+
 #### ArangoDB install
 
 Note, this script will not install an ArangoDB instance.
 
 If you're new to ArangoDB, [you can install the community edition quickly by following the instructions here](https://arangodb.com/community-server/).
 
-If you are running ArangoDB locally, be sure to set `ARANGODB_HOST='host.docker.internal'` in the `.env` file otherwise you will run into networking errors.
+If you are running ArangoDB locally, be sure to set `ARANGODB_HOST_URL="http://localhost:8529/"` in the `.env` file otherwise you will run into networking errors.
+
+The script will automatically create a database called `obstracts_database` when the container is spun up (if it does not exist).
+
+For each blog added, two new collections will be created in the format
+
+`<FEED_NAME>_<FEED_ID>-<COLLECTION_TYPE>_collection`
+
+e.g.
+
+* `graham_cluley_9288374-0298740-94875-vertex_collection`
+* `graham_cluley_9288374-0298740-94875-edge_collection`
 
 #### Running in production
 
