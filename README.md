@@ -18,6 +18,14 @@ It works at a high level like so:
 6. A user can access the bundle data or specific objects in the bundle via the API
 7. As new posts are added to remote blogs, user makes request to update blog and these are requested by history4feed
 
+### Download and run history4feed
+
+Obstracts requires [history4feed](https://github.com/muchdogesec/history4feed) to download and store blog posts.
+
+You'll need to set the location of history4feed later in the Obstracts `.env` file.
+
+If you are running history4feed locally, be sure to set `HISTORY4FEED_URL='http://host.docker.internal:8000/'` in the `.env` file otherwise you will run into networking errors.
+
 ### Download and configure
 
 ```shell
