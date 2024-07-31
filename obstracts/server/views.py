@@ -92,7 +92,7 @@ class txt2stixView(mixins.RetrieveModelMixin,
     
     @classmethod
     def cleanup_extractor(cls, dct: dict):
-        KEYS = ["name", "type", "description", "notes", "file", "created", "modified", "created_by", "version", "stix-mapping"]
+        KEYS = ["name", "type", "description", "notes", "file", "created", "modified", "created_by", "version", "stix_mapping"]
         retval = {"id": dct["slug"]}
         for key in KEYS:
             if key in dct:
