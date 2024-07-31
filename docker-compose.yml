@@ -12,6 +12,7 @@ services:
         command: >
                 bash -c "
                     python obstracts/cjob/arango_view_helper.py &&
+                    python manage.py collectstatic &&
                     python manage.py makemigrations &&
                             python manage.py migrate &&
                             gunicorn obstracts.wsgi:application  --reload --bind 0.0.0.0:8001
@@ -22,7 +23,6 @@ services:
             - 8001:8001
         environment:
             - DJANGO_SETTINGS_MODULE=obstracts.settings
-            - DEBUG=1
             - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
             - CELERY_BROKER_URL=redis://redis:6379/10
             - POSTGRES_HOST=pgdb
@@ -45,7 +45,6 @@ services:
         environment:
             - POSTGRES_HOST=pgdb
             - DJANGO_SETTINGS_MODULE=obstracts.settings
-            - DEBUG=1
             - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
             - CELERY_BROKER_URL=redis://redis:6379/10
             - result_backend=redis://redis:6379/11
