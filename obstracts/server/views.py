@@ -53,7 +53,7 @@ from ..cjob import tasks
     ),
 )
 class ProfileView(viewsets.ModelViewSet):
-    openapi_tags = ["profiles"]
+    openapi_tags = ["Profiles"]
     serializer_class = ProfileSerializer
     http_method_names = ["get", "post", "delete"]
     pagination_class = Pagination("profiles")
@@ -127,7 +127,7 @@ class txt2stixView(mixins.RetrieveModelMixin,
     ),
 )
 class ExtractorsView(txt2stixView):
-    openapi_tags = ["extractors"]
+    openapi_tags = ["Extractors"]
     lookup_url_kwarg = "extractor_id"
     pagination_class = Pagination("extractors")
 
@@ -146,7 +146,7 @@ class ExtractorsView(txt2stixView):
 )
 class WhitelistsView(txt2stixView):
     lookup_url_kwarg = "whitelist_id"
-    openapi_tags = ["whitelists"]
+    openapi_tags = ["Whitelists"]
     pagination_class = Pagination("whitelists")
 
     def get_all(self):
@@ -163,7 +163,7 @@ class WhitelistsView(txt2stixView):
     ),
 )
 class AliasesView(txt2stixView):
-    openapi_tags = ["aliases"]
+    openapi_tags = ["Aliases"]
     pagination_class = Pagination("aliases")
 
     lookup_url_kwarg = "alias_id"
@@ -192,7 +192,7 @@ class AliasesView(txt2stixView):
 )
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
-    openapi_tags = ["feeds"]
+    openapi_tags = ["Feeds"]
     serializer_class = H4fFeedSerializer
     pagination_class = Pagination("feeds")
 
@@ -306,7 +306,7 @@ class FeedView(viewsets.ViewSet):
 class PostView(viewsets.ViewSet):
     serializer_class = H4fPostSerializer
     lookup_url_kwarg = 'post_id'
-    openapi_tags = ["feeds"]
+    openapi_tags = ["Feeds"]
 
     pagination_class = Pagination("posts")
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
@@ -348,7 +348,7 @@ class PostView(viewsets.ViewSet):
 class JobView(viewsets.ModelViewSet):
     http_method_names = ["get"]
     serializer_class = JobSerializer
-    openapi_tags = ["jobs"]
+    openapi_tags = ["Jobs"]
 
     def get_queryset(self):
         return models.Job.objects
@@ -382,7 +382,7 @@ def make_h4f_request(path, method="GET", params=None, body=None, headers={}):
 )
 class ObjectsView(viewsets.ViewSet):
 
-    openapi_tags = ["objects"]
+    openapi_tags = ["Objects"]
     lookup_url_kwarg = "id"
 
     @extend_schema(
