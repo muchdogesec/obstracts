@@ -15,7 +15,7 @@ class RelationshipMode(models.TextChoices):
 class Profile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     created = models.DateTimeField(auto_now_add=True)
-    name = models.CharField(max_length=250)
+    name = models.CharField(max_length=250, unique=True)
     extractions = ArrayField(base_field=models.CharField(max_length=256), help_text="extraction id(s)")
     whitelists = ArrayField(base_field=models.CharField(max_length=256), help_text="whitelist id(s)", default=list)
     aliases = ArrayField(base_field=models.CharField(max_length=256), help_text="alias id(s)", default=list)
