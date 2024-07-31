@@ -37,13 +37,13 @@ def poll_once(job_id):
     h4f_job = job_resp.json()
     logging.info(f"[{job_resp.status_code=}] job_state: {h4f_job}")
     job = Job.objects.get(pk=job_id)
-    job.h4f_status = h4f_job["state"]
+    job.history4feed_status = h4f_job["state"]
     job.item_count = h4f_job["count_of_items"]
-    if job.h4f_status == models.H4FState.SUCCESS:
+    if job.history4feed_status == models.H4FState.SUCCESS:
         job.state = models.JobState.PROCESSING
         job.save()
         return h4f_job
-    elif job.h4f_status == models.H4FState.FAILED:
+    elif job.history4feed_status == models.H4FState.FAILED:
         job.state = models.JobState.RETRIEVE_FAILED
         job.save()
         return False
