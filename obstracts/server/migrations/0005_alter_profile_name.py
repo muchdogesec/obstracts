@@ -4,15 +4,17 @@ from django.db import migrations, models
 from obstracts.server.models import Profile as ProfileType
 from django.db.models import Count, Index
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 
 def update_profile_names(apps, schema_editor):
     Profile: ProfileType = apps.get_model('server', 'Profile')
-    # profiles = Profile.objects.all()
-    profiles = Profile.objects.annotate(name_count=Count('name')).filter(name_count__gt=1)
+    dupes = [v['name'] for v in Profile.objects.values('name').annotate(name_count=Count('id')).filter(name_count__gt=1)]
+    profiles = Profile.objects.filter(name__in=dupes)
 
     for index, profile in enumerate(profiles, start=1):
-        profile.name = f"{profile.name}_{index}"
-    
+        profile.name = f"{profile.name} {index} (autorenamed)"
     Profile.objects.bulk_update(profiles, ['name'])
 
 class Migration(migrations.Migration):
