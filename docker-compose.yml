@@ -10,7 +10,7 @@ services:
         command: >
                 bash -c "
                     python obstracts/cjob/arango_view_helper.py &&
-                    python manage.py collectstatic &&
+                    python manage.py collectstatic --no-input &&
                     python manage.py makemigrations &&
                             python manage.py migrate &&
                             gunicorn obstracts.wsgi:application  --reload --bind 0.0.0.0:8001
