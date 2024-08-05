@@ -46,13 +46,13 @@ cp .env.example .env
 ### Build the Docker Image
 
 ```shell
-sudo docker-compose build
+sudo docker compose build
 ```
 
 ### Start the server
 
 ```shell
-sudo docker-compose up
+sudo docker compose up
 ```
 
 ### Access the server
