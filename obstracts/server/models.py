@@ -5,6 +5,9 @@ from django.contrib.postgres.fields import ArrayField
 import uuid
 from django.utils.text import slugify
 from urllib.parse import urlparse
+from functools import partial
+import txt2stix, txt2stix.extractions
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -12,17 +15,26 @@ class RelationshipMode(models.TextChoices):
     AI = "ai", "AI Relationship"
     STANDARD = "standard", "Standard Relationship"
 
+def validate_extractor(types, name):
+    extractors = txt2stix.extractions.parse_extraction_config(
+            txt2stix.txt2stix.INCLUDES_PATH
+        ).values()
+    for extractor in extractors:
+        if name == extractor.slug and extractor.type in types:
+            return True
+    raise ValidationError(f"{name} does not exist", 400)
+
+
 class Profile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     created = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=250, unique=True)
-    extractions = ArrayField(base_field=models.CharField(max_length=256), help_text="extraction id(s)")
-    whitelists = ArrayField(base_field=models.CharField(max_length=256), help_text="whitelist id(s)", default=list)
-    aliases = ArrayField(base_field=models.CharField(max_length=256), help_text="alias id(s)", default=list)
+    extractions = ArrayField(base_field=models.CharField(max_length=256, validators=[partial(validate_extractor, ["ai", "pattern", "lookup"])]), help_text="extraction id(s)")
+    whitelists = ArrayField(base_field=models.CharField(max_length=256, validators=[partial(validate_extractor, ["whitelist"])]), help_text="whitelist id(s)", default=list)
+    aliases = ArrayField(base_field=models.CharField(max_length=256, validators=[partial(validate_extractor, ["alias"])]), help_text="alias id(s)", default=list)
     relationship_mode = models.CharField(choices=RelationshipMode.choices, max_length=20, default=RelationshipMode.STANDARD)
     prettify_with_ai = models.BooleanField(default=False)
     extract_text_from_image = models.BooleanField(default=False)
-
 
 
 class JobState(models.TextChoices):
