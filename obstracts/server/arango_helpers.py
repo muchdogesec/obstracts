@@ -204,17 +204,19 @@ class ArangoDBHelper:
         return self.execute_query(query, bind_vars=bind_vars)
     
     def get_post_objects(self, post_id):
+        types = self.query.get('types', "")
         bind_vars = {
             "@view": self.collection,
             "note": f"obstracts-post--{post_id}",
-            "types": self.query.get('types', "").split(",")
+            "types": types.split(",") if types else None
         }
         query = """
             FOR doc in @@view
             FILTER doc._is_latest AND doc._stix2arango_note == @note
-            FILTER @types AND doc.type IN @types
+            FILTER doc.type IN @types OR NOT @types
 
             LIMIT @offset, @count
             RETURN doc
         """
+        print(bind_vars, self.query.get('types', ""), True)
         return self.execute_query(query, bind_vars=bind_vars)
