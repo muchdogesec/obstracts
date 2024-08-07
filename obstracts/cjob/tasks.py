@@ -141,7 +141,7 @@ def process_post(job_id, post, *args):
 @current_app.on_after_finalize.connect
 def setup_periodic_tasks(sender, **kwargs):
     """ """
-    sender.add_periodic_task(settings.CELERY_SCHEDULE, start_automatic_update.s(), name='cron jobs to automatically update feeds every ?? interval')
+    sender.add_periodic_task(settings.CHECK_FOR_NEW_POSTS_MINS * 60, start_automatic_update.s(), name='cron jobs to automatically update feeds every ?? interval')
 
 
 @shared_task

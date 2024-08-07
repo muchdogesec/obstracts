@@ -139,11 +139,6 @@ STATIC_ROOT = "/var/www/static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-from celery.schedules import crontab
-
-# CELERY_SCHEDULE = crontab(minute="*/10") #every ten minutes
-CELERY_SCHEDULE = crontab(hour="*/6") #every six hours
-
 REST_FRAMEWORK = {
     # YOUR SETTINGS
     "DEFAULT_SCHEMA_CLASS": "obstracts.server.ObstractsAutoSchema",
@@ -186,3 +181,5 @@ ARANGODB_HOST_URL   = os.getenv("ARANGODB_HOST_URL")
 
 MAXIMUM_PAGE_SIZE = int(os.getenv("MAX_PAGE_SIZE", 50))
 DEFAULT_PAGE_SIZE = int(os.getenv("DEFAULT_PAGE_SIZE", 50))
+
+CHECK_FOR_NEW_POSTS_MINS = int(os.getenv("CHECK_FOR_NEW_POSTS_MINS", 360))
