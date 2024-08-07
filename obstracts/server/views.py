@@ -5,6 +5,7 @@ from django.shortcuts import render
 from rest_framework import viewsets, decorators, mixins, exceptions
 from rest_framework.request import Request
 from django.db.models import Model
+from drf_spectacular.utils import OpenApiParameter
 
 from obstracts.server.arango_helpers import ArangoDBHelper
 from .utils import (
@@ -334,6 +335,16 @@ class PostView(viewsets.ViewSet):
         return FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/{post_id}"
         )
+    
+    @extend_schema(
+        responses=ArangoDBHelper.get_paginated_response_schema(),
+        parameters=ArangoDBHelper.get_schema_operation_parameters() + [
+            OpenApiParameter(name="types", many=True, explode=False, type=str)
+        ],
+    )
+    @decorators.action(detail=True, methods=["GET"])
+    def objects(self, request, feed_id=None, post_id=None):
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_post_objects(post_id)
 
 @extend_schema_view(
     list=extend_schema(
@@ -391,8 +402,7 @@ class ObjectsView(viewsets.ViewSet):
     )
     @decorators.action(detail=False, methods=["GET"])
     def scos(self, request, *args, **kwargs):
-        page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper(settings.VIEW_NAME).get_scos(page, count)
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_scos()
 
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
@@ -400,8 +410,7 @@ class ObjectsView(viewsets.ViewSet):
     )
     @decorators.action(detail=False, methods=["GET"])
     def sdos(self, request, *args, **kwargs):
-        page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper(settings.VIEW_NAME).get_sdos(page, count)
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_sdos()
 
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
@@ -409,15 +418,14 @@ class ObjectsView(viewsets.ViewSet):
     )
     @decorators.action(detail=False, methods=["GET"])
     def sros(self, request, *args, **kwargs):
-        page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper(settings.VIEW_NAME).get_sros(page, count)
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_sros()
 
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters(),
     )
     def retrieve(self, request, *args, **kwargs):
-        page, count = ArangoDBHelper.get_page_params(request)
-        return ArangoDBHelper(settings.VIEW_NAME).get_objects_by_id(
-            kwargs.get(self.lookup_url_kwarg), page, count
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_objects_by_id(
+            kwargs.get(self.lookup_url_kwarg)
         )
+

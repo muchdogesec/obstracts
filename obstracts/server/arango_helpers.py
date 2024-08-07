@@ -90,25 +90,28 @@ class ArangoDBHelper:
     )
     DB_NAME = f"{settings.ARANGODB_DATABASE}_database"
 
-    def __init__(self, collection) -> None:
+    def __init__(self, collection, request) -> None:
         self.collection = collection
         self.db = self.client.db(
             self.DB_NAME,
             username=settings.ARANGODB_USERNAME,
             password=settings.ARANGODB_PASSWORD,
         )
+        self.page, self.count = self.get_page_params(request)
+        self.request = request
+        self.query = request.query_params.dict()
 
-    def execute_query(self, query, bind_vars={}, page=1, count=50):
-        bind_vars['offset'], bind_vars['count'] = self.get_page(count, page)
+    def execute_query(self, query, bind_vars={}):
+        bind_vars['offset'], bind_vars['count'] = self.get_offset_and_count(self.count, self.page)
         cursor = self.db.aql.execute(query, bind_vars=bind_vars, count=True)
-        return cursor
+        return self.get_paginated_response(cursor, self.page, self.page_size)
 
-    def get_page(self, count, page):
+    def get_offset_and_count(self, count, page) -> tuple[int, int]:
         page = page or 1
         offset = (page-1)*count
         return offset, count
 
-    def get_scos(self, page, count=50):
+    def get_scos(self):
         types = set([
             "ipv4-addr",
             "network-traffic",
@@ -134,15 +137,15 @@ class ArangoDBHelper:
         }
         query = """
             FOR doc in @@collection
-                FILTER CONTAINS(@types, doc.type) AND doc._is_latest
+            FILTER CONTAINS(@types, doc.type) AND doc._is_latest
 
 
-                LIMIT @offset, @count
-                RETURN doc
+            LIMIT @offset, @count
+            RETURN doc
         """
-        return self.get_paginated_response(self.execute_query(query, bind_vars=bind_vars, page=page, count=count), page_number=page, page_size=count)
+        return self.execute_query(query, bind_vars=bind_vars)
 
-    def get_sdos(self, page, count=50):
+    def get_sdos(self):
         types = set([
             "report",
             "notes",
@@ -165,48 +168,53 @@ class ArangoDBHelper:
         }
         query = """
             FOR doc in @@collection
-                FILTER CONTAINS(@types, doc.type) AND doc._is_latest
+            FILTER CONTAINS(@types, doc.type) AND doc._is_latest
 
-
-                LIMIT @offset, @count
-                RETURN doc
-        """
-        return self.get_paginated_response(self.execute_query(query, bind_vars=bind_vars, page=page, count=count), page_number=page, page_size=count)
-    
-    def get_objects_by_id(self, id, page=1, count=50):
-        bind_vars = {
-            "@vertex_collection": f"{self.collection}_vertex_collection",
-            "@edge_collection": f"{self.collection}_edge_collection",
-            "id": id,
-        }
-        query = """
-            LET vertices = (
-                FOR doc in @@vertex_collection
-                FILTER doc.id == @id AND doc._is_latest
-            )
-            LET edges = (
-                FOR doc in @@edge_collection
-                FILTER doc.id == @id AND doc._is_latest
-            )
-
-            FOR doc in APPEND(vertices, edges)
 
             LIMIT @offset, @count
             RETURN doc
         """
-        return self.get_paginated_response(self.execute_query(query, bind_vars=bind_vars, page=page, count=count), page_number=page, page_size=count)
-
-    def get_sros(self, page, count=50):
+        return self.execute_query(query, bind_vars=bind_vars)
+    
+    def get_objects_by_id(self, id):
+        bind_vars = {
+            "@view": self.collection,
+            "id": id,
+        }
+        query = """
+            FOR doc in @@view
+            FILTER doc.id == @id AND doc._is_latest
+            // LIMIT 1
+            RETURN doc
+        """
+        return self.execute_query(query, bind_vars=bind_vars)
+    
+    def get_sros(self):
         bind_vars = {
             "@collection": self.collection,
         }
         query = """
             FOR doc in @@collection
-                FILTER doc.type == 'relationship' AND doc._is_latest
+            FILTER doc.type == 'relationship' AND doc._is_latest
 
 
-                LIMIT @offset, @count
-                RETURN doc
+            LIMIT @offset, @count
+            RETURN doc
         """
-        return self.get_paginated_response(self.execute_query(query, bind_vars=bind_vars, page=page, count=count), page_number=page, page_size=count)
+        return self.execute_query(query, bind_vars=bind_vars)
     
+    def get_post_objects(self, post_id):
+        bind_vars = {
+            "@view": self.collection,
+            "note": f"obstracts-post--{post_id}",
+            "types": self.query.get('types', "").split(",")
+        }
+        query = """
+            FOR doc in @@view
+            FILTER doc._is_latest AND doc._stix2arango_note == @note
+            FILTER @types AND doc.type IN @types
+
+            LIMIT @offset, @count
+            RETURN doc
+        """
+        return self.execute_query(query, bind_vars=bind_vars)

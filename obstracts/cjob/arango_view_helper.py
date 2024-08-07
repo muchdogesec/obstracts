@@ -16,6 +16,7 @@ DB_NAME = f"{DB}_database"
 VIEW_NAME = "obstracts_view"
 
 SORT_FIELDS = [
+    "id",
     "type",
     "created",
     "modified",

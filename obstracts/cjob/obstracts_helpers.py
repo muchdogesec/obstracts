@@ -80,9 +80,7 @@ class ObstractsProcessor:
         if self.profile.relationship_mode == models.RelationshipMode.AI and sum(map(lambda x: len(x), all_extracts.values())):
             txt2stix.extract_relationships_with_ai(bundler, aliased_input, all_extracts, ai_extractor_session)
         
-        self.bundle = bundler.to_json()
-        self.bundle_file = self.tmpdir/f"bundle_{self.post_id}.json"
-        self.bundle_file.write_text(self.bundle)
+        self.write_bundle(bundler)
 
         if ai_extractor_session.initialized:
             (self.tmpdir/f"conversation_{self.post_id}.md").write_text(ai_extractor_session.get_conversation())
@@ -96,7 +94,15 @@ class ObstractsProcessor:
         logging.info(f"uploading {self.task_name} to arangodb via stix2arango")
         self.upload_to_arango()
 
-
+    def write_bundle(self, bundler: txt2stixBundler):
+        bundle = json.loads(bundler.to_json())
+        for obj in bundle['objects']:
+            obj['_obstracts_feed_id'] = self.job.feed_id
+            obj['_obstracts_post_id'] = self.post_id
+        self.bundle = json.dumps(bundle, indent=4)
+        self.bundle_file = self.tmpdir/f"bundle_{self.post_id}.json"
+        self.bundle_file.write_text(self.bundle)
+        
 
     def upload_to_arango(self):
         s2a = Stix2Arango(
@@ -128,34 +134,3 @@ class ObstractsProcessor:
 
     def __del__(self):
         shutil.rmtree(self.tmpdir)
-
-
-
-
-def test_gg():
-    logging.basicConfig(level=logging.INFO)
-    post = {
-      "id": "7b53d989-5263-46fd-9ad3-370dee4f9e55",
-      "datetime_added": "2024-07-11T14:07:19.356496Z",
-      "datetime_updated": "2024-07-11T14:07:19.356508Z",
-      "title": "Macau government websites hit with cyberattack by suspected foreign hackers",
-      "description": "<html><body><div><span class=\"wysiwyg-parsed-content\"><p class=\"paragraph\"> At least five Macau government websites were knocked offline by suspected foreign hackers for almost an hour earlier this week, several Chinese media outlets <a href=\"https://www.orangenews.hk/china/1230412/%E6%BE%B3%E9%96%80%E5%A4%9A%E5%80%8B%E9%83%A8%E9%96%80%E7%B6%B2%E7%AB%99%E9%81%AD%E6%94%BB%E6%93%8A%E6%9C%8D%E5%8B%99%E4%B8%80%E5%BA%A6%E5%8F%97%E9%98%BB-%E7%95%B6%E5%B1%80%E8%B2%AC%E6%88%90%E9%9B%BB%E8%A8%8A%E5%95%86%E5%BE%B9%E6%9F%A5.shtml\" target=\"_blank\" rel=\"noopener noreferrer\">reported</a>, citing local security officials. </p><p class=\"paragraph\"> A distributed denial-of-service attack (DDoS) affected, among others, the websites of Macau’s security service, police force, fire and rescue services, and the academy for public security forces. </p><p class=\"paragraph\"> The densely populated Macau is a “special administrative region” on the south coast of China. Local police have launched a criminal investigation into the incidents to trace the source of the criminal activity. </p><p class=\"paragraph\"> The attack occurred on Wednesday evening and likely originated “from overseas,” according to local officials. </p><p class=\"paragraph\"> Following the incident, Macau’s authorities carried out an emergency response “in collaboration with telecommunication operators to promptly restore regular services,” <a href=\"https://macaudailytimes.com.mo/websites-of-office-of-the-secretary-for-security-targeted-in-a-cyber-attack.html\" target=\"_blank\" rel=\"noopener noreferrer\">said</a> the region’s Secretary for Security, Wong Sio Chak. </p><p class=\"paragraph\"> The country’s security forces also instructed Macau Telecom, which provides the services to block DDoS attacks, to investigate the incident and submit a report and improvement plan to prevent similar attacks in the future. </p><p class=\"paragraph\"> It is not clear what hacker group was behind the incident or what their motives were. </p><p class=\"paragraph\"> Local media claimed that the latest attacks followed a surge in cyber activities in the region. According to a recent <a href=\"https://macaonews.org/news/city/macau-cyberattacks-cyber-security-attacks-macao/\" target=\"_blank\" rel=\"noopener noreferrer\">report</a>, the number of cyberattacks targeting Macau’s critical infrastructure last year has more than tripled since 2020. </p></span><div class=\"article__adunit\"><div class=\"mb-4\"><p>Get more insights with the </p><p>Recorded Future</p><p>Intelligence Cloud.</p></div><a class=\"underline\" target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.recordedfuture.com/platform?mtm_campaign=ad-unit-record\">Learn more.</a></div></div></body></html>",
-      "link": "https://therecord.media/macau-government-websites-hit-with-cyberattack",
-      "pubdate": "2024-07-11T13:45:41Z",
-      "author": "",
-      "is_full_text": True,
-      "content_type": "text/html; charset=utf-8",
-      "categories": [
-        "cybercrime",
-        "news-briefs",
-        "government"
-      ]
-    }
-    job = models.Job.objects.first()
-
-    p = ObstractsProcessor(post, job)
-    p.process()
-
-
-    #import obstracts.cjob.obstracts_helpers
-    return p
