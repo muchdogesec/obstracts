@@ -9,7 +9,6 @@ from ..server import models
 from ..server.serializers import ProfileSerializer
 import tempfile
 from file2txt.converter import convert_file
-from file2txt.openai_processor import OpenAIMDCleaner
 from txt2stix import txt2stix
 from txt2stix.stix import txt2stixBundler
 from txt2stix.ai_session import GenericAIExtractor
@@ -50,8 +49,6 @@ class ObstractsProcessor:
 
     def file2txt(self):
         openai_cleaner = None
-        if self.profile.prettify_with_ai:
-            openai_cleaner = OpenAIMDCleaner()
         output = convert_file("html", self.filename, image_processor_key=self.visions_keyfile, process_raw_image_urls=self.job.profile.extract_text_from_image, md_cleaner=openai_cleaner)
         self.output_md = "\n".join(output)
         self.md_file = self.tmpdir/f"post_md_{self.post_id}.md"
@@ -97,8 +94,8 @@ class ObstractsProcessor:
     def write_bundle(self, bundler: txt2stixBundler):
         bundle = json.loads(bundler.to_json())
         for obj in bundle['objects']:
-            obj['_obstracts_feed_id'] = self.job.feed_id
-            obj['_obstracts_post_id'] = self.post_id
+            obj['_obstracts_feed_id'] = str(self.job.feed_id)
+            obj['_obstracts_post_id'] = str(self.post_id)
         self.bundle = json.dumps(bundle, indent=4)
         self.bundle_file = self.tmpdir/f"bundle_{self.post_id}.json"
         self.bundle_file.write_text(self.bundle)

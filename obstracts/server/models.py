@@ -33,7 +33,6 @@ class Profile(models.Model):
     whitelists = ArrayField(base_field=models.CharField(max_length=256, validators=[partial(validate_extractor, ["whitelist"])]), help_text="whitelist id(s)", default=list)
     aliases = ArrayField(base_field=models.CharField(max_length=256, validators=[partial(validate_extractor, ["alias"])]), help_text="alias id(s)", default=list)
     relationship_mode = models.CharField(choices=RelationshipMode.choices, max_length=20, default=RelationshipMode.STANDARD)
-    prettify_with_ai = models.BooleanField(default=False)
     extract_text_from_image = models.BooleanField(default=False)
 
 
