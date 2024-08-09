@@ -95,14 +95,17 @@ def start_processing(h4f_job, job_id):
 
     posts = []
     current_page = 1
-    while len(posts) < job.item_count:
+    item_count = job.item_count
+    while len(posts) < item_count:
         resp = make_h4f_request(
             f"/api/v1/feeds/{job.feed_id}/posts/",
             params={"job_id": job_id, "page": current_page},
         )
         current_page += 1
         if resp.ok:
-            posts.extend(resp.json()["posts"])
+            data = resp.json()
+            posts.extend(data["posts"])
+            item_count = data["total_results_count"]
         else:
             logging.error(
                 f"got HTTP {resp.status_code} while processing job for {job_id}. body: {resp.text}, count: {len(posts)}"
