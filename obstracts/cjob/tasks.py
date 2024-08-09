@@ -38,7 +38,7 @@ def poll_once(job_id):
     logging.info(f"[{job_resp.status_code=}] job_state: {h4f_job}")
     job = Job.objects.get(pk=job_id)
     job.history4feed_status = h4f_job["state"]
-    job.item_count = h4f_job["count_of_items"]
+    job.item_count = len(h4f_job["urls"].get('retrieved', []))
     if job.history4feed_status == models.H4FState.SUCCESS:
         job.state = models.JobState.PROCESSING
         job.save()

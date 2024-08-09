@@ -123,5 +123,5 @@ yarl==1.9.4; python_version >= '3.7'
 zipp==3.19.2; python_version >= '3.8'
 
 https://github.com/muchdogesec/txt2stix/archive/main.zip
-https://github.com/muchdogesec/file2txt/archive/beta.zip?v=11
+https://github.com/muchdogesec/file2txt/archive/beta.zip?v=12
 https://github.com/muchdogesec/stix2arango/archive/main.zip?v=1

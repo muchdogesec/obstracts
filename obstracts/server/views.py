@@ -6,6 +6,7 @@ from rest_framework import viewsets, decorators, mixins, exceptions
 from rest_framework.request import Request
 from django.db.models import Model
 from drf_spectacular.utils import OpenApiParameter
+from .import autoschema as api_schema
 
 from obstracts.server.arango_helpers import ArangoDBHelper
 from .utils import (
@@ -39,18 +40,22 @@ from ..cjob import tasks
     list=extend_schema(
         summary="Search profiles",
         description="Profiles determine how txt2stix processes each blog post in a feed. A profile consists of an extractors, aliases, and/or whitelists. You can search for existing profiles here.",
+        responses={400: api_schema.DEFAULT_400_ERROR, 200: ProfileSerializer},
     ),
     retrieve=extend_schema(
         summary="Get a profile",
         description="View the configuration of an existing profile. Note, existing profiles cannot be modified.",
+        responses={400: api_schema.DEFAULT_400_ERROR, 404: api_schema.DEFAULT_404_ERROR, 200: ProfileSerializer}
     ),
     create=extend_schema(
         summary="Create a new profile",
         description="Add a new Profile that can be applied to new Feeds. A profile consists of an extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints. Required fields are name, extractions (at least one extraction ID), relationship_mode (either ai or standard, defines how relationship between extractions should be created), and extract_text_from_image (boolean, defines if image text should be considered for extraction).",
+        responses={400: api_schema.DEFAULT_400_ERROR, 200: ProfileSerializer}
     ),
     destroy=extend_schema(
         summary="Delete a profile",
         description="Delete an existing profile. Note, you cannot delete a profile if it is currently being used with an active Feed.",
+        responses={404: api_schema.DEFAULT_404_ERROR, 204: None}
     ),
 )
 class ProfileView(viewsets.ModelViewSet):
@@ -121,10 +126,12 @@ class txt2stixView(mixins.RetrieveModelMixin,
     list=extend_schema(
         summary="Search Extractors",
         description="Extractors are what extract the data from the text which is then converted into STIX objects.",
+        responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
         summary="Get an extractor",
         description="Get a specific Extractor.",
+        responses={400: api_schema.DEFAULT_400_ERROR, 404: api_schema.DEFAULT_404_ERROR, 200: T2SSerializer},
     ),
 )
 class ExtractorsView(txt2stixView):
@@ -139,10 +146,12 @@ class ExtractorsView(txt2stixView):
     list=extend_schema(
         summary="Search for Whitelists",
         description="In many cases files will have IoC extractions that are not malicious. e.g. `google.com` (and thus they don't want them to be extracted). Whitelists provide a list of values to be compared to extractions. If a whitelist value matches an extraction, that extraction is removed. To see the values used in this Whitelist, visit the URL shown as the value for the `file` key",
+        responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
         summary="Get a whitelist",
         description="Get a specific Whitelist. To see the values used in this Whitelist, visit the URL shown as the value for the `file` key",
+        responses={400: api_schema.DEFAULT_400_ERROR, 404: api_schema.DEFAULT_404_ERROR, 200: T2SSerializer},
     ),
 )
 class WhitelistsView(txt2stixView):
@@ -157,10 +166,12 @@ class WhitelistsView(txt2stixView):
     list=extend_schema(
         summary="Search for aliases",
         description="Aliases replace strings in the blog post with values defined in the Alias. Aliases are applied before extractions. For example, an alias of `USA` with a value `United States` will change all records of `USA` in the blog post with `United States`. To see the values used in this Alias, visit the URL shown as the value for the `file` key",
+        responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
         summary="Get an Alias",
         description="Get a specific Alias. To see the values used in this Alias, visit the URL shown as the value for the `file` key",
+        responses={400: api_schema.DEFAULT_400_ERROR, 404: api_schema.DEFAULT_404_ERROR, 200: T2SSerializer},
     ),
 )
 class AliasesView(txt2stixView):
@@ -350,10 +361,12 @@ class PostView(viewsets.ViewSet):
     list=extend_schema(
         summary="Search Jobs",
         description="""Jobs track the status of the request to get posts for Feeds. For every new Feed added and every update to a Feed requested a job will be created. The id of a job is printed in the POST and PATCH responses respectively, but you can use this endpoint to search for the id again, if required.""",
+        responses={400: api_schema.DEFAULT_400_ERROR, 200: JobSerializer},
     ),
     retrieve=extend_schema(
         summary="Get a Job",
         description="""Using a Job ID you can retrieve information about its state via this endpoint. This is useful to see if a Job to get data is complete, how many posts were imported in the job, or if an error has occurred.""",
+        responses={404: api_schema.DEFAULT_404_ERROR, 200: JobSerializer},
     ),
 )
 class JobView(viewsets.ModelViewSet):
