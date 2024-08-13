@@ -24,7 +24,7 @@ Obstracts requires [history4feed](https://github.com/muchdogesec/history4feed) t
 
 You'll need to set the location of history4feed later in the Obstracts `.env` file.
 
-If you are running history4feed locally, be sure to set `HISTORY4FEED_URL='http://host.docker.internal:8000/'` in the `.env` file otherwise you will run into networking errors.
+If you are running history4feed locally, be sure to set `HISTORY4FEED_URL='http://host.docker.internal:8002/'` in the `.env` file otherwise you will run into networking errors.
 
 ### Download and configure
 
