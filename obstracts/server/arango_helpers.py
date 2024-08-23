@@ -101,16 +101,49 @@ class ArangoDBHelper:
         self.request = request
         self.query = request.query_params.dict()
 
-    def execute_query(self, query, bind_vars={}):
-        bind_vars['offset'], bind_vars['count'] = self.get_offset_and_count(self.count, self.page)
+    def execute_query(self, query, bind_vars={}, paginate=True):
+        if paginate:
+            bind_vars['offset'], bind_vars['count'] = self.get_offset_and_count(self.count, self.page)
         cursor = self.db.aql.execute(query, bind_vars=bind_vars, count=True)
-        return self.get_paginated_response(cursor, self.page, self.page_size)
+        if paginate:
+            return self.get_paginated_response(cursor, self.page, self.page_size)
+        return list(cursor)
 
     def get_offset_and_count(self, count, page) -> tuple[int, int]:
         page = page or 1
         offset = (page-1)*count
         return offset, count
-
+    
+    def get_reports(self, id=None):
+        bind_vars = {
+                "@collection": self.collection,
+                "type": 'report',
+        }
+        query = """
+            FOR doc in @@collection
+            FILTER doc.type == @type AND doc._is_latest
+            LIMIT @offset, @count
+            RETURN KEEP(doc, KEYS(doc, true))
+        """
+        return self.execute_query(query, bind_vars=bind_vars)
+    
+    def get_report_by_id(self, id):
+        bind_vars = {
+                "@collection": self.collection,
+                "id": id,
+                'type': 'report',
+        }
+        query = """
+            FOR doc in @@collection
+            FILTER doc.id == @id AND doc._is_latest AND doc.type == @type
+            LIMIT 1
+            RETURN KEEP(doc, KEYS(doc, true))
+        """
+        return self.execute_query(query, bind_vars=bind_vars, paginate=False)
+    
+    def remove_report(self, id):
+        return self.remove_matches(dict(_stixify_report_id=id))
+        
     def get_scos(self):
         types = set([
             "ipv4-addr",
@@ -141,7 +174,7 @@ class ArangoDBHelper:
 
 
             LIMIT @offset, @count
-            RETURN doc
+            RETURN KEEP(doc, KEYS(doc, true))
         """
         return self.execute_query(query, bind_vars=bind_vars)
 
@@ -172,7 +205,7 @@ class ArangoDBHelper:
 
 
             LIMIT @offset, @count
-            RETURN doc
+            RETURN KEEP(doc, KEYS(doc, true))
         """
         return self.execute_query(query, bind_vars=bind_vars)
     
@@ -185,7 +218,7 @@ class ArangoDBHelper:
             FOR doc in @@view
             FILTER doc.id == @id AND doc._is_latest
             // LIMIT 1
-            RETURN doc
+            RETURN KEEP(doc, KEYS(doc, true))
         """
         return self.execute_query(query, bind_vars=bind_vars)
     
@@ -199,24 +232,64 @@ class ArangoDBHelper:
 
 
             LIMIT @offset, @count
-            RETURN doc
+            RETURN KEEP(doc, KEYS(doc, true))
+
         """
         return self.execute_query(query, bind_vars=bind_vars)
     
-    def get_post_objects(self, post_id):
+    def get_post_objects(self, post_id, feed_id):
         types = self.query.get('types', "")
         bind_vars = {
             "@view": self.collection,
-            "note": f"obstracts-post--{post_id}",
+            "matcher": dict(_obstracts_post_id=str(post_id), _obstracts_feed_id=str(feed_id)),
             "types": types.split(",") if types else None
         }
         query = """
             FOR doc in @@view
-            FILTER doc._is_latest AND doc._stix2arango_note == @note
+            FILTER doc._is_latest AND MATCHES(doc, @matcher)
             FILTER doc.type IN @types OR NOT @types
 
             LIMIT @offset, @count
-            RETURN doc
+            RETURN KEEP(doc, KEYS(doc, true))
         """
         print(bind_vars, self.query.get('types', ""), True)
         return self.execute_query(query, bind_vars=bind_vars)
+    
+    def remove_matches(self, matcher):
+        bind_vars = {
+                "@collection": self.collection,
+                'matcher': matcher,
+        }
+        query = """
+            FOR doc in @@collection
+            FILTER MATCHES(doc, @matcher)
+            RETURN doc._id
+        """
+        collections = {}
+        out = self.execute_query(query, bind_vars=bind_vars, paginate=False)
+        for key in out:
+            collection, key = key.split('/', 2)
+            collections[collection] = collections.get(collection, [])
+            collections[collection].append(key)
+
+        deletion_query = """
+        LET removed_@var = (
+            FOR _key in @objects_@var
+            REMOVE {_key} IN @@collection_@var
+            RETURN _key
+        )
+        """
+        queries = []
+        bind_vars = {}
+        for collection, objects in collections.items():
+            queries.append(deletion_query.replace('@var', collection))
+            
+            bind_vars.update({
+                "@collection_"+collection: collection,
+                "objects_"+collection: objects,
+            })
+        queries.append('\nRETURN NULL')
+        deletion_query = "\n\n".join(queries)
+        print(deletion_query)
+        self.execute_query(deletion_query, bind_vars, paginate=False)
+        

@@ -1,10 +1,11 @@
+import io
 import logging
 import math
 from urllib.parse import urljoin
 from celery import group, shared_task, chain, chord, current_app, current_task, subtask
 from django.conf import settings
 
-from .obstracts_helpers import ObstractsProcessor
+from .obstracts_helpers import ReportProperties, StixifyProcessor
 from ..server.models import Job, FeedProfile
 from ..server import models
 
@@ -129,9 +130,21 @@ def set_job_completed(job_id):
 @shared_task
 def process_post(job_id, post, *args):
     job = Job.objects.get(id=job_id)
+    post_id = str(post['id'])
     try:
-        processor = ObstractsProcessor(post, job)
-        processor.process()
+        file = io.BytesIO(post['description'].encode())
+        file.name = f"post-{post_id}.html"
+        processor = StixifyProcessor(file, job)
+        properties = ReportProperties(
+            name="obstracts-post {post_id}",
+            identity=None,
+            tlp_level="clear",
+            confidence=0,
+            labels=[],
+            created=job.created,
+        )
+        processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
+        report_id = processor.process()
         job.processed_items += 1
     except Exception as e:
         logging.error("failed to process post with id: %s", post["id"])

@@ -290,9 +290,12 @@ class FeedView(viewsets.ViewSet):
         )
 
     def destroy(self, request, *args, **kwargs):
-        return self.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
+        feed_id = kwargs.get(self.lookup_url_kwarg)
+        resp = self.make_request(
+            request, f"/api/v1/feeds/{feed_id}/"
         )
+        ArangoDBHelper(settings.VIEW_NAME, request).remove_matches(dict(_obstracts_feed_id=feed_id))
+        return resp
 
     # @extend_schema(request=FeedSerializer)
     # def partial_update(self, request, *args, **kwargs):
@@ -355,7 +358,7 @@ class PostView(viewsets.ViewSet):
     )
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, feed_id=None, post_id=None):
-        return ArangoDBHelper(settings.VIEW_NAME, request).get_post_objects(post_id)
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_post_objects(post_id, feed_id)
 
 @extend_schema_view(
     list=extend_schema(
