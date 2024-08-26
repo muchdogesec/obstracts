@@ -14,8 +14,17 @@ TODO
 
 ```json
 {
-  "profile_id": "31322d00-72dd-4898-b1ee-fbb2e434824b",
+  "profile_id": "f54586f5-a9b5-4b4a-833c-6fee2c2345ae",
   "url": "https://muchdogesec.github.io/fakeblog123/feed.xml",
+  "include_remote_blogs": false
+}
+```
+
+
+```json
+{
+  "profile_id": "f54586f5-a9b5-4b4a-833c-6fee2c2345ae",
+  "url": "https://blog.google/threat-analysis-group/rss/",
   "include_remote_blogs": false
 }
 ```
