@@ -21,6 +21,7 @@ from .server import views
 from rest_framework import routers
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from django.conf import settings
+from .server.arango_based_views import arango_views
 
 API_VERSION = "v1"
 
@@ -30,7 +31,7 @@ router.register('feeds', views.FeedView, "feed-view")
 router.register("feeds/<uuid:feed_id>/posts", views.PostView, "post-view")
 
 router.register('jobs', views.JobView, "job-view")
-router.register('objects', views.ObjectsView, "objects-view")
+router.register('objects', arango_views.ObjectsView, "objects-view")
 # txt2stix views
 router.register('extractors', views.ExtractorsView, "extractors-view")
 router.register('whitelists', views.WhitelistsView, "whitelists-view")
