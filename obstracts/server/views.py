@@ -392,7 +392,7 @@ def make_h4f_request(path, method="GET", params=None, body=None, headers={}):
 @extend_schema_view(
     scos=extend_schema(
         summary="Get a STIX Cyber Observable Object",
-        description="Search for observable objects.",
+        description="Search for STIX Cyber Observable Objects (aka Indicators of Compromise). If you have the object ID already, you can use the base GET Objects endpoint.",
     ),
     retrieve=extend_schema(
         summary="Get an object",
@@ -400,11 +400,11 @@ def make_h4f_request(path, method="GET", params=None, body=None, headers={}):
     ),
     sdos=extend_schema(
         summary="Get a STIX Domain Object",
-        description="Search for domain objects.",
+        description="Search for domain objects (aka TTPs). If you have the object ID already, you can use the base GET Objects endpoint.",
     ),
     sros=extend_schema(
         summary="Get a STIX Relationship Object",
-        description="Search for relationship objects. This endpoint is particularly useful to search what other Objects an SCO or SDO is linked to.",
+        description="Search for relationship objects. This endpoint is particularly useful to search what Objects an SCO or SDO is linked to.",
     ),
 )
 class ObjectsView(viewsets.ViewSet):
