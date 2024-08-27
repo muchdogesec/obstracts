@@ -5,7 +5,7 @@ from ..utils import Pagination, Response
 from drf_spectacular.utils import OpenApiParameter
 
 if typing.TYPE_CHECKING:
-    from stixify import settings
+    from obstracts import settings
 
 
 class ArangoDBHelper:
@@ -365,16 +365,17 @@ class ArangoDBHelper:
         print(query, bind_vars)
         return self.execute_query(query, bind_vars=bind_vars)
     
-    def get_post_objects(self, post_id):
+    
+    def get_post_objects(self, post_id, feed_id):
         types = self.query.get('types', "")
         bind_vars = {
             "@view": self.collection,
-            "note": f"obstracts-post--{post_id}",
+            "matcher": dict(_obstracts_post_id=str(post_id), _obstracts_feed_id=str(feed_id)),
             "types": types.split(",") if types else None
         }
         query = """
             FOR doc in @@view
-            FILTER doc._is_latest AND doc._stix2arango_note == @note
+            FILTER doc._is_latest AND MATCHES(doc, @matcher)
             FILTER doc.type IN @types OR NOT @types
 
             LIMIT @offset, @count
@@ -382,3 +383,44 @@ class ArangoDBHelper:
         """
         print(bind_vars, self.query.get('types', ""), True)
         return self.execute_query(query, bind_vars=bind_vars)
+    
+
+
+    def remove_matches(self, matcher):
+        bind_vars = {
+                "@collection": self.collection,
+                'matcher': matcher,
+        }
+        query = """
+            FOR doc in @@collection
+            FILTER MATCHES(doc, @matcher)
+            RETURN doc._id
+        """
+        collections = {}
+        out = self.execute_query(query, bind_vars=bind_vars, paginate=False)
+        for key in out:
+            collection, key = key.split('/', 2)
+            collections[collection] = collections.get(collection, [])
+            collections[collection].append(key)
+
+        deletion_query = """
+        LET removed_@var = (
+            FOR _key in @objects_@var
+            REMOVE {_key} IN @@collection_@var
+            RETURN _key
+        )
+        """
+        queries = []
+        bind_vars = {}
+        for collection, objects in collections.items():
+            queries.append(deletion_query.replace('@var', collection))
+            
+            bind_vars.update({
+                "@collection_"+collection: collection,
+                "objects_"+collection: objects,
+            })
+        queries.append('\nRETURN NULL')
+        deletion_query = "\n\n".join(queries)
+        print(deletion_query)
+        self.execute_query(deletion_query, bind_vars, paginate=False)
+        

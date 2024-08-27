@@ -8,7 +8,7 @@ from django.db.models import Model
 from drf_spectacular.utils import OpenApiParameter
 from .import autoschema as api_schema
 
-from obstracts.server.arango_helpers import ArangoDBHelper
+from obstracts.server.arango_based_views.arango_helpers import ArangoDBHelper
 from .utils import (
     MinMaxDateFilter,
     Ordering,
@@ -355,6 +355,8 @@ class PostView(viewsets.ViewSet):
         parameters=ArangoDBHelper.get_schema_operation_parameters() + [
             OpenApiParameter(name="types", many=True, explode=False, type=str)
         ],
+        summary="Get STIX Objects for a specific Post",
+        description="This endpoint will return all objects extracted for a post. If you want more flexibility to search for STIX objects across different Posts, use the Get Object endpoints.",
     )
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, feed_id=None, post_id=None):

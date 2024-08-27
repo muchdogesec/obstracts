@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
 
 class QueryParams:
     value = OpenApiParameter('value', description="search by value")
-    types = OpenApiParameter('types', many=True)
+    types = OpenApiParameter('types', many=True, explode=False)
     post_id = OpenApiParameter('post_id', description="filter by post_id")
     SCO_PARAMS = [value, types, post_id]
 
