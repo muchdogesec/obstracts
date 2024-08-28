@@ -209,7 +209,7 @@ class ArangoDBHelper:
         other_filters = []
 
         if new_types := self.query_as_array('types'):
-            types = set(new_types)
+            types = types.intersection(new_types)
         bind_vars = {
                 "@collection": self.collection,
                 "types": list(types),
@@ -275,8 +275,8 @@ class ArangoDBHelper:
             "identity",
             "location",
         ])
-        # if new_types := self.query_as_array('types'):
-        #     types = set(new_types)
+        if new_types := self.query_as_array('types'):
+            types = types.intersection(new_types)
         
         if self.query_as_bool('hide_processing_notes', False):
             types.remove('note')
