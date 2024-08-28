@@ -332,17 +332,17 @@ class ArangoDBHelper:
             bind_vars['source_ref'] = term
             other_filters.append('doc.source_ref == @source_ref')
         
-        if term := self.query.get('source_ref_type'):
-            bind_vars['source_ref_type'] = term
-            other_filters.append('STARTS_WITH(doc.source_ref, CONCAT(@source_ref_type, "--"))')
+        if terms := self.query_as_array('source_ref_type'):
+            bind_vars['source_ref_type'] = terms
+            other_filters.append('SPLIT(doc.source_ref, "--")[0] IN @source_ref_type')
         
         if term := self.query.get('target_ref'):
             bind_vars['target_ref'] = term
             other_filters.append('doc.target_ref == @target_ref')
             
-        if term := self.query.get('target_ref_type'):
-            bind_vars['target_ref_type'] = term
-            other_filters.append('STARTS_WITH(doc.target_ref, CONCAT(@target_ref_type, "--"))')
+        if terms := self.query_as_array('target_ref_type'):
+            bind_vars['target_ref_type'] = terms
+            other_filters.append('SPLIT(doc.target_ref, "--")[0] IN @target_ref_type')
 
         if term := self.query.get('relationship_type'):
             bind_vars['relationship_type'] = term

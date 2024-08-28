@@ -45,7 +45,7 @@ class QueryParams:
         description="Filter the results on the `source_ref` fields. The value entered should be a full ID of a STIX SDO or SCO which can be obtained from the respective Get Object endpoints. This endpoint allows for graph traversal use-cases as it returns STIX `relationship` objects that will tell you what objects are related to the one entered (in the `target_ref` property)."
         )
     source_ref_type = OpenApiParameter(
-        'source_ref_type',
+        'source_ref_type', many=True, explode=False,
         description="Filter the results by the STIX object type in the `source_ref` field. Unlike the `source_ref` filter that requires a full STIX object ID, this filter allows for a more open search. For example, `attack-pattern` will return all `relationship` Objects where the `source_ref` contains the ID of an `attack-pattern` Object."
         )
     target_ref = OpenApiParameter(
@@ -53,7 +53,7 @@ class QueryParams:
         description="Filter the results on the `target_ref` fields. The value entered should be a full ID of a STIX SDO or SCO which can be obtained from the respective Get Object endpoints. This endpoint allows for graph traversal use-cases as it returns STIX `relationship` objects that will tell you what objects are related to the one entered (in the `source_ref` property)."
         )
     target_ref_type = OpenApiParameter(
-        'target_ref_type',
+        'target_ref_type', many=True, explode=False,
         description="Filter the results by the STIX object type in the `target_ref` field. Unlike the `target_ref` filter that requires a full STIX object ID, this filter allows for a more open search. For example, `attack-pattern` will return all `relationship` Objects where the `target_ref` contains the ID of an `attack-pattern` Object."
         )
     relationship_type = OpenApiParameter(
