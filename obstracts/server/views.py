@@ -69,7 +69,10 @@ class ProfileView(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, Ordering]
 
     class filterset_class(FilterSet):
-        name = Filter(label="wildcard search for name property.", lookup_expr="search")
+        name = Filter(
+            label="Searches Profiles by their name. Search is wildcard. For example, `ip` will return Profiles with names `ip-extractions`, `ips`, etc.",
+            lookup_expr="search"
+            )
 
     def get_queryset(self):
         return models.Profile.objects
@@ -356,7 +359,7 @@ class PostView(viewsets.ViewSet):
             OpenApiParameter(name="types", many=True, explode=False, type=str)
         ],
         summary="Get STIX Objects for a specific Post",
-        description="This endpoint will return all objects extracted for a post. If you want more flexibility to search for STIX objects across different Posts, use the Get Object endpoints.",
+        description="This endpoint will return all objects extracted for a post. If you want more flexibility to filter the objects or search for STIX objects across different Posts, use the Get Object endpoints.",
     )
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, feed_id=None, post_id=None):
