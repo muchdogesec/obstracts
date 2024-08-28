@@ -105,7 +105,7 @@ class QueryParams:
 )
 class ObjectsView(viewsets.ViewSet):
     openapi_tags = ["Objects"]
-    lookup_url_kwarg = "id"
+    lookup_url_kwarg = "object_id"
 
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),

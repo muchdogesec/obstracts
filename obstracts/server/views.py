@@ -63,6 +63,7 @@ class ProfileView(viewsets.ModelViewSet):
     serializer_class = ProfileSerializer
     http_method_names = ["get", "post", "delete"]
     pagination_class = Pagination("profiles")
+    lookup_url_kwarg = "profile_id"
 
     ordering_fields = ["name", "created"]
     ordering = "created_descending"
@@ -381,6 +382,7 @@ class JobView(viewsets.ModelViewSet):
     http_method_names = ["get"]
     serializer_class = JobSerializer
     openapi_tags = ["Jobs"]
+    lookup_url_kwarg = "job_id"
 
     def get_queryset(self):
         return models.Job.objects
