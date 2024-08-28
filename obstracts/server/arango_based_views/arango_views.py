@@ -1,4 +1,4 @@
-from .arango_helpers import ArangoDBHelper
+from .arango_helpers import ArangoDBHelper, SCO_TYPES, SDO_TYPES
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
 from rest_framework import viewsets, decorators, exceptions
 import typing
@@ -20,6 +20,7 @@ class QueryParams:
         many=True,
         explode=False,
         description="Filter the results by one or more STIX SCO Object types",
+        enum=SCO_TYPES,
     )
     post_id = OpenApiParameter(
         "post_id",
@@ -45,6 +46,7 @@ class QueryParams:
         many=True,
         explode=False,
         description="Filter the results by one or more STIX Domain Object types",
+        enum=SDO_TYPES,
     )
 
     SDO_PARAMS = [hide_processing_notes, name, labels, sdo_types]

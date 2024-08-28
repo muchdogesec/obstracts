@@ -7,6 +7,47 @@ from drf_spectacular.utils import OpenApiParameter
 if typing.TYPE_CHECKING:
     from obstracts import settings
 
+SDO_TYPES = set(
+    [
+        "report",
+        "note",
+        "indicator",
+        "attack-pattern",
+        "weakness",
+        "campaign",
+        "course-of-action",
+        "infrastructure",
+        "intrusion-set",
+        "malware",
+        "threat-actor",
+        "tool",
+        "identity",
+        "location",
+    ]
+)
+
+SCO_TYPES = set(
+    [
+        "ipv4-addr",
+        "network-traffic",
+        "ipv6-addr",
+        "domain-name",
+        "url",
+        "file",
+        "directory",
+        "email-addr",
+        "mac-addr",
+        "windows-registry-key",
+        "autonomous-system",
+        "user-agent",
+        "cryptocurrency-wallet",
+        "cryptocurrency-transaction",
+        "bank-card",
+        "bank-account",
+        "phone-number",
+    ]
+)
+
 
 class ArangoDBHelper:
     max_page_size = settings.MAXIMUM_PAGE_SIZE
@@ -187,25 +228,7 @@ class ArangoDBHelper:
             self.execute_query(deletion_query, bind_vars, paginate=False)
         
     def get_scos(self, matcher={}):
-        types = set([
-            "ipv4-addr",
-            "network-traffic",
-            "ipv6-addr",
-            "domain-name",
-            "url",
-            "file",
-            "directory",
-            "email-addr",
-            "mac-addr",
-            "windows-registry-key",
-            "autonomous-system",
-            "user-agent",
-            "cryptocurrency-wallet",
-            "cryptocurrency-transaction",
-            "bank-card",
-            "bank-account",
-            "phone-number",
-        ])
+        types = SCO_TYPES
         other_filters = []
 
         if new_types := self.query_as_array('types'):
@@ -259,22 +282,7 @@ class ArangoDBHelper:
         return self.execute_query(query, bind_vars=bind_vars)
 
     def get_sdos(self):
-        types = set([
-            "report",
-            "note",
-            "indicator",
-            "attack-pattern",
-            "weakness",
-            "campaign",
-            "course-of-action",
-            "infrastructure",
-            "intrusion-set",
-            "malware",
-            "threat-actor",
-            "tool",
-            "identity",
-            "location",
-        ])
+        types = SDO_TYPES
         if new_types := self.query_as_array('types'):
             types = types.intersection(new_types)
         
@@ -423,4 +431,3 @@ class ArangoDBHelper:
         deletion_query = "\n\n".join(queries)
         print(deletion_query)
         self.execute_query(deletion_query, bind_vars, paginate=False)
-        
