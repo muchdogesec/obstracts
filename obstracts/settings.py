@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 from textwrap import dedent
 import sys
+import uuid
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -170,6 +171,7 @@ SPECTACULAR_SETTINGS = {
     ]
 }
 
+OBSTRACTS_NS = uuid.UUID("a1f2e3ed-6241-5f05-ac2e-3394213b8e08")
 
 TXT2STIX_INCLUDE_URL = "https://github.com/muchdogesec/txt2stix/blob/obstracts/includes/"
 

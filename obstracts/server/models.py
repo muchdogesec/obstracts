@@ -1,5 +1,6 @@
 import sys
 from typing import Iterable
+from django.conf import settings
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 import uuid
@@ -34,6 +35,11 @@ class Profile(models.Model):
     aliases = ArrayField(base_field=models.CharField(max_length=256, validators=[partial(validate_extractor, ["alias"])]), help_text="alias id(s)", default=list)
     relationship_mode = models.CharField(choices=RelationshipMode.choices, max_length=20, default=RelationshipMode.STANDARD)
     extract_text_from_image = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs) -> None:
+        if not self.id:
+            self.id = uuid.uuid5(settings.OBSTRACTS_NAMESPACE, self.name)
+        return super().save(*args, **kwargs)
 
 
 class JobState(models.TextChoices):
