@@ -53,14 +53,6 @@ services:
                 condition: service_healthy
             redis:
                 condition: service_started
-
-    scheduler:
-        extends: celery
-        command: >
-                bash -c "
-                celery -A obstracts.cjob beat -l INFO 
-                "
-
     pgdb:
         image: postgres
         env_file:
