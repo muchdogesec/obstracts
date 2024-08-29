@@ -27,7 +27,7 @@ def validate_extractor(types, name):
 
 
 class Profile(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    id = models.UUIDField(primary_key=True)
     created = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=250, unique=True)
     extractions = ArrayField(base_field=models.CharField(max_length=256, validators=[partial(validate_extractor, ["ai", "pattern", "lookup"])]), help_text="extraction id(s)")
