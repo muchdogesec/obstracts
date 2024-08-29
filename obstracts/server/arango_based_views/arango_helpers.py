@@ -74,15 +74,17 @@ class ArangoDBHelper:
         return page_number, page_limit
 
     @classmethod
-    def get_paginated_response(cls, data, page_number, page_size=page_size):
+    def get_paginated_response(cls, data, page_number, page_size=page_size, full_count=0):
         return Response(
             {
                 "page_size": page_size or cls.page_size,
                 "page_number": page_number,
                 "page_results_count": len(data),
+                "total_results_count": full_count,
                 "objects": data,
             }
         )
+
 
     @classmethod
     def get_paginated_response_schema(cls):
@@ -102,6 +104,10 @@ class ArangoDBHelper:
                     "page_results_count": {
                         "type": "integer",
                         "example": cls.page_size,
+                    },
+                    "total_results_count": {
+                        "type": "integer",
+                        "example": cls.page_size * cls.max_page_size,
                     },
                     "objects": {
                         "type": "array",
@@ -160,9 +166,10 @@ class ArangoDBHelper:
     def execute_query(self, query, bind_vars={}, paginate=True):
         if paginate:
             bind_vars['offset'], bind_vars['count'] = self.get_offset_and_count(self.count, self.page)
-        cursor = self.db.aql.execute(query, bind_vars=bind_vars, count=True)
+        cursor = self.db.aql.execute(query, bind_vars=bind_vars, count=True, full_count=True)
         if paginate:
-            return self.get_paginated_response(cursor, self.page, self.page_size)
+            print(cursor.statistics())
+            return self.get_paginated_response(cursor, self.page, self.page_size, cursor.statistics()["fullCount"])
         return list(cursor)
 
     def get_offset_and_count(self, count, page) -> tuple[int, int]:

@@ -301,16 +301,16 @@ class FeedView(viewsets.ViewSet):
         ArangoDBHelper(settings.VIEW_NAME, request).remove_matches(dict(_obstracts_feed_id=feed_id))
         return resp
 
-    # @extend_schema(request=FeedSerializer)
-    # def partial_update(self, request, *args, **kwargs):
-    #     profile_id = self.parse_profile(request)
-    #     resp = self.make_request(
-    #         request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
-    #     )
-    #     if resp.status_code == 200:
-    #         out = json.loads(resp.content)
-    #         tasks.new_task(out, profile_id)
-    #     return resp
+    @extend_schema(request=FeedSerializer)
+    def partial_update(self, request, *args, **kwargs):
+        profile_id = self.parse_profile(request)
+        resp = self.make_request(
+            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
+        )
+        if resp.status_code == 200:
+            out = json.loads(resp.content)
+            tasks.new_task(out, profile_id)
+        return resp
     
 @extend_schema_view(
     list=extend_schema(
