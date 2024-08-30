@@ -36,7 +36,7 @@ def poll_once(job_id):
     if not job_resp.ok:
         return False
     h4f_job = job_resp.json()
-    logging.info(f"[{job_resp.status_code=}] job_state: {h4f_job}")
+    logging.info(f"[{job_resp.status_code=}] job_id: {job_id}")
     job = Job.objects.get(pk=job_id)
     job.history4feed_status = h4f_job["state"]
     job.item_count = len(h4f_job["urls"].get('retrieved', []))
@@ -73,13 +73,16 @@ def poll_job(job_id):
 
 
 def new_task(feed_dict, profile_id):
-    feed, _ = FeedProfile.objects.update_or_create(
-        id=feed_dict["id"], title=feed_dict["title"], profile_id=profile_id
-    )
+    kwargs = dict(id=feed_dict["id"], profile_id=profile_id)
+    if title := feed_dict.get("title"):
+        kwargs.update(title)
+    feed, _ = FeedProfile.objects.update_or_create(**kwargs)
     job = Job.objects.create(id=feed_dict["job_id"], feed=feed)
     (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
         countdown=POLL_INTERVAL, root_id=job.id, task_id=job.id
     )
+    # print(job.id)
+    return job
 
 
 @shared_task
@@ -152,19 +155,3 @@ def process_post(job_id, post, *args):
         job.failed_processes += 1
     job.save()
     return job_id
-
-
-@current_app.on_after_finalize.connect
-def setup_periodic_tasks(sender, **kwargs):
-    """ """
-    sender.add_periodic_task(settings.CHECK_FOR_NEW_POSTS_MINS * 60, start_automatic_update.s(), name='cron jobs to automatically update feeds every ?? interval')
-
-
-@shared_task
-def start_automatic_update():
-    print("Running feed retrieve")
-    for feed in FeedProfile.objects.all():
-        feed_resp = make_h4f_request(f"/api/v1/feeds/{feed.id}/", method="PATCH")
-        feed_dict = feed_resp.json()
-        print(feed_dict)
-        new_task(feed_dict, feed.profile.id)

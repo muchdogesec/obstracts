@@ -1,4 +1,5 @@
 import json
+import logging
 from urllib.parse import urljoin
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -198,6 +199,7 @@ class AliasesView(txt2stixView):
     ),
     create=extend_schema(
         request=FeedSerializer,
+        responses=JobSerializer,
         summary="Create a new Feed",
         description="Use this endpoint to create to a new feed. The url value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned. Generally you should set retrieve_full_text to true. If you are certain the blog you are subscribing to has a full text feed already, you can safely set this to false. If url is already associated with an existing Feed, using it via this endpoint will trigger an update request for the blog. If you want to add the url with new settings, first delete it.",
     ),
@@ -205,6 +207,7 @@ class AliasesView(txt2stixView):
         summary="Delete a Feed",
         description="Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed and cannot be reversed.",
     ),
+    partial_update=extend_schema(request=FeedSerializer, responses=JobSerializer),
 )
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
@@ -240,14 +243,15 @@ class FeedView(viewsets.ViewSet):
             label="Filter by feed id(s), comma-separated, e.g 6c6e6448-04d4-42a3-9214-4f0f7d02694e,2bce5b30-7014-4a5d-ade7-12913fe6ac36",
         )
 
-    def parse_profile(self, request):
+    @classmethod
+    def parse_profile(cls, request):
         try:
             obj = json.loads(request.body)
         except:
             obj = None
         if not isinstance(obj, dict):
             raise exceptions.ValidationError(detail="could not process request body")
-        profile_id = obj.get("profile_id")
+        profile_id = obj.get(ProfileView.lookup_url_kwarg)
         try:
             models.Profile.objects.get(pk=profile_id)
         except:
@@ -282,7 +286,8 @@ class FeedView(viewsets.ViewSet):
         resp = self.make_request(request, "/api/v1/feeds/")
         if resp.status_code == 200:
             out = json.loads(resp.content)
-            tasks.new_task(out, profile_id)
+            job = tasks.new_task(out, profile_id)
+            return Response(JobSerializer(job).data)
         return resp
 
     def list(self, request, *args, **kwargs):
@@ -298,18 +303,32 @@ class FeedView(viewsets.ViewSet):
         resp = self.make_request(
             request, f"/api/v1/feeds/{feed_id}/"
         )
+        try:
+            self.get_feed(feed_id).delete()
+        except BaseException as e:
+            logging.exception(e)
+
         ArangoDBHelper(settings.VIEW_NAME, request).remove_matches(dict(_obstracts_feed_id=feed_id))
         return resp
+    
+    @classmethod
+    def get_feed(self, feed_id):
+        try:
+            feed = models.FeedProfile.objects.get(id=feed_id)
+        except Exception as e:
+            logging.exception(e)
+            raise exceptions.ValidationError(detail=f"no feed with id: {feed_id}")
+        return feed
 
-    @extend_schema(request=FeedSerializer)
     def partial_update(self, request, *args, **kwargs):
-        profile_id = self.parse_profile(request)
+        feed = self.get_feed(kwargs.get(self.lookup_url_kwarg))
         resp = self.make_request(
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
         )
         if resp.status_code == 200:
             out = json.loads(resp.content)
-            tasks.new_task(out, profile_id)
+            job = tasks.new_task(out, feed.profile.id)
+            return Response(JobSerializer(job).data)
         return resp
     
 @extend_schema_view(
@@ -321,6 +340,7 @@ class FeedView(viewsets.ViewSet):
         summary="Retrieve a post in a Feed",
         description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
     ),
+    partial_update=extend_schema(request=None, responses=JobSerializer),
 ) 
 class PostView(viewsets.ViewSet):
     serializer_class = H4fPostSerializer
@@ -353,6 +373,19 @@ class PostView(viewsets.ViewSet):
         return FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/{post_id}"
         )
+    
+    def partial_update(self, request, *args, **kwargs):
+        feed_id = kwargs.get(FeedView.lookup_url_kwarg)
+        post_id = kwargs.get(self.lookup_url_kwarg)
+        feed = FeedView.get_feed(feed_id)
+        resp = FeedView.make_request(
+            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/"
+        )
+        if resp.status_code == 200:
+            out = json.loads(resp.content)
+            job = tasks.new_task(out, feed.profile.id)
+            return Response(JobSerializer(job).data)
+        return resp
     
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
