@@ -16,6 +16,7 @@ from textwrap import dedent
 import sys
 import uuid
 from dotenv import load_dotenv
+import stix2
 
 load_dotenv()
 
@@ -172,6 +173,25 @@ SPECTACULAR_SETTINGS = {
 }
 
 OBSTRACTS_NAMESPACE = uuid.UUID("a1f2e3ed-6241-5f05-ac2e-3394213b8e08")
+OBSTRACTS_IDENTITY  = stix2.Identity({
+    "type": "identity",
+    "spec_version": "2.1",
+    "id": "identity--a1f2e3ed-6241-5f05-ac2e-3394213b8e08",
+    "created_by_ref": "identity--9779a2db-f98c-5f4b-8d08-8ee04e02dbb5",
+    "created": "2020-01-01T00:00:00.000Z",
+    "modified": "2020-01-01T00:00:00.000Z",
+    "name": "obstracts",
+    "description": "https://github.com/muchdogsec/obstracts",
+    "identity_class": "system",
+    "sectors": [
+        "technology"
+    ],
+    "contact_information": "https://www.dogesec.com/contact/",
+    "object_marking_refs": [
+        "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+        "marking-definition--97ba4e8b-04f6-57e8-8f6e-3a0f0a7dc0fb"
+    ]
+})
 
 TXT2STIX_INCLUDE_URL = "https://github.com/muchdogesec/txt2stix/blob/obstracts/includes/"
 
