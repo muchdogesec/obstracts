@@ -26,9 +26,11 @@ class T2SSerializer(serializers.Serializer):
 
 
 class JobSerializer(serializers.ModelSerializer):
+    feed_id = serializers.PrimaryKeyRelatedField(read_only=True, source='feed')
     class Meta:
         model = Job
-        fields = "__all__"
+        # fields = "__all__"
+        exclude = ["feed"]
 
 
 class FeedSerializer(serializers.Serializer):

@@ -4,10 +4,14 @@ import math
 from urllib.parse import urljoin
 from celery import group, shared_task, chain, chord, current_app, current_task, subtask
 from django.conf import settings
+import typing
 
 from .obstracts_helpers import ReportProperties, StixifyProcessor
 from ..server.models import Job, FeedProfile
 from ..server import models
+
+if typing.TYPE_CHECKING:
+    from ..import settings
 
 POLL_INTERVAL = 30
 
@@ -64,7 +68,7 @@ def job_completed_with_error(job_id):
 
 @shared_task(default_retry_delay=POLL_INTERVAL)
 def poll_job(job_id):
-    print("root and job id ", current_task.request.root_id, current_task.request.id)
+    logging.info("root_id: %s and job_id: %s", current_task.request.root_id, current_task.request.id)
     try:
         return poll_once(job_id)
     except BaseException as e:
@@ -73,15 +77,14 @@ def poll_job(job_id):
 
 
 def new_task(feed_dict, profile_id):
-    kwargs = dict(id=feed_dict["id"], profile_id=profile_id)
+    kwargs = dict(id=feed_dict["feed_id"], profile_id=profile_id)
     if title := feed_dict.get("title"):
-        kwargs.update(title)
+        kwargs.update(title=title)
     feed, _ = FeedProfile.objects.update_or_create(**kwargs)
     job = Job.objects.create(id=feed_dict["job_id"], feed=feed)
     (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
         countdown=POLL_INTERVAL, root_id=job.id, task_id=job.id
     )
-    # print(job.id)
     return job
 
 
@@ -105,11 +108,11 @@ def start_processing(h4f_job, job_id):
             f"/api/v1/feeds/{job.feed_id}/posts/",
             params={"job_id": job_id, "page": current_page},
         )
-        current_page += 1
         if resp.ok:
             data = resp.json()
             posts.extend(data["posts"])
             item_count = data["total_results_count"]
+            current_page += 1
         else:
             logging.error(
                 f"got HTTP {resp.status_code} while processing job for {job_id}. body: {resp.text}, count: {len(posts)}"
@@ -140,7 +143,7 @@ def process_post(job_id, post, *args):
         processor = StixifyProcessor(file, job)
         properties = ReportProperties(
             name="obstracts-post {post_id}",
-            identity=None,
+            identity=settings.OBSTRACTS_IDENTITY,
             tlp_level="clear",
             confidence=0,
             labels=[],

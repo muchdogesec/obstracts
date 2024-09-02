@@ -173,7 +173,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 OBSTRACTS_NAMESPACE = uuid.UUID("a1f2e3ed-6241-5f05-ac2e-3394213b8e08")
-OBSTRACTS_IDENTITY  = stix2.Identity({
+OBSTRACTS_IDENTITY  = stix2.parse({
     "type": "identity",
     "spec_version": "2.1",
     "id": "identity--a1f2e3ed-6241-5f05-ac2e-3394213b8e08",

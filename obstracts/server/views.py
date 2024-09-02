@@ -286,6 +286,7 @@ class FeedView(viewsets.ViewSet):
         resp = self.make_request(request, "/api/v1/feeds/")
         if resp.status_code == 200:
             out = json.loads(resp.content)
+            out['feed_id'] = out['id']
             job = tasks.new_task(out, profile_id)
             return Response(JobSerializer(job).data)
         return resp
@@ -327,6 +328,7 @@ class FeedView(viewsets.ViewSet):
         )
         if resp.status_code == 200:
             out = json.loads(resp.content)
+            out['feed_id'] = out['id']
             job = tasks.new_task(out, feed.profile.id)
             return Response(JobSerializer(job).data)
         return resp
@@ -383,6 +385,7 @@ class PostView(viewsets.ViewSet):
         )
         if resp.status_code == 200:
             out = json.loads(resp.content)
+            out['job_id'] = out['id']
             job = tasks.new_task(out, feed.profile.id)
             return Response(JobSerializer(job).data)
         return resp
