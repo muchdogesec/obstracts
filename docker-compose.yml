@@ -2,11 +2,24 @@
 #   - ./history4feed/docker-compose.yml
    
 services:
-    django:
+    env_django:
         image: obstracts
         extra_hosts:
             - "host.docker.internal:host-gateway"
         build: .
+        volumes:
+            - .:/usr/src/app/
+            - ./www:/var/www/
+        environment:
+            - DJANGO_SETTINGS_MODULE=obstracts.settings
+            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+            - CELERY_BROKER_URL=redis://redis:6379/10
+            - POSTGRES_HOST=pgdb
+            - DEBUG=1
+        env_file:
+            - ./.env
+    django:
+        extends: env_django
         command: >
                 bash -c "
                     python obstracts/cjob/arango_view_helper.py &&
@@ -15,39 +28,17 @@ services:
                             python manage.py migrate &&
                             gunicorn obstracts.wsgi:application  --reload --bind 0.0.0.0:8001
                     " 
-        volumes:
-            - .:/usr/src/app/
         ports:
             - 8001:8001
-        environment:
-            - DJANGO_SETTINGS_MODULE=obstracts.settings
-            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
-            - CELERY_BROKER_URL=redis://redis:6379/10
-            - POSTGRES_HOST=pgdb
-        env_file:
-            - ./.env
         depends_on:
             - celery
 
     celery:
-        image: obstracts
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
-        build: .
+        extends: env_django
         command: >
                 bash -c "
                   celery -A obstracts.cjob worker -l INFO
                   "
-        volumes:
-            - .:/usr/src/app
-        environment:
-            - POSTGRES_HOST=pgdb
-            - DJANGO_SETTINGS_MODULE=obstracts.settings
-            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
-            - CELERY_BROKER_URL=redis://redis:6379/10
-            - result_backend=redis://redis:6379/11
-        env_file:
-            - ./.env
         depends_on:
             pgdb:
                 condition: service_healthy

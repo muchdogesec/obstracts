@@ -134,7 +134,22 @@ HISTORY4FEED_URL = os.environ['HISTORY4FEED_URL']
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = "static/"
-STATIC_ROOT = "/var/www/static/"
+STATIC_ROOT = "/var/www/staticfiles/"
+
+MEDIA_ROOT = "/var/www/mediafiles/"
+MEDIA_URL = "uploads/"
+
+# Storage
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

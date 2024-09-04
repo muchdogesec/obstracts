@@ -83,7 +83,7 @@ def new_task(feed_dict, profile_id):
     feed, _ = FeedProfile.objects.update_or_create(**kwargs)
     job = Job.objects.create(id=feed_dict["job_id"], feed=feed)
     (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
-        countdown=POLL_INTERVAL, root_id=job.id, task_id=job.id
+        countdown=5, root_id=job.id, task_id=job.id
     )
     return job
 
@@ -151,6 +151,11 @@ def process_post(job_id, post, *args):
         )
         processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
         report_id = processor.process()
+
+        file, _ = models.File.objects.get_or_create(post_id=post_id)
+        
+        file.write_files(processor.tmpdir)
+        file.save()
         job.processed_items += 1
     except Exception as e:
         logging.error("failed to process post with id: %s", post["id"])

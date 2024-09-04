@@ -1,3 +1,6 @@
+import logging
+import os
+from pathlib import Path
 import sys
 from typing import Iterable
 from django.conf import settings
@@ -9,6 +12,7 @@ from urllib.parse import urlparse
 from functools import partial
 import txt2stix, txt2stix.extractions
 from django.core.exceptions import ValidationError
+from django.core import files
 
 # Create your models here.
 
@@ -25,6 +29,39 @@ def validate_extractor(types, name):
             return True
     raise ValidationError(f"{name} does not exist", 400)
 
+
+def upload_to_func(instance: 'File', filename):
+    return os.path.join(str(instance.post_id), 'files', filename)
+
+class File(models.Model):
+    post_id = models.UUIDField(primary_key=True)
+    markdown_file = models.FileField(upload_to=upload_to_func, null=True)
+    extra_files = ArrayField(base_field=models.ImageField(upload_to=upload_to_func), default=list)
+
+    def write_files(self, dir):
+        for file in (self.extra_files or []) + [self.markdown_file]:
+            self.delete_file(file)
+        self.save()
+        dir = Path(dir)
+        self.extra_files = []
+        for name in os.listdir(dir):
+            django_file = files.File(open(dir/name), name)
+            if name.endswith('.md'):
+                self.markdown_file = django_file
+            else:
+                self.extra_files.append(django_file)
+        self.save()
+
+    @staticmethod
+    def delete_file(file):
+        try:
+            file.delete()
+        except BaseException as e:
+            logging.exception(e)
+
+                
+        
+        print("==============\n"*40)
 
 class Profile(models.Model):
     id = models.UUIDField(primary_key=True)

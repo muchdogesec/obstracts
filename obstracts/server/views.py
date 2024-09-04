@@ -2,11 +2,11 @@ import json
 import logging
 from urllib.parse import urljoin
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render, redirect
 from rest_framework import viewsets, decorators, mixins, exceptions
 from rest_framework.request import Request
 from django.db.models import Model
-from drf_spectacular.utils import OpenApiParameter
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse
 from .import autoschema as api_schema
 
 from obstracts.server.arango_based_views.arango_helpers import ArangoDBHelper
@@ -401,7 +401,18 @@ class PostView(viewsets.ViewSet):
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, feed_id=None, post_id=None):
         return ArangoDBHelper(settings.VIEW_NAME, request).get_post_objects(post_id, feed_id)
-
+    
+    @extend_schema(
+        responses={(200, "text/markdown"): str},
+        summary="Get Markdown for specific post",
+        description="This endpoint will return Markdown extracted for a post.",
+    )
+    @decorators.action(detail=True, methods=["GET"])
+    def markdown(self, request, feed_id=None, post_id=None):
+        obj = get_object_or_404(models.File, post_id=post_id)
+        return redirect(obj.markdown_file.url)
+    
+    
 @extend_schema_view(
     list=extend_schema(
         summary="Search Jobs",
