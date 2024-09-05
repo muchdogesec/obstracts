@@ -1,5 +1,6 @@
 import json
 import logging
+from textwrap import dedent
 from urllib.parse import urljoin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -215,7 +216,14 @@ class AliasesView(txt2stixView):
         summary="Delete a Feed",
         description="Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.",
     ),
-    partial_update=extend_schema(request=FeedSerializer, responses=JobSerializer),
+    partial_update=extend_schema(request=FeedSerializer, responses=JobSerializer,
+        summary="Update a Feed",
+        description=dedent("""
+        Use this endpoint to check for new posts on this blog since the last update time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.
+
+        Note, this endpoint can miss updates to currently indexed posts (where the RSS or ATOM feed does not report the updated correctly -- which is very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint.
+        """),
+    ),
 )
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
@@ -359,7 +367,13 @@ class FeedView(viewsets.ViewSet):
         summary="Retrieve a post in a Feed",
         description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
     ),
-    partial_update=extend_schema(request=None, responses=JobSerializer),
+    partial_update=extend_schema(
+        request=None,
+        responses=JobSerializer,
+        summary="Update a Post in A Feed",
+        description=dedent("""
+        Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in history4feed matches the currently published post you make a request to this endpoint using the Post ID to update it.
+        """)),
 ) 
 class PostView(viewsets.ViewSet):
     serializer_class = H4fPostSerializer
