@@ -24,6 +24,8 @@ It works at a high level like so:
 6. A user can access the bundle data or specific objects in the bundle via the API
 7. As new posts are added to remote blogs, user makes request to update blog and these are requested by history4feed
 
+## Install
+
 ### Download and run history4feed
 
 Obstracts requires [history4feed](https://github.com/muchdogesec/history4feed) to download and store blog posts.
