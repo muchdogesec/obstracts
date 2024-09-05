@@ -27,9 +27,8 @@ python3 tests/setup_profiles.py
 python3 tests/add_test_blogs.py
 ```
 
-After adding test blogs, you can 
+After adding test blogs, the following 
 
+feed ad852cd1-2d74-59b1-9ab2-1dcb4d9c7b87
+post 2d6575b8-3d90-5479-bdfe-b980b753ec40
 
-2d6575b8-3d90-5479-bdfe-b980b753ec40
-
-ad852cd1-2d74-59b1-9ab2-1dcb4d9c7b87
