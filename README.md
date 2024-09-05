@@ -104,6 +104,20 @@ http://127.0.0.1:8001/admin
 
 Note, if you intend on using this in production, you should also modify the variables in the `.env` file for `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASS`, `DJANGO_SECRET` and `DEBUG` (to `False`)
 
+## Contributing notes
+
+Obstracts is made up of three core external components that support most of its functionality.
+
+At a high-level the Obstracts pipeline looks like this: https://miro.com/app/board/uXjVKD2mg_0=/
+
+Generally if you want to improve how Obstracts performs functionality, you should address the changes in;
+
+* [history4feed](https://github.com/muchdogesec/history4feed): responsible for downloading the blog posts, including the historical archive, and keep posts updated
+* [file2txt](https://github.com/muchdogesec/file2txt/): converts the HTML post content into a markdown file (which is used to extract data from)
+* [txt2stix](https://github.com/muchdogesec/txt2stix): turns the markdown file into STIX objects
+
+For anything else, then the Obstracts codebase is where you need to be :)
+
 ## Useful supporting tools
 
 * [An up-to-date list of threat intel blogs that post cyber threat intelligence research](https://github.com/muchdogesec/awesome_threat_intel_blogs)
