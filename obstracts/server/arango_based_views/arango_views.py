@@ -1,4 +1,4 @@
-from .arango_helpers import ArangoDBHelper, SCO_TYPES, SDO_TYPES
+from .arango_helpers import OBJECT_TYPES, ArangoDBHelper, SCO_TYPES, SDO_TYPES
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
 from rest_framework import viewsets, decorators, exceptions
 import typing
@@ -32,7 +32,7 @@ class QueryParams:
         "include_txt2stix_notes",
         type=bool,
         default=False,
-        description="txt2stix creates 3 STIX `note` Objects that provide information about the processing job. This data is helpful for debugging, but not for intelligence sharing. Setting this to `true` will remove all these STIX `note` Objects. It will still return any STIX `note` Objects not related to txt2stix processing. Most of the time you want to set this parameter to `true`.",
+        description="txt2stix creates 3 STIX note Objects that provide information about the processing job. This data is only really helpful for debugging issues, but not for intelligence sharing. Setting this parameters value to `true` will include these STIX note Objects in the response. Most of the time you want to set this parameter to `false` (the default value).",
     )
     name = OpenApiParameter(
         "name",
@@ -86,16 +86,17 @@ class QueryParams:
         include_txt2stix_notes,
     ]
 
-    # types = OpenApiParameter(
-    #     "types",
-    #     many=True,
-    #     explode=False,
-    #     description="Filter the results by one or more STIX Object types",
-    #     enum=SCO_TYPES+SDO_TYPES+set("relationship"),
-    # )
-    # OBJECTS_PARAMS = [
-    #     types,
-    # ]
+    types = OpenApiParameter(
+        "types",
+        many=True,
+        explode=False,
+        description="Filter the results by one or more STIX Object types",
+        enum=OBJECT_TYPES,
+    )
+    OBJECTS_PARAMS = [
+        include_txt2stix_notes,
+        types,
+    ]
 
 
 @extend_schema_view(

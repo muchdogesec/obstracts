@@ -48,6 +48,7 @@ SCO_TYPES = set(
     ]
 )
 
+OBJECT_TYPES = SDO_TYPES.union(SCO_TYPES).union(["relationship"])
 
 class ArangoDBHelper:
     max_page_size = settings.MAXIMUM_PAGE_SIZE
@@ -390,17 +391,19 @@ class ArangoDBHelper:
         bind_vars = {
             "@view": self.collection,
             "matcher": dict(_obstracts_post_id=str(post_id), _obstracts_feed_id=str(feed_id)),
-            "types": types.split(",") if types else None
+            "types": OBJECT_TYPES.union(types.split(",")) if types else None,
+            "include_txt2stix_notes": self.query_as_bool('include_txt2stix_notes', False),
         }
         query = """
             FOR doc in @@view
             FILTER doc._is_latest AND MATCHES(doc, @matcher)
             FILTER doc.type IN @types OR NOT @types
+            FILTER @include_txt2stix_notes OR doc.type != "note"
 
             LIMIT @offset, @count
             RETURN KEEP(doc, KEYS(doc, true))
         """
-        print(bind_vars, self.query.get('types', ""), True)
+        # print(bind_vars, self.query.get('types', ""), True)
         return self.execute_query(query, bind_vars=bind_vars)
     
 
