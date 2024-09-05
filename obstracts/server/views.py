@@ -47,7 +47,12 @@ from ..cjob import tasks
     ),
     create=extend_schema(
         summary="Create a new profile",
-        description="Add a new Profile that can be applied to new Feeds. A profile consists of an extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints. Required fields are name, extractions (at least one extraction ID), relationship_mode (either ai or standard, defines how relationship between extractions should be created), and extract_text_from_image (boolean, defines if image text should be considered for extraction).",
+        description="""Add a new Profile that can be applied to new Feeds. A profile consists of extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints.\n\n
+
+            Required fields are `name` (must be unique), `extractions` (at least one extraction ID), `relationship_mode` (either `ai` or `standard`), and `extract_text_from_image` (boolean). See txt2stix for more information about `relationship_mode` and `extract_text_from_image` options.\n\n
+
+            You cannot modify a profile once it is created. If you need to make changes, you should create another profile with the changes made.
+            """,
         responses={400: api_schema.DEFAULT_400_ERROR, 200: ProfileSerializer}
     ),
     destroy=extend_schema(
@@ -198,11 +203,16 @@ class AliasesView(txt2stixView):
         request=FeedSerializer,
         responses=JobSerializer,
         summary="Create a new Feed",
-        description="Use this endpoint to create to a new feed. The url value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned. Generally you should set retrieve_full_text to true. If you are certain the blog you are subscribing to has a full text feed already, you can safely set this to false. If url is already associated with an existing Feed, using it via this endpoint will trigger an update request for the blog. If you want to add the url with new settings, first delete it.",
+        description="""
+        Use this endpoint to create to a new Feed. The `url` value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned.\n\n
+        If the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.\n\n
+        You can view existing Profiles, or generated a new one using the Profiles endpoints. `profile_id` accepts the ID a profile, which again can be be obtained from the endpoints.\n\n
+        `include_remote_blogs` is a boolean setting. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false.
+        """,
     ),
     destroy=extend_schema(
         summary="Delete a Feed",
-        description="Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed and cannot be reversed.",
+        description="Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.",
     ),
     partial_update=extend_schema(request=FeedSerializer, responses=JobSerializer),
 )
