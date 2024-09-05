@@ -7,6 +7,7 @@ from rest_framework import viewsets, decorators, mixins, exceptions, status
 from drf_spectacular.utils import OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
+import arango.database
 
 from obstracts.server.arango_based_views.arango_helpers import ArangoDBHelper
 from .utils import (
@@ -306,17 +307,26 @@ class FeedView(viewsets.ViewSet):
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
         )
 
+    def delete_collections(self, feed: models.FeedProfile):
+        db = ArangoDBHelper(feed.collection_name, self.request).db
+        try:
+            graph = db.graph(db.name.split('_database')[0]+'_graph')
+            graph.delete_edge_definition(feed.collection_name+'_edge_collection', purge=True)
+            graph.delete_vertex_collection(feed.collection_name+'_vertex_collection', purge=True)
+        except BaseException as e:
+            logging.error(f"cannot delete collection `{feed.collection_name}`: {e}")
+
     def destroy(self, request, *args, **kwargs):
         feed_id = kwargs.get(self.lookup_url_kwarg)
         resp = self.make_request(
             request, f"/api/v1/feeds/{feed_id}/"
         )
         try:
-            self.get_feed(feed_id).delete()
+            feed = self.get_feed(feed_id)
+            self.delete_collections(feed)
+            feed.delete()
         except BaseException as e:
             logging.exception(e)
-
-        ArangoDBHelper(settings.VIEW_NAME, request).remove_matches(dict(_obstracts_feed_id=feed_id))
         return resp
     
     @classmethod

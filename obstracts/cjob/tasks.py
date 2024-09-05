@@ -154,7 +154,7 @@ def process_post(job_id, post, *args):
 
         file, _ = models.File.objects.get_or_create(post_id=post_id)
         
-        file.write_files(processor.tmpdir)
+        file.markdown_file.save('markdown.md', processor.md_file.open(), save=True)
         file.save()
         job.processed_items += 1
     except Exception as e:
