@@ -28,9 +28,10 @@ class QueryParams:
     )
     SCO_PARAMS = [value, sco_types, post_id]
 
-    hide_processing_notes = OpenApiParameter(
-        "hide_processing_notes",
+    include_txt2stix_notes = OpenApiParameter(
+        "include_txt2stix_notes",
         type=bool,
+        default=False,
         description="txt2stix creates 3 STIX `note` Objects that provide information about the processing job. This data is helpful for debugging, but not for intelligence sharing. Setting this to `true` will remove all these STIX `note` Objects. It will still return any STIX `note` Objects not related to txt2stix processing. Most of the time you want to set this parameter to `true`.",
     )
     name = OpenApiParameter(
@@ -49,7 +50,7 @@ class QueryParams:
         enum=SDO_TYPES,
     )
 
-    SDO_PARAMS = [hide_processing_notes, name, labels, sdo_types]
+    SDO_PARAMS = [include_txt2stix_notes, name, labels, sdo_types]
 
     source_ref = OpenApiParameter(
         "source_ref",
@@ -82,7 +83,19 @@ class QueryParams:
         target_ref,
         target_ref_type,
         relationship_type,
+        include_txt2stix_notes,
     ]
+
+    # types = OpenApiParameter(
+    #     "types",
+    #     many=True,
+    #     explode=False,
+    #     description="Filter the results by one or more STIX Object types",
+    #     enum=SCO_TYPES+SDO_TYPES+set("relationship"),
+    # )
+    # OBJECTS_PARAMS = [
+    #     types,
+    # ]
 
 
 @extend_schema_view(
