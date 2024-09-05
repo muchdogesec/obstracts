@@ -140,7 +140,7 @@ def process_post(job_id, post, *args):
     try:
         file = io.BytesIO(post['description'].encode())
         file.name = f"post-{post_id}.html"
-        processor = StixifyProcessor(file, job)
+        processor = StixifyProcessor(file, job, collection_name=job.feed.collection_name)
         properties = ReportProperties(
             name="obstracts-post {post_id}",
             identity=settings.OBSTRACTS_IDENTITY,
