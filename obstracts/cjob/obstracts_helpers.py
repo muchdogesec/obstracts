@@ -40,12 +40,12 @@ class ReportProperties:
 
 
 class StixifyProcessor:
-    def __init__(self, file: io.FileIO, job: models.Job, post=None, file2txt_mode='html', report_id=None) -> None:
+    def __init__(self, file: io.FileIO, job: models.Job, post=None, file2txt_mode='html', report_id=None, collection_name="stixify") -> None:
         self.job = job
         self.extra_data = dict()
         self.report_id = report_id
         self.profile = self.job.profile
-        self.collection_name = "stixify"
+        self.collection_name = collection_name
         self.tmpdir = Path(tempfile.mkdtemp(prefix='stixify-'))
         self.file2txt_mode = file2txt_mode
 
