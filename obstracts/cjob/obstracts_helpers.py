@@ -69,7 +69,7 @@ class StixifyProcessor:
             process_raw_image_urls=self.job.profile.extract_text_from_image,
             md_cleaner=openai_cleaner
         )
-        self.md_file = self.tmpdir/f"post_md_{self.report_id}.md"
+        self.md_file = self.tmpdir/f"post_md_{self.report_id or 'file'}.md"
         self.md_file.write_text(self.output_md)
 
     def txt2stix(self):

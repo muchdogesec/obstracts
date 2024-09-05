@@ -2,11 +2,10 @@ import json
 import logging
 from urllib.parse import urljoin
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render, redirect
+from django.shortcuts import get_object_or_404, redirect
 from rest_framework import viewsets, decorators, mixins, exceptions
-from rest_framework.request import Request
-from django.db.models import Model
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse
+from drf_spectacular.utils import OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
 
 from obstracts.server.arango_based_views.arango_helpers import ArangoDBHelper
@@ -30,12 +29,10 @@ import txt2stix.extractions
 import txt2stix.txt2stix
 import requests
 from django.conf import settings
-from drf_spectacular import utils, types
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from . import models
 
 from ..cjob import tasks
-
 
 @extend_schema_view(
     list=extend_schema(
@@ -332,7 +329,7 @@ class FeedView(viewsets.ViewSet):
             job = tasks.new_task(out, feed.profile.id)
             return Response(JobSerializer(job).data)
         return resp
-    
+
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Posts in a Feed",
@@ -370,12 +367,12 @@ class PostView(viewsets.ViewSet):
         return FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/"
         )
-    
+
     def retrieve(self, request, *args, feed_id=None, post_id=None):
         return FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/{post_id}"
         )
-    
+
     def partial_update(self, request, *args, **kwargs):
         feed_id = kwargs.get(FeedView.lookup_url_kwarg)
         post_id = kwargs.get(self.lookup_url_kwarg)
@@ -389,7 +386,7 @@ class PostView(viewsets.ViewSet):
             job = tasks.new_task(out, feed.profile.id)
             return Response(JobSerializer(job).data)
         return resp
-    
+
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters() + [
@@ -401,18 +398,27 @@ class PostView(viewsets.ViewSet):
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, feed_id=None, post_id=None):
         return ArangoDBHelper(settings.VIEW_NAME, request).get_post_objects(post_id, feed_id)
-    
+
     @extend_schema(
-        responses={(200, "text/markdown"): str},
+        responses={301: None},
         summary="Get Markdown for specific post",
         description="This endpoint will return Markdown extracted for a post.",
+        parameters=[
+            OpenApiParameter(
+                name="Location",
+                type=OpenApiTypes.URI,
+                location=OpenApiParameter.HEADER,
+                description="redirect location of markdown file",
+                response=[301],
+            )
+        ],
     )
     @decorators.action(detail=True, methods=["GET"])
     def markdown(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
-        return redirect(obj.markdown_file.url)
-    
-    
+        return redirect(obj.markdown_file.url, permanent=True)
+
+
 @extend_schema_view(
     list=extend_schema(
         summary="Search Jobs",
@@ -439,4 +445,3 @@ def make_h4f_request(path, method="GET", params=None, body=None, headers={}):
     url = urljoin(settings.HISTORY4FEED_URL, path)
     headers["host"] = "localhost"
     return requests.request(method, url, params=params, headers=headers, data=body)
-
