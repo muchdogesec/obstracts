@@ -2,6 +2,8 @@
 
 ## Overview
 
+![](docs/obstracts.png)
+
 Obstracts takes a blog ATOM or RSS feed and converts into structured threat intelligence.
 
 Organisations subscribe to lots of blogs for security information. These blogs contain interesting indicators of malicious activity (e.g. malicious URL).
