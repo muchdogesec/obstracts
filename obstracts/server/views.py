@@ -3,7 +3,7 @@ import logging
 from urllib.parse import urljoin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from rest_framework import viewsets, decorators, mixins, exceptions
+from rest_framework import viewsets, decorators, mixins, exceptions, status
 from drf_spectacular.utils import OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
@@ -285,7 +285,7 @@ class FeedView(viewsets.ViewSet):
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
             job = tasks.new_task(out, profile_id)
-            return Response(JobSerializer(job).data)
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
     def list(self, request, *args, **kwargs):
