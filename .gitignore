@@ -171,3 +171,5 @@ output/
 .DS_Store
 
 google_vision_key/key.json
+www/
+obstracts-venv/
