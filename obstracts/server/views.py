@@ -203,7 +203,7 @@ class AliasesView(txt2stixView):
     ),
     create=extend_schema(
         request=FeedSerializer,
-        responses=JobSerializer,
+        responses={201:JobSerializer},
         summary="Create a new Feed",
         description="""
         Use this endpoint to create to a new Feed. The `url` value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned.\n\n
