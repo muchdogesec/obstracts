@@ -206,7 +206,7 @@ class AliasesView(txt2stixView):
         request=FeedSerializer,
         responses={201:JobSerializer},
         summary="Create a new Feed",
-        description="Use this endpoint to create to a new Feed. The `url` value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned.\n\nIf the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.\n\nYou can view existing Profiles, or generated a new one using the Profiles endpoints. `profile_id` accepts the ID a profile, which again can be be obtained from the endpoints.\n\n`include_remote_blogs` is a boolean setting. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false.",
+        description="Use this endpoint to create to a new Feed. The `url` value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned.\n\nIf the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.\n\nYou can view existing Profiles, or generated a new one using the Profiles endpoints. `profile_id` accepts the ID a profile, which again can be be obtained from the endpoints. You can update the `profile_id` of a Feed, or reindex Posts using a different `profile_id` later. See the Patch Feed and Patch Post endpoints for more information.\n\n`include_remote_blogs` is a boolean setting. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false.",
     ),
     destroy=extend_schema(
         summary="Delete a Feed",
@@ -214,7 +214,7 @@ class AliasesView(txt2stixView):
     ),
     partial_update=extend_schema(request=FeedSerializer, responses=JobSerializer,
         summary="Update a Feed",
-        description=dedent("Use this endpoint to check for new posts on this blog since the last update time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.\n\nNote, this endpoint can miss updates to currently indexed posts (where the RSS or ATOM feed does not report the updated correctly -- which is very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint."),
+        description=dedent("Use this endpoint to check for new posts on this blog since the last update time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.\n\nNote, this endpoint can miss updates to currently indexed posts (where the RSS or ATOM feed does not report the updated correctly -- which is very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint.\n\nIt is also possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed. This will only apply to Post indexed after the Patch request was made. To update Posts already indexed with a new `profile_id`, use the Patch Post endpoint."),
     ),
 )
 class FeedView(viewsets.ViewSet):
@@ -248,7 +248,7 @@ class FeedView(viewsets.ViewSet):
             label="Filter by the content in a feeds URL. Will search for URLs that contain the value entered.",
         )
         id = BaseCSVFilter(
-            label="Filter by feed id(s), comma-separated, e.g 6c6e6448-04d4-42a3-9214-4f0f7d02694e,2bce5b30-7014-4a5d-ade7-12913fe6ac36",
+            label="Filter by feed id(s), comma-separated, e.g `6c6e6448-04d4-42a3-9214-4f0f7d02694e,2bce5b30-7014-4a5d-ade7-12913fe6ac36`",
         )
 
     @classmethod
@@ -364,7 +364,7 @@ class FeedView(viewsets.ViewSet):
         responses=JobSerializer,
         summary="Update a Post in A Feed",
         description=dedent("""
-        Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in history4feed matches the currently published post you make a request to this endpoint using the Post ID to update it.
+        Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in history4feed matches the currently published post you make a request to this endpoint using the Post ID to update it.\n\nIt is also possible to change the `profile_id` used when extracting data from the reindexed post.
         """)),
 ) 
 class PostView(viewsets.ViewSet):
