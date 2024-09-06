@@ -6,6 +6,17 @@ from rest_framework.serializers import Serializer
 import uritemplate
 from .serializers import ErrorSerializer
 from drf_spectacular.utils import OpenApiResponse, OpenApiExample, OpenApiParameter
+from drf_spectacular.contrib.django_filters import DjangoFilterExtension, get_view_model, get_manager
+
+
+
+class OverrideDjangoFilterExtension(DjangoFilterExtension):
+    priority = 1
+    def get_schema_operation_parameters(self, auto_schema, *args, **kwargs):
+        model = get_view_model(auto_schema.view)
+        if not model:
+            return self.target.get_schema_operation_parameters(auto_schema.view, *args, **kwargs)
+        return super().get_schema_operation_parameters(auto_schema, *args, **kwargs)
 
 
 class ObstractsAutoSchema(AutoSchema):

@@ -19,7 +19,7 @@ from .utils import (
     Response,
     ErrorResp,
 )
-from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter
 from .serializers import (
     H4fFeedSerializer,
     H4fPostSerializer,
@@ -238,13 +238,13 @@ class FeedView(viewsets.ViewSet):
     minmax_date_fields = ["earliest_item_pubdate", "latest_item_pubdate"]
 
     class filterset_class(FilterSet):
-        title = Filter(
+        title = CharFilter(
             label="Filter by the content in feed title. Will search for titles that contain the value entered.",
         )
-        description = Filter(
+        description = CharFilter(
             label="Filter by the content in feed description. Will search for descriptions that contain the value entered.",
         )
-        url = Filter(
+        url = CharFilter(
             label="Filter by the content in a feeds URL. Will search for URLs that contain the value entered.",
         )
         id = BaseCSVFilter(
@@ -387,7 +387,7 @@ class PostView(viewsets.ViewSet):
             label="Filter by the content in a posts description. Will search for descriptions that contain the value entered.",
             lookup_expr="search",
         )
-        job_id = Filter(label="Filter the Post by Job ID the Post was downloaded in.")
+        job_id = UUIDFilter(label="Filter the Post by Job ID the Post was downloaded in.")
 
     def list(self, request, *args, feed_id=None, **kwargs):
         return FeedView.make_request(
@@ -476,6 +476,19 @@ class JobView(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     openapi_tags = ["Jobs"]
     lookup_url_kwarg = "job_id"
+    filter_backends = [DjangoFilterBackend, Ordering]
+    ordering_fields = ["created", "item_count"]
+    ordering = "created_descending"
+    pagination_class = Pagination("jobs")
+
+
+    class filterset_class(FilterSet):
+        feed_id = Filter(
+            label="Filter by feed id.",
+        )
+        state = Filter(
+            label="Filter by state.",
+        )
 
     def get_queryset(self):
         return models.Job.objects
