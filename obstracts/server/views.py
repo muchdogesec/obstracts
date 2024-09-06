@@ -440,7 +440,7 @@ class PostView(viewsets.ViewSet):
         return ArangoDBHelper(settings.VIEW_NAME, request).get_post_objects(post_id, feed_id)
 
     @extend_schema(
-        responses={301: None},
+        responses=None,
         summary="Get Markdown for specific post",
         description="This endpoint will return Markdown extracted for a post.",
         parameters=[
