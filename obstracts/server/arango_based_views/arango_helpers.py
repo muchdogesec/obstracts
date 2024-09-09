@@ -391,7 +391,7 @@ class ArangoDBHelper:
         bind_vars = {
             "@view": self.collection,
             "matcher": dict(_obstracts_post_id=str(post_id), _obstracts_feed_id=str(feed_id)),
-            "types": OBJECT_TYPES.union(types.split(",")) if types else None,
+            "types": list(OBJECT_TYPES.intersection(types.split(","))) if types else None,
             "include_txt2stix_notes": self.query_as_bool('include_txt2stix_notes', False),
         }
         query = """
@@ -403,7 +403,7 @@ class ArangoDBHelper:
             LIMIT @offset, @count
             RETURN KEEP(doc, KEYS(doc, true))
         """
-        # print(bind_vars, self.query.get('types', ""), True)
+
         return self.execute_query(query, bind_vars=bind_vars)
     
 
