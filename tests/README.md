@@ -29,6 +29,6 @@ python3 tests/add_test_blogs.py
 
 After adding test blogs, the following 
 
-feed ad852cd1-2d74-59b1-9ab2-1dcb4d9c7b87
-post 2d6575b8-3d90-5479-bdfe-b980b753ec40
+feed 2d6575b8-3d90-5479-bdfe-b980b753ec40
+post c6a5afcd-2341-5a57-b936-b9a67667f57e
 
