@@ -1,0 +1,135 @@
+import requests
+import time
+
+# Base URL for feeds
+base_url = "http://localhost:8001/api/v1/feeds/"
+
+def get_feed_ids():
+    print("Sending GET request to retrieve feeds...")
+    response = requests.get(base_url)
+    if response.status_code == 200:
+        print("Successfully retrieved feeds.")
+        data = response.json()
+        feed_ids = [feed['id'] for feed in data.get('feeds', [])]
+        print(f"Found {len(feed_ids)} feeds.")
+        return feed_ids
+    else:
+        print(f"Failed to retrieve feeds. Status code: {response.status_code}")
+        return []
+
+def delete_feeds(feed_ids):
+    for feed_id in feed_ids:
+        delete_url = f"{base_url}{feed_id}/"
+        print(f"Sending DELETE request for feed ID: {feed_id}...")
+        response = requests.delete(delete_url)
+        if response.status_code == 204:
+            print(f"Successfully deleted feed with ID: {feed_id}")
+        else:
+            print(f"Failed to delete feed with ID: {feed_id}. Status code: {response.status_code}")
+
+def add_feed(profile_id, url, include_remote_blogs):
+    print(f"Sending POST request to add a new feed with URL: {url}...")
+    feed_data = {
+        "profile_id": profile_id,
+        "url": url,
+        "include_remote_blogs": include_remote_blogs
+    }
+    print("Request body:")
+    print(feed_data)
+
+    response = requests.post(base_url, json=feed_data)
+    
+    print(f"Response status code: {response.status_code}")
+    print("Response headers:")
+    print(response.headers)
+    print("Response content:")
+    print(response.text)
+
+    if response.status_code in [200, 201]:
+        feed_info = response.json()
+        print(f"Successfully added the new feed with ID: {feed_info['id']}")
+        return feed_info['id'], feed_info['feed_id']
+    else:
+        print(f"Failed to add the new feed. Status code: {response.status_code}")
+        return None, None
+
+def wait_for_job_success(job_id):
+    job_url = f"{base_url}jobs/{job_id}/"
+    print(f"Checking job status for job ID: {job_id}...")
+    while True:
+        response = requests.get(job_url)
+        if response.status_code == 200:
+            job_info = response.json()
+            state = job_info['state']
+            print(f"Current job state: {state}")
+            if state == "success":
+                print(f"Job {job_id} completed successfully.")
+                break
+            elif state in ["failed", "error"]:
+                print(f"Job {job_id} failed with state: {state}")
+                return False
+            else:
+                time.sleep(5)  # Wait for 5 seconds before checking again
+        else:
+            print(f"Failed to retrieve job status for job ID: {job_id}. Status code: {response.status_code}")
+            return False
+    return True
+
+def check_feed(feed_id):
+    check_url = f"{base_url}{feed_id}/"
+    print(f"Sending GET request to check feed with ID: {feed_id}...")
+    response = requests.get(check_url)
+    if response.status_code == 200:
+        print(f"Feed with ID: {feed_id} exists and is correct.")
+    else:
+        print(f"Failed to find feed with ID: {feed_id}. Status code: {response.status_code}")
+
+def get_feed_posts(feed_id):
+    posts_url = f"{base_url}{feed_id}/posts/"
+    print(f"Sending GET request to retrieve posts for feed ID: {feed_id}...")
+    response = requests.get(posts_url)
+    if response.status_code == 200:
+        print(f"Successfully retrieved posts for feed ID: {feed_id}.")
+        data = response.json()
+        posts = data.get('posts', [])
+        if posts:
+            print(f"Posts for feed ID: {feed_id}:")
+            for post in posts:
+                print(f"  ID: {post['id']} - Title: {post['title']}")
+        else:
+            print(f"No posts found for feed ID: {feed_id}.")
+    else:
+        print(f"Failed to retrieve posts for feed ID: {feed_id}. Status code: {response.status_code}")
+
+if __name__ == "__main__":
+    print("Starting feed deletion, creation, and verification script...")
+
+    # Step 1: Get all feed IDs
+    feed_ids = get_feed_ids()
+
+    # Step 2: Delete each feed
+    if feed_ids:
+        delete_feeds(feed_ids)
+    else:
+        print("No feeds found to delete.")
+
+    # Step 3: Define test blogs to add
+    test_blogs = [
+        {
+            "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
+            "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata-partial.xml",
+            "include_remote_blogs": False
+        },
+        # Additional test blogs can be added here as needed
+    ]
+
+    # Step 4: Add new feeds, wait for job success, verify them, and check their posts
+    for blog in test_blogs:
+        feed_id, job_id = add_feed(blog["profile_id"], blog["url"], blog["include_remote_blogs"])
+        if feed_id and job_id:
+            job_success = wait_for_job_success(job_id)
+            if job_success:
+                check_feed(feed_id)
+                get_feed_posts(feed_id)
+
+    print("Feed deletion, creation, and verification script completed.")
