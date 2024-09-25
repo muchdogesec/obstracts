@@ -2,7 +2,7 @@
 
 ## Before you begin...
 
-We offer a fully web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://obstracts.com/).
+We offer a fully web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://www.obstracts.com/).
 
 ## Overview
 
