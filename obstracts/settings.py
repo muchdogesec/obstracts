@@ -168,7 +168,8 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Obstracts API",
     "DESCRIPTION": dedent(
         """
-        Obstracts takes a blog ATOM or RSS feed and converts into structured threat intelligence.
+        Obstracts takes a blog ATOM or RSS feed and converts into structured threat intelligence.\n\n
+        [DOGESEC](https://www.dogesec.com/) offer a fully hosted web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://www.obstracts.com/).
     """
     ),
     "VERSION": "1.0.0",
@@ -178,12 +179,12 @@ SPECTACULAR_SETTINGS = {
     },
     "TAGS": [
         {"name": "Feeds", "description": "Subscribe and retrieve blogs and blog posts"},
-        {"name": "Jobs", "description": "Check the status of data retrieval from blogs"},
         {"name": "Objects", "description": "Search through STIX object extracted from blog posts"},
         {"name": "Profiles", "description": "Create and search for extraction profile applied to text in blog posts"},
         {"name": "Aliases", "description": "Search through aliases that can be used in profiles (see txt2stix for more information)"},
         {"name": "Extractors", "description": "Search through extractors that can be used in profiles (see txt2stix for more information)"},
         {"name": "Whitelists", "description": "Search through whitelists that can be used in profiles (see txt2stix for more information)"},
+        {"name": "Jobs", "description": "Check the status of data retrieval from blogs"},
     ]
 }
 
