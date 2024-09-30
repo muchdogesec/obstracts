@@ -172,7 +172,7 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Obstracts API",
     "DESCRIPTION": dedent(
         """
-    Obstracts takes a blog ATOM or RSS feed and converts into structured threat intelligence.\n\n
+        Obstracts takes a blog ATOM or RSS feed and converts into structured threat intelligence.\n\n
         [DOGESEC](https://www.dogesec.com/) offer a fully hosted web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://www.obstracts.com/)
         """
     ),

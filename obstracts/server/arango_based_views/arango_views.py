@@ -114,7 +114,7 @@ class QueryParams:
 
 @extend_schema_view(
     scos=extend_schema(
-        summary="Get a STIX Cyber Observable Object",
+        summary="Get STIX Cyber Observable Objects",
         description="Search for STIX Cyber Observable Objects (aka Indicators of Compromise). If you have the object ID already, you can use the base GET Objects endpoint.",
     ),
     retrieve=extend_schema(
@@ -122,11 +122,11 @@ class QueryParams:
         description="Get an Object using its ID. You can search for Object IDs using the GET Objects SDO, SCO, or SRO endpoints.",
     ),
     sdos=extend_schema(
-        summary="Get a STIX Domain Object",
+        summary="Get STIX Domain Objects",
         description="Search for domain objects (aka TTPs). If you have the object ID already, you can use the base GET Objects endpoint.",
     ),
     sros=extend_schema(
-        summary="Get a STIX Relationship Object",
+        summary="Get STIX Relationship Objects",
         description="Search for relationship objects. This endpoint is particularly useful to search what Objects an SCO or SDO is linked to.",
     ),
 )
