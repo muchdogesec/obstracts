@@ -91,6 +91,7 @@ class Job(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     state = models.CharField(choices=JobState.choices, max_length=20, default=JobState.RETRIEVING)
     history4feed_status = models.CharField(default=H4FState.PENDING, choices=H4FState.choices, max_length=20)
+    history4feed_job = models.JSONField(null=True)
     item_count = models.IntegerField(default=0)
     processed_items = models.IntegerField(default=0)
     failed_processes = models.IntegerField(default=0)

@@ -292,7 +292,7 @@ class FeedView(viewsets.ViewSet):
     def create(self, request, *args, **kwargs):
         profile_id = self.parse_profile(request)
         resp = self.make_request(request, "/api/v1/feeds/")
-        if resp.status_code == 200:
+        if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
             job = tasks.new_task(out, profile_id)
@@ -343,7 +343,7 @@ class FeedView(viewsets.ViewSet):
         resp = self.make_request(
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
         )
-        if resp.status_code == 200:
+        if resp.status_code < 300:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
             job = tasks.new_task(out, feed.profile.id)
