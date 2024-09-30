@@ -23,12 +23,8 @@ This will add profiles used by tests (and also delete all existing profiles)
 python3 tests/setup_profiles.py
 ```
 
+This test will delete all existing blogs and add them using the profile created by the previous script
+
 ```shell
 python3 tests/add_test_blogs.py
 ```
-
-After adding test blogs, the following 
-
-feed ad852cd1-2d74-59b1-9ab2-1dcb4d9c7b87
-post 2d6575b8-3d90-5479-bdfe-b980b753ec40
-
