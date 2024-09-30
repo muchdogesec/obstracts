@@ -1,4 +1,4 @@
-from .arango_helpers import OBJECT_TYPES, ArangoDBHelper, SCO_TYPES, SDO_TYPES
+from .arango_helpers import OBJECT_TYPES, ArangoDBHelper, SCO_TYPES, SDO_TYPES, SMO_TYPES
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
 from rest_framework import viewsets, decorators, exceptions
 import typing
@@ -98,6 +98,17 @@ class QueryParams:
         types,
     ]
 
+    types = OpenApiParameter(
+        "types",
+        many=True,
+        explode=False,
+        description="Filter the results by one or more STIX Object types",
+        enum=SMO_TYPES,
+    )
+    SMO_PARAMS = [
+        types
+    ]
+
 
 @extend_schema_view(
     scos=extend_schema(
@@ -150,6 +161,20 @@ class ObjectsView(viewsets.ViewSet):
     @decorators.action(detail=False, methods=["GET"])
     def sros(self, request, *args, **kwargs):
         return ArangoDBHelper(settings.VIEW_NAME, request).get_sros()
+
+
+    @extend_schema(
+        responses=ArangoDBHelper.get_paginated_response_schema(),
+        parameters=ArangoDBHelper.get_schema_operation_parameters()
+        + QueryParams.SMO_PARAMS,
+    )
+    @decorators.action(detail=False, methods=["GET"])
+    def smos(self, request, *args, **kwargs):
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_smos()
+    
+class SingleObjectView(viewsets.ViewSet):
+    lookup_url_kwarg = "object_id"
+    openapi_tags = ["Objects"]
 
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),

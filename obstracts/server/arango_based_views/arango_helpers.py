@@ -48,7 +48,12 @@ SCO_TYPES = set(
     ]
 )
 
-OBJECT_TYPES = SDO_TYPES.union(SCO_TYPES).union(["relationship"])
+SMO_TYPES = set([
+    "marking-definition",
+    "extension-definition",
+])
+
+OBJECT_TYPES = SDO_TYPES.union(SCO_TYPES).union(["relationship"]).union(SMO_TYPES)
 
 class ArangoDBHelper:
     max_page_size = settings.MAXIMUM_PAGE_SIZE
@@ -289,6 +294,28 @@ class ArangoDBHelper:
         """
         return self.execute_query(query, bind_vars=bind_vars)
 
+    
+    def get_smos(self):
+        types = SMO_TYPES
+        if new_types := self.query_as_array('types'):
+            types = types.intersection(new_types)
+        bind_vars = {
+            "@collection": self.collection,
+            "types": list(types),
+        }
+        other_filters = {}
+        query = f"""
+            FOR doc in @@collection
+            FILTER doc.type IN @types AND doc._is_latest
+            {other_filters or ""}
+
+
+            LIMIT @offset, @count
+            RETURN  KEEP(doc, KEYS(doc, true))
+        """
+        return self.execute_query(query, bind_vars=bind_vars)
+    
+      
     def get_sdos(self):
         types = SDO_TYPES
         if new_types := self.query_as_array('types'):
@@ -332,7 +359,7 @@ class ArangoDBHelper:
         query = """
             FOR doc in @@view
             FILTER doc.id == @id AND doc._is_latest
-            // LIMIT 1
+            LIMIT @offset, @count
             RETURN KEEP(doc, KEYS(doc, true))
         """
         return self.execute_query(query, bind_vars=bind_vars)
