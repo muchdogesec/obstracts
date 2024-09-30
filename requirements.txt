@@ -124,3 +124,4 @@ zipp==3.19.2; python_version >= '3.8'
 https://github.com/muchdogesec/txt2stix/archive/main.zip
 https://github.com/muchdogesec/file2txt/archive/main.zip
 https://github.com/muchdogesec/stix2arango/archive/main.zip
+django-cors-headers==4.4.0
