@@ -1,4 +1,4 @@
-from .arango_helpers import OBJECT_TYPES, ArangoDBHelper, SCO_TYPES, SDO_TYPES, SMO_TYPES
+from .arango_helpers import OBJECT_TYPES, ArangoDBHelper, SCO_TYPES, SDO_TYPES, SMO_TYPES, SRO_SORT_FIELDS, SMO_SORT_FIELDS, SCO_SORT_FIELDS, SDO_SORT_FIELDS
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
 from rest_framework import viewsets, decorators, exceptions
 import typing
@@ -26,7 +26,7 @@ class QueryParams:
         "post_id",
         description="Filter the results to only contain objects present in the specified Post ID. Get a Post ID using the Feeds endpoints.",
     )
-    SCO_PARAMS = [value, sco_types, post_id]
+    SCO_PARAMS = [value, sco_types, post_id, OpenApiParameter('sort', enum=SCO_SORT_FIELDS)]
 
     include_txt2stix_notes = OpenApiParameter(
         "include_txt2stix_notes",
@@ -50,7 +50,7 @@ class QueryParams:
         enum=SDO_TYPES,
     )
 
-    SDO_PARAMS = [include_txt2stix_notes, name, labels, sdo_types]
+    SDO_PARAMS = [include_txt2stix_notes, name, labels, sdo_types, OpenApiParameter('sort', enum=SDO_SORT_FIELDS)]
 
     source_ref = OpenApiParameter(
         "source_ref",
@@ -84,6 +84,7 @@ class QueryParams:
         target_ref_type,
         relationship_type,
         include_txt2stix_notes,
+        OpenApiParameter('sort', enum=SRO_SORT_FIELDS),
     ]
 
     types = OpenApiParameter(
@@ -106,7 +107,8 @@ class QueryParams:
         enum=SMO_TYPES,
     )
     SMO_PARAMS = [
-        types
+        types,
+        OpenApiParameter('sort', enum=SMO_SORT_FIELDS),
     ]
 
 

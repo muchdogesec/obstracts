@@ -1,4 +1,4 @@
-import typing
+import typing, re
 from arango import ArangoClient
 from django.conf import settings
 from ..utils import Pagination, Response
@@ -47,6 +47,38 @@ SCO_TYPES = set(
         "phone-number",
     ]
 )
+SDO_SORT_FIELDS = [
+    "name_ascending",
+    "name_descending",
+    "created_ascending",
+    "created_descending",
+    "modified_ascending",
+    "modified_descending",
+    "type_ascending",
+    "type_descending"
+]
+SRO_SORT_FIELDS = [
+    "created_ascending",
+    "created_descending",
+    "modified_ascending",
+    "modified_descending",
+]
+
+
+SCO_SORT_FIELDS = [
+    "type_ascending",
+    "type_descending"
+]
+
+
+SMO_SORT_FIELDS = [
+    "created_ascending",
+    "created_descending",
+    "type_ascending",
+    "type_descending",
+]
+
+
 
 SMO_TYPES = set([
     "marking-definition",
@@ -59,6 +91,15 @@ class ArangoDBHelper:
     max_page_size = settings.MAXIMUM_PAGE_SIZE
     page_size = settings.DEFAULT_PAGE_SIZE
 
+    def get_sort_stmt(self, fields: list[str]):
+        finder = re.compile(r"(.+)_((a|de)sc)ending")
+        sort_field = self.query.get('sort', fields[0])
+        if sort_field not in fields:
+            return ""
+        if m := finder.match(sort_field):
+            field = m.group(1)
+            direction = m.group(2).upper()
+            return f"SORT doc.{field} {direction}"
 
     def query_as_array(self, key):
         query = self.query.get(key)
@@ -287,6 +328,7 @@ class ArangoDBHelper:
             FOR doc in @@collection
             FILTER CONTAINS(@types, doc.type) AND doc._is_latest
             {other_filters or ""}
+            {self.get_sort_stmt(SCO_SORT_FIELDS)}
 
 
             LIMIT @offset, @count
@@ -308,6 +350,7 @@ class ArangoDBHelper:
             FOR doc in @@collection
             FILTER doc.type IN @types AND doc._is_latest
             {other_filters or ""}
+            {self.get_sort_stmt(SMO_SORT_FIELDS)}
 
 
             LIMIT @offset, @count
@@ -344,6 +387,7 @@ class ArangoDBHelper:
             FOR doc in @@collection
             FILTER doc.type IN @types AND doc._is_latest
             {other_filters or ""}
+            {self.get_sort_stmt(SDO_SORT_FIELDS)}
 
 
             LIMIT @offset, @count
@@ -404,6 +448,7 @@ class ArangoDBHelper:
             FOR doc in @@collection
             FILTER doc.type == 'relationship' AND doc._is_latest
             {other_filters}
+            {self.get_sort_stmt(SRO_SORT_FIELDS)}
 
             LIMIT @offset, @count
             RETURN KEEP(doc, KEYS(doc, true))
