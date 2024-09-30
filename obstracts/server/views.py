@@ -435,7 +435,7 @@ class PostView(viewsets.ViewSet):
         summary="Get STIX Objects for a specific Post",
         description="This endpoint will return all objects extracted for a post. If you want more flexibility to filter the objects or search for STIX objects across different Posts, use the Get Object endpoints.",
     )
-    @decorators.action(detail=True, methods=["GET"])
+    @decorators.action(detail=True, methods=["GET"], url_path='objects/bundle')
     def objects(self, request, feed_id=None, post_id=None):
         return ArangoDBHelper(settings.VIEW_NAME, request).get_post_objects(post_id, feed_id)
 
