@@ -81,8 +81,15 @@ def new_task(feed_dict, profile_id):
     kwargs = dict(id=feed_dict["feed_id"], profile_id=profile_id)
     if title := feed_dict.get("title"):
         kwargs.update(title=title)
-    feed, _ = FeedProfile.objects.update_or_create(**kwargs)
-    job = Job.objects.create(id=feed_dict["job_id"], feed=feed)
+    feed, _ = FeedProfile.objects.update_or_create(defaults=kwargs, id=feed_dict["feed_id"])
+    job = Job.objects.create(id=feed_dict["job_id"], feed=feed, profile_id=profile_id)
+    (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
+        countdown=5, root_id=job.id, task_id=job.id
+    )
+    return job
+
+def new_post_patch_task(feed_dict, profile_id):
+    job = Job.objects.create(id=feed_dict["job_id"], feed_id=feed_dict["feed_id"], profile_id=profile_id)
     (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
         countdown=5, root_id=job.id, task_id=job.id
     )

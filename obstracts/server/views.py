@@ -4,7 +4,7 @@ from textwrap import dedent
 from urllib.parse import urljoin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from rest_framework import viewsets, decorators, mixins, exceptions, status
+from rest_framework import viewsets, decorators, mixins, exceptions, status, request
 from drf_spectacular.utils import OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
@@ -36,6 +36,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from . import models
 
 from ..cjob import tasks
+from obstracts.server import serializers
 
 @extend_schema_view(
     list=extend_schema(
@@ -212,7 +213,9 @@ class AliasesView(txt2stixView):
         summary="Delete a Feed",
         description="Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.",
     ),
-    partial_update=extend_schema(request=FeedSerializer, responses={201: JobSerializer},
+    partial_update=extend_schema(
+        request=serializers.PatchFeedSerializer,
+        responses={201: JobSerializer},
         summary="Update a Feed",
         description=dedent("Use this endpoint to check for new posts on this blog since the last update time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.\n\nNote, this endpoint can miss updates to currently indexed posts (where the RSS or ATOM feed does not report the updated correctly -- which is very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint.\n\nIt is also possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed. This will only apply to Post indexed after the Patch request was made. To update Posts already indexed with a new `profile_id`, use the Patch Post endpoint.\n\nThe response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint."),
     ),
@@ -267,11 +270,11 @@ class FeedView(viewsets.ViewSet):
         return profile_id
     
     @classmethod
-    def make_request(cls, request, path):
+    def make_request(cls, request, path, request_body=None):
         request_kwargs = {
             "headers": {},
             "method": request.method,
-            "body": request.body,
+            "body": request_body or request.body,
             "params": request.GET.copy(),
         }
         headers = request_kwargs["headers"]
@@ -339,14 +342,18 @@ class FeedView(viewsets.ViewSet):
         return feed
 
     def partial_update(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.PatchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
         feed = self.get_feed(kwargs.get(self.lookup_url_kwarg))
         resp = self.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
+            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/", request_body=request_body
         )
         if resp.status_code < 300:
+            print(resp.status_code, resp.content)
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, feed.profile.id)
+            job = tasks.new_task(out, s.data.get("profile_id", feed.profile.id))
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
@@ -360,7 +367,7 @@ class FeedView(viewsets.ViewSet):
         description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
     ),
     partial_update=extend_schema(
-        request=None,
+        request=serializers.PatchPostSerializer,
         responses={201:JobSerializer},
         summary="Update a Post in A Feed",
         description=dedent("""
@@ -402,16 +409,19 @@ class PostView(viewsets.ViewSet):
         )
 
     def partial_update(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.PatchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
         feed_id = kwargs.get(FeedView.lookup_url_kwarg)
         post_id = kwargs.get(self.lookup_url_kwarg)
         feed = FeedView.get_feed(feed_id)
         resp = FeedView.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/"
+            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/", request_body=request_body
         )
         if resp.status_code == 200:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_task(out, feed.profile.id)
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 

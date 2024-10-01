@@ -125,7 +125,6 @@ class SingleObjectView(viewsets.ViewSet):
             kwargs.get(self.lookup_url_kwarg)
         )
     
-   
 @extend_schema_view(
     retrieve=extend_schema(
         summary="Get a STIX Domain Object",

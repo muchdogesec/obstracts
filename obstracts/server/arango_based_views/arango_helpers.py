@@ -407,6 +407,7 @@ class ArangoDBHelper:
             RETURN KEEP(doc, KEYS(doc, true))
         """
         return self.execute_query(query, bind_vars=bind_vars)
+ 
     
     def get_sros(self):
         bind_vars = {

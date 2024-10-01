@@ -96,10 +96,7 @@ class Job(models.Model):
     processed_items = models.IntegerField(default=0)
     failed_processes = models.IntegerField(default=0)
     feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, null=True)
-
-    @property
-    def profile(self) -> Profile:
-        return self.feed.profile
+    profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
     
     @property
     def feed_id(self):
