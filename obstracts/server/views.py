@@ -501,6 +501,20 @@ class JobView(viewsets.ModelViewSet):
         state = Filter(
             label="Filter by state.",
         )
+        post_id = UUIDFilter("Filter by post id", method="filter_post_id")
+
+        def filter_post_id(self, qs, field_name, post_id: str):
+            jobs = []
+            job_count = -1
+            while len(jobs) != job_count:
+                resp = make_h4f_request("api/v1/jobs", params=dict(post_id=post_id))
+                if not resp.ok:
+                    raise serializers.serializers.ValidationError(f"server does not understand this request: {resp.text}")
+                data = resp.json()
+                jobs.extend((j['id'] for j in data['jobs']))
+                job_count = data['total_results_count']
+            return qs.filter(id__in=jobs)
+
 
     def get_queryset(self):
         return models.Job.objects
