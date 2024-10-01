@@ -124,7 +124,15 @@ class SingleObjectView(viewsets.ViewSet):
         return ArangoDBHelper(settings.VIEW_NAME, request).get_objects_by_id(
             kwargs.get(self.lookup_url_kwarg)
         )
+    @extend_schema(
+        responses=ArangoDBHelper.get_paginated_response_schema('reports', {'type': 'string'}),
+        parameters=ArangoDBHelper.get_schema_operation_parameters(),
+    )
+    @decorators.action(detail=True, methods=['GET'])
+    def reports(self, request, *args, **kwargs):
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_containing_reports(kwargs.get(self.lookup_url_kwarg))
     
+   
 @extend_schema_view(
     retrieve=extend_schema(
         summary="Get a STIX Domain Object",

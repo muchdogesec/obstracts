@@ -134,11 +134,11 @@ class ArangoDBHelper:
 
 
     @classmethod
-    def get_paginated_response_schema(cls):
+    def get_paginated_response_schema(cls, result_key="objects", schema=None):
         return {
             200: {
                 "type": "object",
-                "required": ["page_results_count", "objects"],
+                "required": ["page_results_count", result_key],
                 "properties": {
                     "page_size": {
                         "type": "integer",
@@ -156,9 +156,9 @@ class ArangoDBHelper:
                         "type": "integer",
                         "example": cls.page_size * cls.max_page_size,
                     },
-                    "objects": {
+                    result_key: {
                         "type": "array",
-                        "items": {
+                        "items": schema or {
                             "type": "object",
                             "properties": {
                                 "type":{
@@ -407,7 +407,19 @@ class ArangoDBHelper:
             RETURN KEEP(doc, KEYS(doc, true))
         """
         return self.execute_query(query, bind_vars=bind_vars)
- 
+    
+    def get_containing_reports(self, id):
+        bind_vars = {
+            "@view": self.collection,
+            "id": id,
+        }
+        query = """
+            FOR doc in @@view
+            FILTER doc.id == @id
+            LIMIT @offset, @count
+            RETURN DISTINCT doc._stixify_report_id
+        """
+        return self.execute_query(query, bind_vars=bind_vars)
     
     def get_sros(self):
         bind_vars = {
