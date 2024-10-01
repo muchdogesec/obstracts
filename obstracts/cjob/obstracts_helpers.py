@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 import shutil
+import typing
 from attr import dataclass
 import stix2
 
@@ -17,6 +18,9 @@ from txt2stix.stix import txt2stixBundler
 from txt2stix.ai_session import GenericAIExtractor
 from stix2arango.stix2arango import Stix2Arango
 from django.conf import settings
+
+if typing.TYPE_CHECKING:
+    from ..import settings
 
 
 def all_extractors(names, _all=False):
@@ -54,7 +58,6 @@ class StixifyProcessor:
 
         self.task_name = f"{self.job.profile.name}/{self.job.id}/{self.report_id}"
         
-        self.visions_keyfile = os.path.abspath(os.path.join(os.curdir, 'google_vision_key/key.json'))
 
     def setup(self, /, report_prop: ReportProperties, extra={}):
         self.extra_data.update(extra)
@@ -65,7 +68,7 @@ class StixifyProcessor:
         self.output_md = convert_file(
             self.file2txt_mode,
             self.filename,
-            image_processor_key=self.visions_keyfile,
+            image_processor_key=settings.GOOGLE_VISION_API_KEY,
             process_raw_image_urls=self.job.profile.extract_text_from_image,
             md_cleaner=openai_cleaner
         )
