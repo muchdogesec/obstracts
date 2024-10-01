@@ -31,12 +31,11 @@ router.register('feeds', views.FeedView, "feed-view")
 router.register("feeds/<uuid:feed_id>/posts", views.PostView, "post-view")
 
 router.register('jobs', views.JobView, "job-view")
-router.register('objects', arango_views.ObjectsView, "objects-view")
 
-router.register('objects/smos', arango_views.SingleObjectView, "object-view-smo")
-router.register('objects/scos', arango_views.SingleObjectView, "object-view-sco")
-router.register('objects/sros', arango_views.SingleObjectView, "object-view-sro")
-router.register('objects/sdos', arango_views.SingleObjectView, "object-view-sdo")
+router.register('objects/smos', arango_views.SMOView, "object-view-smo")
+router.register('objects/scos', arango_views.SCOView, "object-view-sco")
+router.register('objects/sros', arango_views.SROView, "object-view-sro")
+router.register('objects/sdos', arango_views.SDOView, "object-view-sdo")
 
 # txt2stix views
 router.register('extractors', views.ExtractorsView, "extractors-view")
