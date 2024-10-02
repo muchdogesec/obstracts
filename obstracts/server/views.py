@@ -344,8 +344,7 @@ class FeedView(viewsets.ViewSet):
         resp = self.make_request(
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/", request_body=request_body
         )
-        if resp.status_code < 300:
-            print(resp.status_code, resp.content)
+        if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
             job = tasks.new_task(out, s.data.get("profile_id", feed.profile.id))
@@ -413,7 +412,7 @@ class PostView(viewsets.ViewSet):
         resp = FeedView.make_request(
             request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/", request_body=request_body
         )
-        if resp.status_code == 200:
+        if resp.status_code == 201:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
             job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
