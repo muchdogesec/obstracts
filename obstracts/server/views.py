@@ -464,6 +464,12 @@ class PostView(viewsets.ViewSet):
     def markdown(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
         return redirect(obj.markdown_file.url, permanent=True)
+    
+    # @decorators.action(detail=True, url_path="images/<str:image>.png")
+    # def images(self, request, feed_id=None, post_id=None, image=None):
+    #     obj = get_object_or_404(models.FileImage, report__post_id=post_id, index=image+'.png')
+    #     return redirect(obj.file.url, permanent=False)
+
 
 
 @extend_schema_view(
@@ -496,18 +502,20 @@ class JobView(viewsets.ModelViewSet):
         state = Filter(
             label="Filter by state.",
         )
-        post_id = UUIDFilter("Filter by post id", method="filter_post_id")
+        post_id = UUIDFilter(label="Filter by Post ID", method="filter_post_id")
 
         def filter_post_id(self, qs, field_name, post_id: str):
             jobs = []
             job_count = -1
+            page = 1
             while len(jobs) != job_count:
-                resp = make_h4f_request("api/v1/jobs", params=dict(post_id=post_id))
+                resp = make_h4f_request("api/v1/jobs", params=dict(post_id=post_id, page=page))
                 if not resp.ok:
                     raise serializers.serializers.ValidationError(f"server does not understand this request: {resp.text}")
                 data = resp.json()
                 jobs.extend((j['id'] for j in data['jobs']))
                 job_count = data['total_results_count']
+                page += 1
             return qs.filter(id__in=jobs)
 
 
