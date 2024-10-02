@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import Profile, Job
-from drf_spectacular.utils import extend_schema_serializer
+from .models import Profile, Job, FileImage
+from drf_spectacular.utils import extend_schema_serializer, extend_schema_field
 from django.utils.translation import gettext_lazy as _
 
 
@@ -53,6 +53,20 @@ class PatchPostSerializer(serializers.Serializer):
         'does_not_exist': _('Invalid profile with id "{pk_value}" - object does not exist.'),
         'incorrect_type': _('Incorrect type. Expected profile id (uuid), received {data_type}.'),
     })
+
+class ImageSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+    class Meta:
+        model = FileImage
+        fields = ["name", "url"]
+
+    @extend_schema_field(serializers.CharField())
+    def get_url(self, instance):
+        request = self.context.get('request')
+        if instance.file and hasattr(instance.file, 'url'):
+            photo_url = instance.file.url
+            return request.build_absolute_uri(photo_url)
+        return None
 
 class H4fFeedSerializer(serializers.Serializer):
     def get_schema(self):

@@ -33,10 +33,20 @@ def validate_extractor(types, name):
 def upload_to_func(instance: 'File', filename):
     return os.path.join(str(instance.post_id), 'files', filename)
 
+
 class File(models.Model):
     post_id = models.UUIDField(primary_key=True)
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
-    extra_files = ArrayField(base_field=models.ImageField(upload_to=upload_to_func), default=list)
+
+
+class FileImage(models.Model):
+    report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
+    file = models.ImageField(upload_to=upload_to_func)
+    name = models.CharField(max_length=256)
+
+    @property
+    def post_id(self):
+        return self.report.post_id
 
 class Profile(models.Model):
     id = models.UUIDField(primary_key=True)

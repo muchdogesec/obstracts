@@ -464,10 +464,25 @@ class PostView(viewsets.ViewSet):
         obj = get_object_or_404(models.File, post_id=post_id)
         return redirect(obj.markdown_file.url, permanent=True)
     
-    # @decorators.action(detail=True, url_path="images/<str:image>.png")
-    # def images(self, request, feed_id=None, post_id=None, image=None):
-    #     obj = get_object_or_404(models.FileImage, report__post_id=post_id, index=image+'.png')
-    #     return redirect(obj.file.url, permanent=False)
+    @extend_schema(
+            responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+            filters=False,
+            summary="list all images associated with post",
+            description="list all images associated with post",
+    )
+    @decorators.action(detail=True)
+    def images(self, request, feed_id=None, post_id=None, image=None):
+        queryset = models.FileImage.objects.filter(report__post_id=post_id).order_by('name')
+        paginator = Pagination('images')
+
+        page = paginator.paginate_queryset(queryset, request, self)
+
+        if page is not None:
+            serializer = serializers.ImageSerializer(page, many=True, context=dict(request=request))
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 

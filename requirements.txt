@@ -122,6 +122,6 @@ wrapt==1.16.0; python_version >= '3.6'
 yarl==1.9.4; python_version >= '3.7'
 zipp==3.19.2; python_version >= '3.8'
 https://github.com/muchdogesec/txt2stix/archive/main.zip
-https://github.com/muchdogesec/file2txt/archive/main.zip
+https://github.com/muchdogesec/file2txt/archive/vision-use-key-env.zip?b=3
 https://github.com/muchdogesec/stix2arango/archive/main.zip
 django-cors-headers==4.4.0
