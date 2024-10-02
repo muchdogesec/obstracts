@@ -481,9 +481,12 @@ class ArangoDBHelper:
         }
         query = """
             FOR doc in @@view
-            FILTER doc._is_latest AND MATCHES(doc, @matcher)
             FILTER doc.type IN @types OR NOT @types
+            FILTER MATCHES(doc, @matcher)
             FILTER @include_txt2stix_notes OR doc.type != "note"
+
+            COLLECT id = doc.id INTO docs
+            LET doc = FIRST(FOR d in docs[*].doc SORT d.modified OR d.created DESC RETURN d)
 
             LIMIT @offset, @count
             RETURN KEEP(doc, KEYS(doc, true))
