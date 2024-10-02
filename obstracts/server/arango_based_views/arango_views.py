@@ -124,6 +124,8 @@ class SingleObjectView(viewsets.ViewSet):
         return ArangoDBHelper(settings.VIEW_NAME, request).get_objects_by_id(
             kwargs.get(self.lookup_url_kwarg)
         )
+    
+class SingleObjectReportsView(SingleObjectView):
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema('reports', {'type': 'string'}),
         parameters=ArangoDBHelper.get_schema_operation_parameters(),
@@ -146,7 +148,7 @@ class SingleObjectView(viewsets.ViewSet):
         description="Search for domain objects (aka TTPs). If you have the object ID already, you can use the base GET Objects endpoint.",
     ),
 )
-class SDOView(SingleObjectView):
+class SDOView(SingleObjectReportsView):
     def list(self, request, *args, **kwargs):
         return ArangoDBHelper(settings.VIEW_NAME, request).get_sdos()
    
@@ -163,7 +165,7 @@ class SDOView(SingleObjectView):
         description="Search for STIX Cyber Observable Objects (aka Indicators of Compromise). If you have the object ID already, you can use the base GET Objects endpoint.",
     )
 )
-class SCOView(SingleObjectView):
+class SCOView(SingleObjectReportsView):
     def list(self, request, *args, **kwargs):
         matcher = {}
         if post_id := request.query_params.dict().get("post_id"):
