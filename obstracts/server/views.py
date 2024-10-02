@@ -52,7 +52,7 @@ from obstracts.server import serializers
     create=extend_schema(
         summary="Create a new profile",
         description="Add a new Profile that can be applied to new Feeds. A profile consists of extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints.\n\nRequired fields are `name` (must be unique), `extractions` (at least one extraction ID), `relationship_mode` (either `ai` or `standard`), and `extract_text_from_image` (boolean). See txt2stix for more information about `relationship_mode` and `extract_text_from_image` options.\n\nYou cannot modify a profile once it is created. If you need to make changes, you should create another profile with the changes made.",
-        responses={400: api_schema.DEFAULT_400_ERROR, 200: ProfileSerializer}
+        responses={400: api_schema.DEFAULT_400_ERROR, 201: ProfileSerializer}
     ),
     destroy=extend_schema(
         summary="Delete a profile",
