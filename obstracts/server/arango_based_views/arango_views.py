@@ -147,6 +147,10 @@ class SingleObjectReportsView(SingleObjectView):
         summary="Get STIX Domain Objects",
         description="Search for domain objects (aka TTPs). If you have the object ID already, you can use the base GET Objects endpoint.",
     ),
+    reports=extend_schema(
+        summary="Get all Reports belonging to SDO ID",
+        description="Using the SDO ID, you can find all reports the SDO is mentioned in",
+    ),
 )
 class SDOView(SingleObjectReportsView):
     def list(self, request, *args, **kwargs):
@@ -163,7 +167,11 @@ class SDOView(SingleObjectReportsView):
         + QueryParams.SCO_PARAMS,
         summary="Get STIX Cyber Observable Objects",
         description="Search for STIX Cyber Observable Objects (aka Indicators of Compromise). If you have the object ID already, you can use the base GET Objects endpoint.",
-    )
+    ),
+    reports=extend_schema(
+        summary="Get all Reports belonging to SCO ID",
+        description="Using the SCO ID, you can find all reports the SCO is mentioned in",
+    ),
 )
 class SCOView(SingleObjectReportsView):
     def list(self, request, *args, **kwargs):
