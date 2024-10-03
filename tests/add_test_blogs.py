@@ -157,7 +157,7 @@ def get_post_markdown(feed_id, post_id):
 
 def get_post_objects_bundle(feed_id, post_id):
     # Construct the URL for the specific post's objects bundle
-    post_objects_bundle_url = f"http://localhost:8001/api/v1/feeds/{feed_id}/posts/{post_id}/objects/bundle/"
+    post_objects_bundle_url = f"http://localhost:8001/api/v1/feeds/{feed_id}/posts/{post_id}/objects/"
     print(f"Sending GET request to retrieve objects bundle for post ID: {post_id} in feed ID: {feed_id}...")
     
     # Send the GET request
