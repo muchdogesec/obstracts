@@ -467,8 +467,8 @@ class PostView(viewsets.ViewSet):
     @extend_schema(
             responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
             filters=False,
-            summary="list all images associated with post",
-            description="list all images associated with post",
+            summary="Retrieve images found in a Post",
+            description="A local copy of all images is stored on the server. This endpoint lists the image files found in the Post selected.",
     )
     @decorators.action(detail=True)
     def images(self, request, feed_id=None, post_id=None, image=None):
