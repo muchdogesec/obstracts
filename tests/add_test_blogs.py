@@ -132,45 +132,6 @@ def get_feed_posts(feed_id):
     else:
         print(f"Failed to retrieve posts for feed ID: {feed_id}. Status code: {response.status_code}")
 
-def get_post_markdown(feed_id, post_id):
-    # Construct the URL for the specific post's markdown
-    post_markdown_url = f"http://localhost:8001/api/v1/feeds/{feed_id}/posts/{post_id}/markdown/"
-    print(f"Sending GET request to retrieve markdown for post ID: {post_id} in feed ID: {feed_id}...")
-    
-    # Send the GET request
-    response = requests.get(post_markdown_url)
-    print_full_request_details(response)
-    
-    # Print the response content
-    print(f"Response status code: {response.status_code}")
-    print("Response headers:")
-    print(response.headers)
-    print("Response content:")
-    print(response.text)
-
-    # If the response is 200, proceed to get the objects bundle
-    if response.status_code == 200:
-        print("Markdown retrieval successful. Proceeding to fetch the bundle...")
-        get_post_objects_bundle(feed_id, post_id)
-    else:
-        print("Failed to retrieve markdown. Skipping bundle fetch.")
-
-def get_post_objects_bundle(feed_id, post_id):
-    # Construct the URL for the specific post's objects bundle
-    post_objects_bundle_url = f"http://localhost:8001/api/v1/feeds/{feed_id}/posts/{post_id}/objects/"
-    print(f"Sending GET request to retrieve objects bundle for post ID: {post_id} in feed ID: {feed_id}...")
-    
-    # Send the GET request
-    response = requests.get(post_objects_bundle_url)
-    print_full_request_details(response)
-    
-    # Print the response content
-    print(f"Response status code: {response.status_code}")
-    print("Response headers:")
-    print(response.headers)
-    print("Response content:")
-    print(response.text)
-
 if __name__ == "__main__":
     print("Starting feed deletion, creation, and verification script...")
 
@@ -190,6 +151,16 @@ if __name__ == "__main__":
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata-partial.xml",
             "include_remote_blogs": False
         },
+        {
+            "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
+            "url": "http://feeds.feedburner.com/Unit42",
+            "include_remote_blogs": False
+        },
+        {
+            "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
+            "url": "https://unit42.paloaltonetworks.com/category/threat-research/feed/",
+            "include_remote_blogs": False
+        },
         # Additional test blogs can be added here as needed
     ]
 
@@ -201,9 +172,5 @@ if __name__ == "__main__":
             if job_success:
                 check_feed(feed_id)
                 get_feed_posts(feed_id)
-
-                # Assuming the post ID is c6a5afcd-2341-5a57-b936-b9a67667f57e as mentioned
-                post_id = "c6a5afcd-2341-5a57-b936-b9a67667f57e"
-                get_post_markdown(feed_id, post_id)
 
     print("Feed deletion, creation, and verification script completed.")
