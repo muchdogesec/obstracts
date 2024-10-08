@@ -208,12 +208,13 @@ class SMOView(SingleObjectView):
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters()
         + QueryParams.SRO_PARAMS,
-        ),
         summary="Get STIX Relationship Objects",
         description="Search for relationship objects. This endpoint is particularly useful to search what Objects an SCO or SDO is linked to.",
+        ),
 )
 class SROView(SingleObjectView):
-    pass
+    def list(self, request, *args, **kwargs):
+        return ArangoDBHelper(settings.VIEW_NAME, request).get_sros()
 
 
 
