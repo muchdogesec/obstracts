@@ -72,7 +72,8 @@ class StixifyProcessor:
     def file2txt(self):
         converter: HtmlArticleFileParser = HtmlArticleFileParser(Path(self.filename), "html_article", self.job.profile.extract_text_from_image, settings.GOOGLE_VISION_API_KEY, base_url=self.post_url)
         output = converter.convert(processed_image_base_url=self.processed_image_base_url)
-        output = Fanger(output).defang()
+        if self.profile.defang:
+            output = Fanger(output).defang()
         for name, img in converter.images.items():
             img_file = io.BytesIO()
             img_file.name = name
