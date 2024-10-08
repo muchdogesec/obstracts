@@ -494,13 +494,13 @@ class PostView(viewsets.ViewSet):
             summary="Retrieve images found in a Post",
             description="A local copy of all images is stored on the server. This endpoint lists the image files found in the Post selected.",
     )
-    @decorators.action(detail=True)
+    @decorators.action(detail=True, pagination_class=Pagination("images"))
     def images(self, request, feed_id=None, post_id=None, image=None):
         queryset = models.FileImage.objects.filter(report__post_id=post_id).order_by('name')
         paginator = Pagination('images')
 
         page = paginator.paginate_queryset(queryset, request, self)
-
+q
         if page is not None:
             serializer = serializers.ImageSerializer(page, many=True, context=dict(request=request))
             return paginator.get_paginated_response(serializer.data)
