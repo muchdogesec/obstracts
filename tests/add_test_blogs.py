@@ -159,7 +159,7 @@ if __name__ == "__main__":
         {
             "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
             "url": "http://feeds.feedburner.com/Unit42",
-            "include_remote_blogs": False
+            "include_remote_blogs": True
         },
         {
             "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
