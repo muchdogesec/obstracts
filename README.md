@@ -123,6 +123,7 @@ Generally if you want to improve how Obstracts performs functionality, you shoul
 * [history4feed](https://github.com/muchdogesec/history4feed): responsible for downloading the blog posts, including the historical archive, and keep posts updated
 * [file2txt](https://github.com/muchdogesec/file2txt/): converts the HTML post content into a markdown file (which is used to extract data from)
 * [txt2stix](https://github.com/muchdogesec/txt2stix): turns the markdown file into STIX objects
+* [stix2arango](https://github.com/muchdogesec/stix2arango): manages the logic to insert the STIX objects into the database
 
 For anything else, then the Obstracts codebase is where you need to be :)
 
