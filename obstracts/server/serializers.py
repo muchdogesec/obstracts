@@ -54,6 +54,14 @@ class PatchPostSerializer(serializers.Serializer):
         'incorrect_type': _('Incorrect type. Expected profile id (uuid), received {data_type}.'),
     })
 
+class PostCreateSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    link = serializers.URLField()
+    pubdate = serializers.DateTimeField()
+    author = serializers.CharField()
+    categories = serializers.ListField(child=serializers.CharField())
+
+
 class ImageSerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
     class Meta:

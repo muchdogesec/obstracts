@@ -369,6 +369,13 @@ class FeedView(viewsets.ViewSet):
         It is also possible to change the `profile_id` used when extracting data from the reindexed post.\n\n
         The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
         """)),
+    create=extend_schema(
+        request=serializers.PostCreateSerializer,
+        responses={201:JobSerializer},
+        summary="Backfill a Post into A Feed",
+        description=dedent("""
+        Backfill a Post into A Feed
+        """)),
 ) 
 class PostView(viewsets.ViewSet):
     serializer_class = H4fPostSerializer
@@ -411,6 +418,23 @@ class PostView(viewsets.ViewSet):
         feed = FeedView.get_feed(feed_id)
         resp = FeedView.make_request(
             request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/", request_body=request_body
+        )
+        if resp.status_code == 201:
+            out = json.loads(resp.content)
+            out['job_id'] = out['id']
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return resp
+    
+    def create(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.PatchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        feed_id = kwargs.get(FeedView.lookup_url_kwarg)
+        feed = FeedView.get_feed(feed_id)
+        resp = FeedView.make_request(
+            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
         )
         if resp.status_code == 201:
             out = json.loads(resp.content)

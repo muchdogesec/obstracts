@@ -10,6 +10,7 @@ services:
         volumes:
             - .:/usr/src/app/
             - ./www:/var/www/
+            - ./tmp:/tmp/
         environment:
             - DJANGO_SETTINGS_MODULE=obstracts.settings
             - CELERY_BROKER_URL=redis://redis:6379/10
