@@ -145,6 +145,11 @@ if __name__ == "__main__":
         print("No feeds found to delete.")
 
     # Step 3: Define test blogs to add
+    # these create feeds with IDs (in order)
+    # 2d6575b8-3d90-5479-bdfe-b980b753ec40
+    # b4e3f13c-0ad6-5abe-be01-2475d341bf84
+    # 16341792-226e-5a55-829e-a7cbcd2d54af
+    # ecfdd2cb-9727-52c9-bf18-9266b2e2fd61
     test_blogs = [
         {
             "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
@@ -160,6 +165,11 @@ if __name__ == "__main__":
             "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
             "url": "https://unit42.paloaltonetworks.com/category/threat-research/feed/",
             "include_remote_blogs": False
+        },
+        {
+          "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
+          "url": "https://www.crowdstrike.com/en-us/blog/feed",
+          "include_remote_blogs": False
         },
         # Additional test blogs can be added here as needed
     ]
