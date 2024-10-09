@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ['DJANGO_SECRET']
+SECRET_KEY = os.environ.get('DJANGO_SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', False)
@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
+    "corsheaders",
     "rest_framework",
     "obstracts.server",
     "drf_spectacular",
@@ -58,6 +58,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "obstracts.urls"
@@ -128,7 +129,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-HISTORY4FEED_URL = os.environ['HISTORY4FEED_URL']
+HISTORY4FEED_URL = os.environ.get('HISTORY4FEED_URL')
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -218,3 +219,5 @@ ARANGODB_HOST_URL   = os.getenv("ARANGODB_HOST_URL")
 
 MAXIMUM_PAGE_SIZE = int(os.getenv("MAX_PAGE_SIZE", 50))
 DEFAULT_PAGE_SIZE = int(os.getenv("DEFAULT_PAGE_SIZE", 50))
+
+CORS_ORIGIN_ALLOW_ALL = True
