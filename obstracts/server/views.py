@@ -4,7 +4,7 @@ from textwrap import dedent
 from urllib.parse import urljoin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from rest_framework import viewsets, decorators, mixins, exceptions, status
+from rest_framework import viewsets, decorators, mixins, exceptions, status, request
 from drf_spectacular.utils import OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
@@ -36,6 +36,9 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from . import models
 
 from ..cjob import tasks
+from obstracts.server import serializers
+
+import textwrap
 
 @extend_schema_view(
     list=extend_schema(
@@ -50,13 +53,21 @@ from ..cjob import tasks
     ),
     create=extend_schema(
         summary="Create a new profile",
-        description="""Add a new Profile that can be applied to new Feeds. A profile consists of extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints.\n\n
-
-            Required fields are `name` (must be unique), `extractions` (at least one extraction ID), `relationship_mode` (either `ai` or `standard`), and `extract_text_from_image` (boolean). See txt2stix for more information about `relationship_mode` and `extract_text_from_image` options.\n\n
-
+        description=textwrap.dedent(
+            """
+            Add a new Profile that can be applied to new Feeds. A profile consists of extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `name` (required - must be unique)
+            * `extractions` (required - at least one extraction ID): can be obtained from the GET Extractors endpoint. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
+            * `whitelists` (optional): can be obtained from the GET Whitelists endpoint. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
+            * `aliases` (optional): can be obtained from the GET Whitelists endpoint. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
+            * `relationship_mode` (required): either `ai` or `standard`. Required AI provider to be configured if using `ai` mode. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
+            * `extract_text_from_image` (required - boolean): wether to convert the images found in a blog to text. Requires a Google Vision key to be set. This is a [file2txt](https://github.com/muchdogesec/file2txt) setting.
+            * `defang` (required - boolean): wether to defang the observables in the blog. e.g. turns `1.1.1[.]1` to `1.1.1.1` for extraction. This is a [file2txt](https://github.com/muchdogesec/file2txt) setting.\n\n
             You cannot modify a profile once it is created. If you need to make changes, you should create another profile with the changes made.
-            """,
-        responses={400: api_schema.DEFAULT_400_ERROR, 200: ProfileSerializer}
+            """
+        ),
+        responses={400: api_schema.DEFAULT_400_ERROR, 201: ProfileSerializer}
     ),
     destroy=extend_schema(
         summary="Delete a profile",
@@ -135,7 +146,12 @@ class txt2stixView(mixins.RetrieveModelMixin,
 @extend_schema_view(
     list=extend_schema(
         summary="Search Extractors",
-        description="Extractors are what extract the data from the text which is then converted into STIX objects.",
+        description=textwrap.dedent(
+            """
+            Extractors are what extract the data from the text which is then converted into STIX objects.\n\n
+            For more information see [txt2stix](https://github.com/muchdogesec/txt2stix/).
+            """
+        ),
         responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
@@ -155,7 +171,12 @@ class ExtractorsView(txt2stixView):
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Whitelists",
-        description="In many cases files will have IoC extractions that are not malicious. e.g. `google.com` (and thus they don't want them to be extracted). Whitelists provide a list of values to be compared to extractions. If a whitelist value matches an extraction, that extraction is removed. To see the values used in this Whitelist, visit the URL shown as the value for the `file` key",
+        description=textwrap.dedent(
+            """
+            In many cases files will have IoC extractions that are not malicious. e.g. `google.com` (and thus they don't want them to be extracted). Whitelists provide a list of values to be compared to extractions. If a whitelist value matches an extraction, that extraction is removed. To see the values used in this Whitelist, visit the URL shown as the value for the `file` key.\n\n
+            For more information see [txt2stix](https://github.com/muchdogesec/txt2stix/).
+            """
+        ),
         responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
@@ -175,7 +196,12 @@ class WhitelistsView(txt2stixView):
 @extend_schema_view(
     list=extend_schema(
         summary="Search for aliases",
-        description="Aliases replace strings in the blog post with values defined in the Alias. Aliases are applied before extractions. For example, an alias of `USA` with a value `United States` will change all records of `USA` in the blog post with `United States`. To see the values used in this Alias, visit the URL shown as the value for the `file` key",
+        description=textwrap.dedent(
+            """
+            Aliases replace strings in the blog post with values defined in the Alias. Aliases are applied before extractions. For example, an alias of `USA` with a value `United States` will change all records of `USA` in the blog post with `United States`. To see the values used in this Alias, visit the URL shown as the value for the `file` key\n\n
+            For more information see [txt2stix](https://github.com/muchdogesec/txt2stix/).
+            """
+        ),
         responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
@@ -196,25 +222,54 @@ class AliasesView(txt2stixView):
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Feeds",
-        description="Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.",
+        description=textwrap.dedent(
+            """
+            Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.
+            """
+        ),
     ),
     retrieve=extend_schema(
         summary="Get a Feed",
-        description="Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required."
+        description=textwrap.dedent(
+            """
+            Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required.
+            """
+        ),
     ),
     create=extend_schema(
         request=FeedSerializer,
         responses={201:JobSerializer},
         summary="Create a new Feed",
-        description="Use this endpoint to create to a new Feed. The `url` value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned.\n\nIf the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.\n\nYou can view existing Profiles, or generated a new one using the Profiles endpoints. `profile_id` accepts the ID a profile, which again can be be obtained from the endpoints. You can update the `profile_id` of a Feed, or reindex Posts using a different `profile_id` later. See the Patch Feed and Patch Post endpoints for more information.\n\n`include_remote_blogs` is a boolean setting. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false.",
+        description=textwrap.dedent(
+            """
+            Use this endpoint to create to a new Feed.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `url` (required): should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned. If the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.\n\n
+            * `profile_id` (required - valid Profile ID): You can view existing Profiles, or generated a new one using the Profiles endpoints. You can update the `profile` used for future posts in a Feed, or reindex Posts using a different `profile_id` later. See the Patch Feed and Patch Post endpoints for more information.\n\n
+            * `include_remote_blogs` (required): is a boolean setting and will ask history4feed to ignore any feeds not on the same domain as the URL of the feed. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false. The one exception is when things like feed aggregators (e.g. Feedburner) URLs are used, where the actual blog posts are not on the `feedburner.com` (or whatever) domain. In this case `include_remote_blogs` should be set to `true`.\n\n
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+            """
+        ),
     ),
     destroy=extend_schema(
         summary="Delete a Feed",
         description="Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.",
     ),
-    partial_update=extend_schema(request=FeedSerializer, responses=JobSerializer,
+    partial_update=extend_schema(
+        request=serializers.PatchFeedSerializer,
+        responses={201: JobSerializer},
         summary="Update a Feed",
-        description=dedent("Use this endpoint to check for new posts on this blog since the last update time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.\n\nNote, this endpoint can miss updates to currently indexed posts (where the RSS or ATOM feed does not report the updated correctly -- which is very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint.\n\nIt is also possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed. This will only apply to Post indexed after the Patch request was made. To update Posts already indexed with a new `profile_id`, use the Patch Post endpoint."),
+        description=textwrap.dedent(
+            """
+            Use this endpoint to check for new posts on this blog since the last post time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.\n\n
+            Note, this endpoint can miss updates that have happened to currently indexed posts (where the RSS or ATOM feed does not report the updated date correctly -- which is actually very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint directly.\n\n
+            Whilst it is possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed we would recommend using the same `profile_id` and `include_remote_blogs` as set originally because. it can becoming confusing quickly managing different settings on a per post basis. Generally it's better to reindex the whole blog using the new setting unless you have a good reason not to.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and feed id. Changing this setting will only apply to posts after the `latest_item_pubdate`.\n\n
+            * `include_remote_blogs` (required): You get the last `include_remote_blogs` used for this feed using the Get Jobs endpoint and feed id. Changing this setting will only apply to posts after the `latest_item_pubdate`.\n\n
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+            """
+        ),
     ),
 )
 class FeedView(viewsets.ViewSet):
@@ -267,11 +322,11 @@ class FeedView(viewsets.ViewSet):
         return profile_id
     
     @classmethod
-    def make_request(cls, request, path):
+    def make_request(cls, request, path, request_body=None):
         request_kwargs = {
             "headers": {},
             "method": request.method,
-            "body": request.body,
+            "body": request_body or request.body,
             "params": request.GET.copy(),
         }
         headers = request_kwargs["headers"]
@@ -292,7 +347,7 @@ class FeedView(viewsets.ViewSet):
     def create(self, request, *args, **kwargs):
         profile_id = self.parse_profile(request)
         resp = self.make_request(request, "/api/v1/feeds/")
-        if resp.status_code == 200:
+        if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
             job = tasks.new_task(out, profile_id)
@@ -339,33 +394,68 @@ class FeedView(viewsets.ViewSet):
         return feed
 
     def partial_update(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.PatchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
         feed = self.get_feed(kwargs.get(self.lookup_url_kwarg))
         resp = self.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
+            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/", request_body=request_body
         )
-        if resp.status_code == 200:
+        if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, feed.profile.id)
-            return Response(JobSerializer(job).data)
+            job = tasks.new_task(out, s.data.get("profile_id", feed.profile.id))
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Posts in a Feed",
-        description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
+        description=textwrap.dedent(
+            """Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
+            """
+        ),
     ),
     retrieve=extend_schema(
         summary="Retrieve a post in a Feed",
-        description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
+        description=textwrap.dedent(
+            """
+            Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
+             """
+        ),
     ),
     partial_update=extend_schema(
-        request=None,
-        responses=JobSerializer,
+        request=serializers.PatchPostSerializer,
+        responses={201:JobSerializer},
         summary="Update a Post in A Feed",
-        description=dedent("""
-        Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in history4feed matches the currently published post you make a request to this endpoint using the Post ID to update it.\n\nIt is also possible to change the `profile_id` used when extracting data from the reindexed post.
-        """)),
+        description=textwrap.dedent(
+            """
+            Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in the database matches the currently published post you make a request to this endpoint using the Post ID to update it.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.\n\n
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+            """
+        ),
+    ),
+    create=extend_schema(
+        request=serializers.PostCreateSerializer,
+        responses={201:JobSerializer},
+        summary="Backfill a Post into A Feed",
+        description=textwrap.dedent(
+            """
+            This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `profile_id` (required): a valid profile ID to define how the post should be processed.\n\n
+            * `link` (required): The URL of the blog post. This is where the content of the post is found.\n\n
+            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.\n\n
+            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.\n\n
+            * `author` (optional): the value to be stored for the author of the post.
+            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.\n\n
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.\n\n
+            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
+            """
+        ),
+    ),
 ) 
 class PostView(viewsets.ViewSet):
     serializer_class = H4fPostSerializer
@@ -400,17 +490,37 @@ class PostView(viewsets.ViewSet):
         )
 
     def partial_update(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.PatchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
         feed_id = kwargs.get(FeedView.lookup_url_kwarg)
         post_id = kwargs.get(self.lookup_url_kwarg)
         feed = FeedView.get_feed(feed_id)
         resp = FeedView.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/"
+            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/", request_body=request_body
         )
-        if resp.status_code == 200:
+        if resp.status_code == 201:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_task(out, feed.profile.id)
-            return Response(JobSerializer(job).data)
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return resp
+    
+    def create(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.PatchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        feed_id = kwargs.get(FeedView.lookup_url_kwarg)
+        feed = FeedView.get_feed(feed_id)
+        resp = FeedView.make_request(
+            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
+        )
+        if resp.status_code == 201:
+            out = json.loads(resp.content)
+            out['job_id'] = out['id']
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
     @extend_schema(
@@ -457,6 +567,27 @@ class PostView(viewsets.ViewSet):
     def markdown(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
         return redirect(obj.markdown_file.url, permanent=True)
+    
+    @extend_schema(
+            responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+            filters=False,
+            summary="Retrieve images found in a Post",
+            description="A local copy of all images is stored on the server. This endpoint lists the image files found in the Post selected.",
+    )
+    @decorators.action(detail=True, pagination_class=Pagination("images"))
+    def images(self, request, feed_id=None, post_id=None, image=None):
+        queryset = models.FileImage.objects.filter(report__post_id=post_id).order_by('name')
+        paginator = Pagination('images')
+
+        page = paginator.paginate_queryset(queryset, request, self)
+
+        if page is not None:
+            serializer = serializers.ImageSerializer(page, many=True, context=dict(request=request))
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 
 @extend_schema_view(
@@ -489,6 +620,22 @@ class JobView(viewsets.ModelViewSet):
         state = Filter(
             label="Filter by state.",
         )
+        post_id = UUIDFilter(label="Filter by Post ID", method="filter_post_id")
+
+        def filter_post_id(self, qs, field_name, post_id: str):
+            jobs = []
+            job_count = -1
+            page = 1
+            while len(jobs) != job_count:
+                resp = make_h4f_request("api/v1/jobs", params=dict(post_id=post_id, page=page))
+                if not resp.ok:
+                    raise serializers.serializers.ValidationError(f"server does not understand this request: {resp.text}")
+                data = resp.json()
+                jobs.extend((j['id'] for j in data['jobs']))
+                job_count = data['total_results_count']
+                page += 1
+            return qs.filter(id__in=jobs)
+
 
     def get_queryset(self):
         return models.Job.objects

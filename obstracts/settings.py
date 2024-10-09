@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import logging
 import os
 from pathlib import Path
 from textwrap import dedent
@@ -28,12 +29,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET')
+SECRET_KEY = os.environ['DJANGO_SECRET']
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', False)
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', "").split()
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', "localhost 127.0.0.1 [::1]").split()
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Application definition
 
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
     "corsheaders",
     "rest_framework",
     "obstracts.server",
@@ -53,12 +56,13 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "obstracts.urls"
@@ -129,7 +133,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-HISTORY4FEED_URL = os.environ.get('HISTORY4FEED_URL')
+HISTORY4FEED_URL = os.environ['HISTORY4FEED_URL']
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -169,8 +173,9 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Obstracts API",
     "DESCRIPTION": dedent(
         """
-        Obstracts takes a blog ATOM or RSS feed and converts into structured threat intelligence.
-    """
+        Obstracts takes a blog ATOM or RSS feed and converts into structured threat intelligence.\n\n
+        [DOGESEC](https://www.dogesec.com/) offer a fully hosted web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://www.obstracts.com/)
+        """
     ),
     "VERSION": "1.0.0",
     "CONTACT": {
@@ -179,12 +184,12 @@ SPECTACULAR_SETTINGS = {
     },
     "TAGS": [
         {"name": "Feeds", "description": "Subscribe and retrieve blogs and blog posts"},
-        {"name": "Jobs", "description": "Check the status of data retrieval from blogs"},
         {"name": "Objects", "description": "Search through STIX object extracted from blog posts"},
         {"name": "Profiles", "description": "Create and search for extraction profile applied to text in blog posts"},
-        {"name": "Aliases", "description": "Search through aliases that can be used in profiles (see txt2stix for more information)"},
-        {"name": "Extractors", "description": "Search through extractors that can be used in profiles (see txt2stix for more information)"},
-        {"name": "Whitelists", "description": "Search through whitelists that can be used in profiles (see txt2stix for more information)"},
+        {"name": "Aliases", "description": "Search through aliases that can be used in profiles"},
+        {"name": "Extractors", "description": "Search through extractors that can be used in profiles"},
+        {"name": "Whitelists", "description": "Search through whitelists that can be used in profiles"},
+        {"name": "Jobs", "description": "Check the status of data retrieval from blogs"},
     ]
 }
 
@@ -219,5 +224,6 @@ ARANGODB_HOST_URL   = os.getenv("ARANGODB_HOST_URL")
 
 MAXIMUM_PAGE_SIZE = int(os.getenv("MAX_PAGE_SIZE", 50))
 DEFAULT_PAGE_SIZE = int(os.getenv("DEFAULT_PAGE_SIZE", 50))
-
-CORS_ORIGIN_ALLOW_ALL = True
+GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY")
+if not GOOGLE_VISION_API_KEY:
+    logging.warning("GOOGLE_VISION_API_KEY not set")

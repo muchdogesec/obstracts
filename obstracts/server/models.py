@@ -33,10 +33,20 @@ def validate_extractor(types, name):
 def upload_to_func(instance: 'File', filename):
     return os.path.join(str(instance.post_id), 'files', filename)
 
+
 class File(models.Model):
     post_id = models.UUIDField(primary_key=True)
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
-    extra_files = ArrayField(base_field=models.ImageField(upload_to=upload_to_func), default=list)
+
+
+class FileImage(models.Model):
+    report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
+    file = models.ImageField(upload_to=upload_to_func)
+    name = models.CharField(max_length=256)
+
+    @property
+    def post_id(self):
+        return self.report.post_id
 
 class Profile(models.Model):
     id = models.UUIDField(primary_key=True)
@@ -47,6 +57,7 @@ class Profile(models.Model):
     aliases = ArrayField(base_field=models.CharField(max_length=256, validators=[partial(validate_extractor, ["alias"])]), help_text="alias id(s)", default=list)
     relationship_mode = models.CharField(choices=RelationshipMode.choices, max_length=20, default=RelationshipMode.STANDARD)
     extract_text_from_image = models.BooleanField(default=False)
+    defang = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs) -> None:
         if not self.id:
@@ -91,14 +102,12 @@ class Job(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     state = models.CharField(choices=JobState.choices, max_length=20, default=JobState.RETRIEVING)
     history4feed_status = models.CharField(default=H4FState.PENDING, choices=H4FState.choices, max_length=20)
+    history4feed_job = models.JSONField(null=True)
     item_count = models.IntegerField(default=0)
     processed_items = models.IntegerField(default=0)
     failed_processes = models.IntegerField(default=0)
     feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, null=True)
-
-    @property
-    def profile(self) -> Profile:
-        return self.feed.profile
+    profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
     
     @property
     def feed_id(self):

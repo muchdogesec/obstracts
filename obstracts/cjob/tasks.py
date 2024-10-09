@@ -1,6 +1,7 @@
 import io
 import logging
 import math
+from pathlib import Path
 from urllib.parse import urljoin
 from celery import group, shared_task, chain, chord, current_app, current_task, subtask
 from django.conf import settings
@@ -9,6 +10,8 @@ import typing
 from .obstracts_helpers import ReportProperties, StixifyProcessor
 from ..server.models import Job, FeedProfile
 from ..server import models
+
+from django.core.files.base import File
 
 if typing.TYPE_CHECKING:
     from ..import settings
@@ -43,6 +46,7 @@ def poll_once(job_id):
     logging.info(f"[{job_resp.status_code=}] job_id: {job_id}")
     job = Job.objects.get(pk=job_id)
     job.history4feed_status = h4f_job["state"]
+    job.history4feed_job = h4f_job
     job.item_count = len(h4f_job["urls"].get('retrieved', []))
     if job.history4feed_status == models.H4FState.SUCCESS:
         job.state = models.JobState.PROCESSING
@@ -80,8 +84,15 @@ def new_task(feed_dict, profile_id):
     kwargs = dict(id=feed_dict["feed_id"], profile_id=profile_id)
     if title := feed_dict.get("title"):
         kwargs.update(title=title)
-    feed, _ = FeedProfile.objects.update_or_create(**kwargs)
-    job = Job.objects.create(id=feed_dict["job_id"], feed=feed)
+    feed, _ = FeedProfile.objects.update_or_create(defaults=kwargs, id=feed_dict["feed_id"])
+    job = Job.objects.create(id=feed_dict["job_id"], feed=feed, profile_id=profile_id)
+    (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
+        countdown=5, root_id=job.id, task_id=job.id
+    )
+    return job
+
+def new_post_patch_task(input_dict, profile_id):
+    job = Job.objects.create(id=input_dict["job_id"], feed_id=input_dict["feed_id"], profile_id=profile_id)
     (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
         countdown=5, root_id=job.id, task_id=job.id
     )
@@ -118,7 +129,6 @@ def start_processing(h4f_job, job_id):
                 f"got HTTP {resp.status_code} while processing job for {job_id}. body: {resp.text}, count: {len(posts)}"
             )
             break
-
     logging.info("processing %d posts for job %s", len(posts), job_id)
     tasks = [process_post.si(job_id, post) for post in posts]
     tasks.append(job_completed_with_error.si(job_id))
@@ -140,7 +150,7 @@ def process_post(job_id, post, *args):
     try:
         file = io.BytesIO(post['description'].encode())
         file.name = f"post-{post_id}.html"
-        processor = StixifyProcessor(file, job, collection_name=job.feed.collection_name)
+        processor = StixifyProcessor(file, job, collection_name=job.feed.collection_name, post_url=post['link'])
         properties = ReportProperties(
             name=f"obstracts-post {post_id}",
             identity=settings.OBSTRACTS_IDENTITY,
@@ -155,6 +165,12 @@ def process_post(job_id, post, *args):
         file, _ = models.File.objects.get_or_create(post_id=post_id)
         
         file.markdown_file.save('markdown.md', processor.md_file.open(), save=True)
+        models.FileImage.objects.filter(report=file).delete() # remove old references
+        print("\n="*20, f"processing images for {file.post_id}", "\n-"*20)
+
+        for image in processor.md_images:
+            print(f"{image.name=}", "\n+"*20)
+            models.FileImage.objects.create(report=file, file=File(image, image.name), name=image.name)
         file.save()
         job.processed_items += 1
     except Exception as e:

@@ -23,12 +23,14 @@ This will add profiles used by tests (and also delete all existing profiles)
 python3 tests/setup_profiles.py
 ```
 
+This test will delete all existing blogs and add them using the profile created by the previous script
+
 ```shell
 python3 tests/add_test_blogs.py
 ```
 
-After adding test blogs, the following 
+After adding test blogs successfully, you can use fakeblog123 to run stable tests to check all the Obstracts post features;
 
-feed 2d6575b8-3d90-5479-bdfe-b980b753ec40
-post c6a5afcd-2341-5a57-b936-b9a67667f57e
-
+```shell
+python3 tests/fake_blog_tests.py
+```

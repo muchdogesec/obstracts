@@ -2,7 +2,7 @@
 
 ## Before you begin...
 
-We offer a fully web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://obstracts.com/).
+We offer a fully hosted web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://www.obstracts.com/).
 
 ## Overview
 
@@ -23,6 +23,12 @@ It works at a high level like so:
 5. STIX bundles are generated for each post of the blog, and stored in an ArangoDB database called `obstracts_database` and Collections names matching the blog
 6. A user can access the bundle data or specific objects in the bundle via the API
 7. As new posts are added to remote blogs, user makes request to update blog and these are requested by history4feed
+
+## tl;dr
+
+[![Obstracts](https://img.youtube.com/vi/plp4hw95WdA/0.jpg)](https://www.youtube.com/watch?v=plp4hw95WdA)
+
+[Watch the demo](https://www.youtube.com/watch?v=plp4hw95WdA).
 
 ## Install
 
@@ -117,6 +123,7 @@ Generally if you want to improve how Obstracts performs functionality, you shoul
 * [history4feed](https://github.com/muchdogesec/history4feed): responsible for downloading the blog posts, including the historical archive, and keep posts updated
 * [file2txt](https://github.com/muchdogesec/file2txt/): converts the HTML post content into a markdown file (which is used to extract data from)
 * [txt2stix](https://github.com/muchdogesec/txt2stix): turns the markdown file into STIX objects
+* [stix2arango](https://github.com/muchdogesec/stix2arango): manages the logic to insert the STIX objects into the database
 
 For anything else, then the Obstracts codebase is where you need to be :)
 

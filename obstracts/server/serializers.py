@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import Profile, Job
-from drf_spectacular.utils import extend_schema_serializer
+from .models import Profile, Job, FileImage
+from drf_spectacular.utils import extend_schema_serializer, extend_schema_field
+from django.utils.translation import gettext_lazy as _
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -27,17 +28,53 @@ class T2SSerializer(serializers.Serializer):
 
 class JobSerializer(serializers.ModelSerializer):
     feed_id = serializers.PrimaryKeyRelatedField(read_only=True, source='feed')
+    profile_id = serializers.PrimaryKeyRelatedField(read_only=True, source='profile')
     class Meta:
         model = Job
         # fields = "__all__"
-        exclude = ["feed"]
+        exclude = ["feed", "profile"]
 
 
 class FeedSerializer(serializers.Serializer):
-    profile_id = serializers.CharField()
+    profile_id = serializers.PrimaryKeyRelatedField(queryset=Profile.objects, error_messages={
+        'required': _('This field is required.'),
+        'does_not_exist': _('Invalid profile with id "{pk_value}" - object does not exist.'),
+        'incorrect_type': _('Incorrect type. Expected profile id (uuid), received {data_type}.'),
+    })
     url = serializers.URLField(help_text="The URL of the RSS or ATOM feed")
     include_remote_blogs = serializers.BooleanField(help_text="", default=False, required=False)
 
+class PatchFeedSerializer(FeedSerializer):
+    url = None
+
+class PatchPostSerializer(serializers.Serializer):
+    profile_id = serializers.PrimaryKeyRelatedField(queryset=Profile.objects, error_messages={
+        'required': _('This field is required.'),
+        'does_not_exist': _('Invalid profile with id "{pk_value}" - object does not exist.'),
+        'incorrect_type': _('Incorrect type. Expected profile id (uuid), received {data_type}.'),
+    })
+
+class PostCreateSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    link = serializers.URLField()
+    pubdate = serializers.DateTimeField()
+    author = serializers.CharField()
+    categories = serializers.ListField(child=serializers.CharField())
+
+
+class ImageSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+    class Meta:
+        model = FileImage
+        fields = ["name", "url"]
+
+    @extend_schema_field(serializers.CharField())
+    def get_url(self, instance):
+        request = self.context.get('request')
+        if instance.file and hasattr(instance.file, 'url'):
+            photo_url = instance.file.url
+            return request.build_absolute_uri(photo_url)
+        return None
 
 class H4fFeedSerializer(serializers.Serializer):
     def get_schema(self):
