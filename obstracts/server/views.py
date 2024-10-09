@@ -71,7 +71,10 @@ import textwrap
     ),
     destroy=extend_schema(
         summary="Delete a profile",
-        description="Delete an existing profile. Note, you cannot delete a profile if it is currently being used with an active Feed.",
+        description=textwrap.dedent(
+            """Delete an existing profile. Note, we would advise against deleting a Profile because any blogs/posts it has been used in will still refer to this ID. If it is deleted, you will not be able to see the profile settings used. Instead, it is usually better to just recreate a Profile with a new name.
+            """
+        ),
         responses={404: api_schema.DEFAULT_404_ERROR, 204: None}
     ),
 )
