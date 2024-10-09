@@ -411,21 +411,32 @@ class FeedView(viewsets.ViewSet):
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Posts in a Feed",
-        description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
+        description=textwrap.dedent(
+            """Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
+            """
+        ),
     ),
     retrieve=extend_schema(
         summary="Retrieve a post in a Feed",
-        description="Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.",
+        description=textwrap.dedent(
+            """
+            Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
+             """
+        ),
     ),
     partial_update=extend_schema(
         request=serializers.PatchPostSerializer,
         responses={201:JobSerializer},
         summary="Update a Post in A Feed",
-        description=dedent("""
-        Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in history4feed matches the currently published post you make a request to this endpoint using the Post ID to update it.\n\n
-        It is also possible to change the `profile_id` used when extracting data from the reindexed post.\n\n
-        The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
-        """)),
+        description=textwrap.dedent(
+            """
+            Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in the database matches the currently published post you make a request to this endpoint using the Post ID to update it.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.\n\n
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+            """
+        ),
+    ),
     create=extend_schema(
         request=serializers.PostCreateSerializer,
         responses={201:JobSerializer},
@@ -434,7 +445,7 @@ class FeedView(viewsets.ViewSet):
             """
             This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.\n\n
             The following key/values are accepted in the body of the request:\n\n
-            * `profile_id` (optional): a valid profile ID\n\n
+            * `profile_id` (required): a valid profile ID to define how the post should be processed.\n\n
             * `link` (required): The URL of the blog post. This is where the content of the post is found.\n\n
             * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.\n\n
             * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.\n\n
