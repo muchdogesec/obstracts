@@ -186,9 +186,9 @@ SPECTACULAR_SETTINGS = {
         {"name": "Feeds", "description": "Subscribe and retrieve blogs and blog posts"},
         {"name": "Objects", "description": "Search through STIX object extracted from blog posts"},
         {"name": "Profiles", "description": "Create and search for extraction profile applied to text in blog posts"},
-        {"name": "Aliases", "description": "Search through aliases that can be used in profiles (see txt2stix for more information)"},
-        {"name": "Extractors", "description": "Search through extractors that can be used in profiles (see txt2stix for more information)"},
-        {"name": "Whitelists", "description": "Search through whitelists that can be used in profiles (see txt2stix for more information)"},
+        {"name": "Aliases", "description": "Search through aliases that can be used in profiles"},
+        {"name": "Extractors", "description": "Search through extractors that can be used in profiles"},
+        {"name": "Whitelists", "description": "Search through whitelists that can be used in profiles"},
         {"name": "Jobs", "description": "Check the status of data retrieval from blogs"},
     ]
 }

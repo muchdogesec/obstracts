@@ -38,6 +38,8 @@ from . import models
 from ..cjob import tasks
 from obstracts.server import serializers
 
+import textwrap
+
 @extend_schema_view(
     list=extend_schema(
         summary="Search profiles",
@@ -51,7 +53,20 @@ from obstracts.server import serializers
     ),
     create=extend_schema(
         summary="Create a new profile",
-        description="Add a new Profile that can be applied to new Feeds. A profile consists of extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints.\n\nRequired fields are `name` (must be unique), `extractions` (at least one extraction ID), `relationship_mode` (either `ai` or `standard`), and `extract_text_from_image` (boolean). See txt2stix for more information about `relationship_mode` and `extract_text_from_image` options.\n\nYou cannot modify a profile once it is created. If you need to make changes, you should create another profile with the changes made.",
+        description=textwrap.dedent(
+            """
+            Add a new Profile that can be applied to new Feeds. A profile consists of extractors, aliases, and/or whitelists. You can find available extractors, aliases, and whitelists via their respective endpoints.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `name` (required - must be unique)
+            * `extractions` (required - at least one extraction ID): can be obtained from the GET Extractors endpoint. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
+            * `whitelists` (optional): can be obtained from the GET Whitelists endpoint. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
+            * `aliases` (optional): can be obtained from the GET Whitelists endpoint. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
+            * `relationship_mode` (required): either `ai` or `standard`. Required AI provider to be configured if using `ai` mode. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
+            * `extract_text_from_image` (required - boolean): wether to convert the images found in a blog to text. Requires a Google Vision key to be set. This is a [file2txt](https://github.com/muchdogesec/file2txt) setting.
+            * `defang` (required - boolean): wether to defang the observables in the blog. e.g. turns `1.1.1[.]1` to `1.1.1.1` for extraction. This is a [file2txt](https://github.com/muchdogesec/file2txt) setting.\n\n
+            You cannot modify a profile once it is created. If you need to make changes, you should create another profile with the changes made.
+            """
+        ),
         responses={400: api_schema.DEFAULT_400_ERROR, 201: ProfileSerializer}
     ),
     destroy=extend_schema(
@@ -131,7 +146,12 @@ class txt2stixView(mixins.RetrieveModelMixin,
 @extend_schema_view(
     list=extend_schema(
         summary="Search Extractors",
-        description="Extractors are what extract the data from the text which is then converted into STIX objects.",
+        description=textwrap.dedent(
+            """
+            Extractors are what extract the data from the text which is then converted into STIX objects.\n\n
+            For more information see [txt2stix](https://github.com/muchdogesec/txt2stix/).
+            """
+        ),
         responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
@@ -151,7 +171,12 @@ class ExtractorsView(txt2stixView):
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Whitelists",
-        description="In many cases files will have IoC extractions that are not malicious. e.g. `google.com` (and thus they don't want them to be extracted). Whitelists provide a list of values to be compared to extractions. If a whitelist value matches an extraction, that extraction is removed. To see the values used in this Whitelist, visit the URL shown as the value for the `file` key",
+        description=textwrap.dedent(
+            """
+            In many cases files will have IoC extractions that are not malicious. e.g. `google.com` (and thus they don't want them to be extracted). Whitelists provide a list of values to be compared to extractions. If a whitelist value matches an extraction, that extraction is removed. To see the values used in this Whitelist, visit the URL shown as the value for the `file` key.\n\n
+            For more information see [txt2stix](https://github.com/muchdogesec/txt2stix/).
+            """
+        ),
         responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
@@ -171,7 +196,12 @@ class WhitelistsView(txt2stixView):
 @extend_schema_view(
     list=extend_schema(
         summary="Search for aliases",
-        description="Aliases replace strings in the blog post with values defined in the Alias. Aliases are applied before extractions. For example, an alias of `USA` with a value `United States` will change all records of `USA` in the blog post with `United States`. To see the values used in this Alias, visit the URL shown as the value for the `file` key",
+        description=textwrap.dedent(
+            """
+            Aliases replace strings in the blog post with values defined in the Alias. Aliases are applied before extractions. For example, an alias of `USA` with a value `United States` will change all records of `USA` in the blog post with `United States`. To see the values used in this Alias, visit the URL shown as the value for the `file` key\n\n
+            For more information see [txt2stix](https://github.com/muchdogesec/txt2stix/).
+            """
+        ),
         responses={400: api_schema.DEFAULT_400_ERROR, 200: T2SSerializer},
     ),
     retrieve=extend_schema(
@@ -192,17 +222,34 @@ class AliasesView(txt2stixView):
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Feeds",
-        description="Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.",
+        description=textwrap.dedent(
+            """
+            Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.
+            """
+        ),
     ),
     retrieve=extend_schema(
         summary="Get a Feed",
-        description="Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required."
+        description=textwrap.dedent(
+            """
+            Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required.
+            """
+        ),
     ),
     create=extend_schema(
         request=FeedSerializer,
         responses={201:JobSerializer},
         summary="Create a new Feed",
-        description="Use this endpoint to create to a new Feed. The `url` value used should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned.\n\nIf the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.\n\nYou can view existing Profiles, or generated a new one using the Profiles endpoints. `profile_id` accepts the ID a profile, which again can be be obtained from the endpoints. You can update the `profile_id` of a Feed, or reindex Posts using a different `profile_id` later. See the Patch Feed and Patch Post endpoints for more information.\n\n`include_remote_blogs` is a boolean setting and will ask Obstracts to ignore any feeds not on the same domain as the URL of the feed. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false. The one exception is when things like feed aggregators (e.g. Feedburner) URLs are used, where the actual blog posts are not on the `feedburner.com` (or whatever) domain. In this case `include_remote_blogs` should be set to `true`.\n\nThe response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.",
+        description=textwrap.dedent(
+            """
+            Use this endpoint to create to a new Feed.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `url` (required): should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned. If the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.\n\n
+            * `profile_id` (required - valid Profile ID): You can view existing Profiles, or generated a new one using the Profiles endpoints. You can update the `profile` used for future posts in a Feed, or reindex Posts using a different `profile_id` later. See the Patch Feed and Patch Post endpoints for more information.\n\n
+            * `include_remote_blogs` (required): is a boolean setting and will ask history4feed to ignore any feeds not on the same domain as the URL of the feed. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false. The one exception is when things like feed aggregators (e.g. Feedburner) URLs are used, where the actual blog posts are not on the `feedburner.com` (or whatever) domain. In this case `include_remote_blogs` should be set to `true`.\n\n
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+            """
+        ),
     ),
     destroy=extend_schema(
         summary="Delete a Feed",
@@ -212,7 +259,17 @@ class AliasesView(txt2stixView):
         request=serializers.PatchFeedSerializer,
         responses={201: JobSerializer},
         summary="Update a Feed",
-        description=dedent("Use this endpoint to check for new posts on this blog since the last update time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.\n\nNote, this endpoint can miss updates to currently indexed posts (where the RSS or ATOM feed does not report the updated correctly -- which is very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint.\n\nIt is also possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed (although we'd recommend against this as it can becoming confusing managing different settings on a per post basis -- generally it's better to reindex the whole blog using a new profile). This will only apply to Post indexed after the Patch request was made. To update Posts already indexed with a new `profile_id`, use the Patch Post endpoint.\n\nThe response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint."),
+        description=textwrap.dedent(
+            """
+            Use this endpoint to check for new posts on this blog since the last post time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.\n\n
+            Note, this endpoint can miss updates that have happened to currently indexed posts (where the RSS or ATOM feed does not report the updated date correctly -- which is actually very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint directly.\n\n
+            Whilst it is possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed we would recommend using the same `profile_id` and `include_remote_blogs` as set originally because. it can becoming confusing quickly managing different settings on a per post basis. Generally it's better to reindex the whole blog using the new setting unless you have a good reason not to.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and feed id. Changing this setting will only apply to posts after the `latest_item_pubdate`.\n\n
+            * `include_remote_blogs` (required): You get the last `include_remote_blogs` used for this feed using the Get Jobs endpoint and feed id. Changing this setting will only apply to posts after the `latest_item_pubdate`.\n\n
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+            """
+        ),
     ),
 )
 class FeedView(viewsets.ViewSet):
@@ -373,9 +430,21 @@ class FeedView(viewsets.ViewSet):
         request=serializers.PostCreateSerializer,
         responses={201:JobSerializer},
         summary="Backfill a Post into A Feed",
-        description=dedent("""
-        Backfill a Post into A Feed
-        """)),
+        description=textwrap.dedent(
+            """
+            This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.\n\n
+            The following key/values are accepted in the body of the request:\n\n
+            * `profile_id` (optional): a valid profile ID\n\n
+            * `link` (required): The URL of the blog post. This is where the content of the post is found.\n\n
+            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.\n\n
+            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.\n\n
+            * `author` (optional): the value to be stored for the author of the post.
+            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.\n\n
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.\n\n
+            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
+            """
+        ),
+    ),
 ) 
 class PostView(viewsets.ViewSet):
     serializer_class = H4fPostSerializer
