@@ -555,7 +555,12 @@ class PostView(viewsets.ViewSet):
     @extend_schema(
         responses=None,
         summary="Get Markdown for specific post",
-        description="This endpoint will return Markdown extracted for a post.",
+        description=textwrap.dedent(
+            """
+            A blog is stored in [history4feed](https://github.com/muchdogesec/history4feed/) as HTML. This HTML is then converted to markdown using [file2txt](https://github.com/muchdogesec/file2txt/) which is subsequently used to make extractions from. This endpoint will return that output.\n\n
+            This endpoint is useful for debugging issues in extractions when you think there could be an issue with the content being passed to the extractors.
+            """
+        ),
         parameters=[
             OpenApiParameter(
                 name="Location",
