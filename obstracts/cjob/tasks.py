@@ -152,7 +152,7 @@ def process_post(job_id, post, *args):
         file.name = f"post-{post_id}.html"
         processor = StixifyProcessor(file, job, collection_name=job.feed.collection_name, post_url=post['link'])
         properties = ReportProperties(
-            name=f"obstracts-post {post_id}",
+            name=post['title'],
             identity=settings.OBSTRACTS_IDENTITY,
             tlp_level="clear",
             confidence=0,
@@ -166,10 +166,8 @@ def process_post(job_id, post, *args):
         
         file.markdown_file.save('markdown.md', processor.md_file.open(), save=True)
         models.FileImage.objects.filter(report=file).delete() # remove old references
-        print("\n="*20, f"processing images for {file.post_id}", "\n-"*20)
 
         for image in processor.md_images:
-            print(f"{image.name=}", "\n+"*20)
             models.FileImage.objects.create(report=file, file=File(image, image.name), name=image.name)
         file.save()
         job.processed_items += 1
