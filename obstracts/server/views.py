@@ -580,7 +580,11 @@ class PostView(viewsets.ViewSet):
             responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
             filters=False,
             summary="Retrieve images found in a Post",
-            description="A local copy of all images is stored on the server. This endpoint lists the image files found in the Post selected.",
+            description=textwrap.dedent(
+            """
+            When [file2txt](https://github.com/muchdogesec/file2txt/) processes a file it will extract all images from the file and store them locally. You can see these images referenced in the markdown produced (see Post markdown endpoint). This endpoint lists the image files found in the Post selected.
+            """
+        ),
     )
     @decorators.action(detail=True, pagination_class=Pagination("images"))
     def images(self, request, feed_id=None, post_id=None, image=None):
