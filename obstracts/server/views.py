@@ -503,6 +503,7 @@ class PostView(viewsets.ViewSet):
             request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/", request_body=request_body
         )
         if resp.status_code == 201:
+            self.remove_report(post_id, feed.collection_name)
             out = json.loads(resp.content)
             out['job_id'] = out['id']
             job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
@@ -600,6 +601,16 @@ class PostView(viewsets.ViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    def remove_report(self, post_id, collection):
+        helper = ArangoDBHelper(settings.VIEW_NAME, self.request)
+        query = """ 
+        FOR doc IN @@collection
+        FILTER doc._obstracts_post_id == @post_id
+        REMOVE doc IN @@collection
+        RETURN NULL
+        """
+        for c in ["edge_collection", "vertex_collection"]:
+            helper.execute_query(query, bind_vars={"@collection": f"{collection}_{c}", 'post_id': post_id}, paginate=False)
 
 
 @extend_schema_view(
