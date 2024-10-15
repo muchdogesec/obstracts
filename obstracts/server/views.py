@@ -64,7 +64,7 @@ import textwrap
             * `relationship_mode` (required): either `ai` or `standard`. Required AI provider to be configured if using `ai` mode. This is a [txt2stix](https://github.com/muchdogesec/txt2stix/) setting.
             * `extract_text_from_image` (required - boolean): wether to convert the images found in a blog to text. Requires a Google Vision key to be set. This is a [file2txt](https://github.com/muchdogesec/file2txt) setting.
             * `defang` (required - boolean): wether to defang the observables in the blog. e.g. turns `1.1.1[.]1` to `1.1.1.1` for extraction. This is a [file2txt](https://github.com/muchdogesec/file2txt) setting.\n\n
-            A profile `id` is generated using a UUIDv5. The namespace used is `a1f2e3ed-6241-5f05-ac2e-3394213b8e08`, and the `name` is used as the value (e.g `my profile` would have the `id`: `be9ac6ab-6239-5da9-8fb3-805820789343`).
+            A profile `id` is generated using a UUIDv5. The namespace used is `a1f2e3ed-6241-5f05-ac2e-3394213b8e08` (history4feed), and the `name` is used as the value (e.g `my profile` would have the `id`: `be9ac6ab-6239-5da9-8fb3-805820789343`).
             You cannot modify a profile once it is created. If you need to make changes, you should create another profile with the changes made. If it is essential that the same `name` value be used, then you must first delete the profile in order to recreate it.
             """
         ),
