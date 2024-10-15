@@ -58,8 +58,8 @@ class PostCreateSerializer(PatchPostSerializer):
     title = serializers.CharField()
     link = serializers.URLField()
     pubdate = serializers.DateTimeField()
-    author = serializers.CharField()
-    categories = serializers.ListField(child=serializers.CharField())
+    author = serializers.CharField(required=False)
+    categories = serializers.ListField(child=serializers.CharField(), required=False)
 
 
 class ImageSerializer(serializers.ModelSerializer):
