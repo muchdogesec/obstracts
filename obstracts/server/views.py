@@ -43,7 +43,11 @@ import textwrap
 @extend_schema_view(
     list=extend_schema(
         summary="Search profiles",
-        description="Profiles determine how txt2stix processes each blog post in a feed. A profile consists of an extractors, aliases, and/or whitelists. You can search for existing profiles here.",
+        description=textwrap.dedent(
+            """
+            Profiles determine how txt2stix processes each blog post in a feed. A profile consists of an extractors, aliases, and/or whitelists. You can search for existing profiles here.
+            """
+        ),
         responses={400: api_schema.DEFAULT_400_ERROR, 200: ProfileSerializer},
     ),
     retrieve=extend_schema(
@@ -419,7 +423,8 @@ class FeedView(viewsets.ViewSet):
     list=extend_schema(
         summary="Search for Posts in a Feed",
         description=textwrap.dedent(
-            """Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
+            """
+            Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
             """
         ),
     ),
