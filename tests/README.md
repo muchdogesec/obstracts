@@ -23,10 +23,16 @@ This will add profiles used by tests (and also delete all existing profiles)
 python3 tests/setup_profiles.py
 ```
 
-This test will delete all existing blogs and add them using the profile created by the previous script
+To run a controlled test we use fakeblog123 which we control
 
 ```shell
-python3 tests/add_test_blogs.py
+python3 tests/add_fakeblog123.py
+```
+
+This test will delete all existing blogs and add real security using the profile created by the previous script
+
+```shell
+python3 tests/add_test_security_blogs.py
 ```
 
 After adding test blogs successfully, you can use fakeblog123 to run stable tests to check all the Obstracts post features;
@@ -34,3 +40,13 @@ After adding test blogs successfully, you can use fakeblog123 to run stable test
 ```shell
 python3 tests/fake_blog_tests.py
 ```
+
+
+
+
+
+        {
+            "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
+            "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata-partial.xml",
+            "include_remote_blogs": False
+        },

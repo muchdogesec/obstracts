@@ -126,6 +126,17 @@ if __name__ == "__main__":
             "relationship_mode": "standard",
             "extract_text_from_image": True,
             "defang": True
+        },
+        {
+            "name": "Basic threat intel extractions. Standard relationship. Extract text from images.",
+            "extractions": [
+                "pattern_ipv4_address_only",
+                "pattern_domain_name_only",
+                "pattern_email_address"
+            ],
+            "relationship_mode": "ai",
+            "extract_text_from_image": True,
+            "defang": True
         }
     ]
 
