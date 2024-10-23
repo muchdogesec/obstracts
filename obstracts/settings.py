@@ -155,7 +155,7 @@ STORAGES = {
     },
 }
 
-if os.getenv("R2_ENDPOINT_URL"):
+if os.getenv("USE_S3_STORAGE") == "1":
     os.environ.setdefault('S3_USE_SIGV4', 'True')
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",

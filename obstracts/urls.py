@@ -29,6 +29,7 @@ router = routers.SimpleRouter(use_regex_path=False)
 router.register('profiles', views.ProfileView, "profile-view")
 router.register('feeds', views.FeedView, "feed-view")
 router.register("feeds/<uuid:feed_id>/posts", views.PostView, "post-view")
+router.register("feeds/<uuid:feed_id>/jobs", views.FeedJobView, "feed-job-view")
 
 router.register('jobs', views.JobView, "job-view")
 

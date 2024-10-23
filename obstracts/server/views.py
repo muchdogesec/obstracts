@@ -38,11 +38,11 @@ from . import models
 
 from ..cjob import tasks
 from obstracts.server import serializers
+import textwrap
+
 import mistune
 from mistune.renderers.markdown import MarkdownRenderer
 from mistune.util import unescape
-import textwrap
-
 class MarkdownImageReplacer(MarkdownRenderer):
     def __init__(self, request, queryset):
         self.request = request
@@ -695,6 +695,27 @@ class JobView(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return models.Job.objects
+    
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search Jobs for <feed_id>",
+        description="""Jobs track the status of the request to get posts for Feeds. For every new Feed added and every update to a Feed requested a job will be created. The id of a job is printed in the POST and PATCH responses respectively, but you can use this endpoint to search for the id again, if required.""",
+        responses={400: api_schema.DEFAULT_400_ERROR, 200: JobSerializer},
+    ),
+    retrieve=extend_schema(
+        summary="Get a Job under <feed_id>",
+        description="""Using a Job ID you can retrieve information about its state via this endpoint. This is useful to see if a Job to get data is complete, how many posts were imported in the job, or if an error has occurred.""",
+        responses={404: api_schema.DEFAULT_404_ERROR, 200: JobSerializer},
+    ),
+)
+class FeedJobView(JobView):
+    openapi_tags = ["Jobs", "Feeds"]
+
+    class filterset_class(JobView.filterset_class):
+        feed_id = None
+
+    def get_queryset(self):
+        return models.Job.objects.filter(feed_id=self.kwargs.get('feed_id'))
 
 
 def make_h4f_request(path, method="GET", params=None, body=None, headers={}):
