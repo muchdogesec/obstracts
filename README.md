@@ -57,6 +57,33 @@ To create one using the default settings:
 cp .env.example .env
 ```
 
+#### A note on ArangoDB secrets
+
+Note, this script will not install an ArangoDB instance.
+
+If you're new to ArangoDB, [you can install the community edition quickly by following the instructions here](https://arangodb.com/community-server/).
+
+If you are running ArangoDB locally, be sure to set `ARANGODB_HOST_URL='http://host.docker.internal:8529'` in the `.env` file otherwise you will run into networking errors.
+
+The script will automatically create a database called `obstracts_database` when the container is spun up (if it does not exist).
+
+For each blog added, two new collections will be created in the format
+
+`<FEED_NAME>_<FEED_ID>-<COLLECTION_TYPE>_collection`
+
+e.g.
+
+* `graham_cluley_9288374-0298740-94875-vertex_collection`
+* `graham_cluley_9288374-0298740-94875-edge_collection`
+
+#### A note on Django and Postgres secrets
+
+Note, if you intend on using this for testing, you can leave the variables in the `.env` as is. However, these need to be changed in a production install for security.
+
+#### A note Cloudflare R2 storage
+
+By default, all images will be stored locally on the server. This is fine if you're using Obstracts on your own machine. If running on a remote server, Obstracts support the storage of images on Cloudflare R2. This can be set in the `.env` file/
+
 ### Build the Docker Image
 
 ```shell
@@ -82,35 +109,6 @@ Note, this script will not install an ArangoDB instance.
 If you're new to ArangoDB, [you can install the community edition quickly by following the instructions here](https://arangodb.com/community-server/).
 
 If you are running ArangoDB locally, be sure to set `ARANGODB_HOST_URL="http://localhost:8529/"` in the `.env` file otherwise you will run into networking errors.
-
-The script will automatically create a database called `obstracts_database` when the container is spun up (if it does not exist).
-
-For each blog added, two new collections will be created in the format
-
-`<FEED_NAME>_<FEED_ID>-<COLLECTION_TYPE>_collection`
-
-e.g.
-
-* `graham_cluley_9288374-0298740-94875-vertex_collection`
-* `graham_cluley_9288374-0298740-94875-edge_collection`
-
-#### Note on Django
-
-The webserver is Django.
-
-To create an admin user in Django
-
-```shell
-sudo docker-compose run django python manage.py createsuperuser
-```
-
-You can access the django admin UI at:
-
-http://127.0.0.1:8001/admin
-
-### Running in production
-
-Note, if you intend on using this in production, you should also modify the variables in the `.env` file for `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASS`, `DJANGO_SECRET` and `DEBUG` (to `False`)
 
 ## Contributing notes
 
