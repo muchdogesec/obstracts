@@ -155,6 +155,19 @@ STORAGES = {
     },
 }
 
+if os.getenv("R2_ENDPOINT_URL"):
+    os.environ.setdefault('S3_USE_SIGV4', 'True')
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "bucket_name": os.environ["R2_BUCKET_NAME"],
+            "endpoint_url": os.environ["R2_ENDPOINT_URL"],
+            "access_key": os.environ["R2_ACCESS_KEY"],
+            "secret_key": os.environ["R2_SECRET_KEY"],
+            'custom_domain': os.environ["R2_CUSTOM_DOMAIN"],
+        },
+    }
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

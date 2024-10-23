@@ -2,14 +2,15 @@ import json
 import logging
 from textwrap import dedent
 from urllib.parse import urljoin
-from django.http import HttpResponse
+import bs4
+from django.http import HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import viewsets, decorators, mixins, exceptions, status, request
 from drf_spectacular.utils import OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
-import arango.database
 from .arango_based_views.arango_helpers import OBJECT_TYPES
+import hyperlink
 
 from obstracts.server.arango_based_views.arango_helpers import ArangoDBHelper
 from .utils import (
@@ -37,8 +38,28 @@ from . import models
 
 from ..cjob import tasks
 from obstracts.server import serializers
-
+import mistune
+from mistune.renderers.markdown import MarkdownRenderer
+from mistune.util import unescape
 import textwrap
+
+class MarkdownImageReplacer(MarkdownRenderer):
+    def __init__(self, request, queryset):
+        self.request = request
+        self.queryset = queryset
+        super().__init__()
+    def image(self, token: dict[str, dict], state: mistune.BlockState) -> str:
+        src = token['attrs']['url']
+        if not hyperlink.parse(src).absolute:
+            try:
+                token['attrs']['url'] = self.request.build_absolute_uri(self.queryset.get(name=src).file)
+            except Exception as e:
+                pass
+        return super().image(token, state)
+    
+    def codespan(self, token: dict[str, dict], state: mistune.BlockState) -> str:
+        token['raw'] = unescape(token['raw'])
+        return super().codespan(token, state)
 
 @extend_schema_view(
     list=extend_schema(
@@ -586,7 +607,8 @@ class PostView(viewsets.ViewSet):
     @decorators.action(detail=True, methods=["GET"])
     def markdown(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
-        return redirect(obj.markdown_file.url, permanent=True)
+        modify_links = mistune.create_markdown(escape=False, renderer=MarkdownImageReplacer(self.request, models.FileImage.objects.filter(report__post_id=post_id)))
+        return FileResponse(streaming_content=modify_links(obj.markdown_file.read().decode()), content_type='text/markdown', filename='markdown.md')
     
     @extend_schema(
             responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
