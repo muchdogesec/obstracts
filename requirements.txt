@@ -126,6 +126,6 @@ yarl==1.9.4; python_version >= '3.7'
 zipp==3.19.2; python_version >= '3.8'
 
 django-storages[s3]==1.14.4
-https://github.com/muchdogesec/txt2stix/archive/main.zip
+https://github.com/muchdogesec/txt2stix/archive/add-relationship-descriptions.zip
 https://github.com/muchdogesec/file2txt/archive/vision-use-key-env.zip
 https://github.com/muchdogesec/stix2arango/archive/main.zip
