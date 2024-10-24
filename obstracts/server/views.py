@@ -563,19 +563,12 @@ class PostView(viewsets.ViewSet):
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters()
         + [
-            # OpenApiParameter(name="types", many=True, explode=False, enum=OBJECT_TYPES),
             OpenApiParameter(
                 "types",
                 many=True,
                 explode=False,
                 description="Filter the results by one or more STIX Object types",
                 enum=OBJECT_TYPES,
-            ),
-            OpenApiParameter(
-                "include_txt2stix_notes",
-                type=bool,
-                default=False,
-                description="txt2stix creates 3 STIX note Objects that provide information about the processing job. This data is only really helpful for debugging issues, but not for intelligence sharing. Setting this parameters value to `true` will include these STIX note Objects in the response. Most of the time you want to set this parameter to `false` (the default value).",
             ),
         ],
         summary="Get STIX Objects for a specific Post",

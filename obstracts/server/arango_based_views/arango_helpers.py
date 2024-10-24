@@ -364,9 +364,6 @@ class ArangoDBHelper:
         if new_types := self.query_as_array('types'):
             types = types.intersection(new_types)
         
-        if not self.query_as_bool('include_txt2stix_notes', False):
-            types.remove('note')
-
         bind_vars = {
             "@collection": self.collection,
             "types": list(types),
@@ -444,10 +441,6 @@ class ArangoDBHelper:
             bind_vars['target_ref_type'] = terms
             other_filters.append('SPLIT(doc.target_ref, "--")[0] IN @target_ref_type')
 
-        if not self.query_as_bool('include_txt2stix_notes', False):
-            other_filters.append('"note" NOT IN [SPLIT(doc.target_ref, "--")[0], SPLIT(doc.source_ref, "--")[0]]')
-
-
         if term := self.query.get('relationship_type'):
             bind_vars['relationship_type'] = term
             other_filters.append("CONTAINS(doc.relationship_type, @relationship_type)")
@@ -477,13 +470,11 @@ class ArangoDBHelper:
             "@view": self.collection,
             "matcher": dict(_obstracts_post_id=str(post_id), _obstracts_feed_id=str(feed_id)),
             "types": list(OBJECT_TYPES.intersection(types.split(","))) if types else None,
-            "include_txt2stix_notes": self.query_as_bool('include_txt2stix_notes', False),
         }
         query = """
             FOR doc in @@view
             FILTER doc.type IN @types OR NOT @types
             FILTER MATCHES(doc, @matcher)
-            FILTER @include_txt2stix_notes OR doc.type != "note"
 
             COLLECT id = doc.id INTO docs
             LET doc = FIRST(FOR d in docs[*].doc SORT d.modified OR d.created DESC RETURN d)

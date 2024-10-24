@@ -28,12 +28,6 @@ class QueryParams:
     )
     SCO_PARAMS = [value, sco_types, post_id, OpenApiParameter('sort', enum=SCO_SORT_FIELDS)]
 
-    include_txt2stix_notes = OpenApiParameter(
-        "include_txt2stix_notes",
-        type=bool,
-        default=False,
-        description="txt2stix creates 3 STIX note Objects that provide information about the processing job. This data is only really helpful for debugging issues, but not for intelligence sharing. Setting this parameters value to `true` will include these STIX note Objects in the response. Most of the time you want to set this parameter to `false` (the default value).",
-    )
     name = OpenApiParameter(
         "name",
         description="Allows results to be filtered on the `name` field of the SDO. Search is wildcard. For example, `Wanna` will return SDOs with the `name`; `WannaCry`, `WannaSmile`, etc.",
@@ -50,7 +44,7 @@ class QueryParams:
         enum=SDO_TYPES,
     )
 
-    SDO_PARAMS = [include_txt2stix_notes, name, labels, sdo_types, OpenApiParameter('sort', enum=SDO_SORT_FIELDS)]
+    SDO_PARAMS = [name, labels, sdo_types, OpenApiParameter('sort', enum=SDO_SORT_FIELDS)]
 
     source_ref = OpenApiParameter(
         "source_ref",
@@ -83,7 +77,6 @@ class QueryParams:
         target_ref,
         target_ref_type,
         relationship_type,
-        include_txt2stix_notes,
         OpenApiParameter('sort', enum=SRO_SORT_FIELDS),
     ]
 
@@ -95,7 +88,6 @@ class QueryParams:
         enum=OBJECT_TYPES,
     )
     OBJECTS_PARAMS = [
-        include_txt2stix_notes,
         types,
     ]
 
