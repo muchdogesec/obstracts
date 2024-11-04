@@ -1,0 +1,63 @@
+# include:
+#   - ./history4feed/docker-compose.yml
+   
+services:
+    env_django:
+        image: obstracts
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        build: .
+        volumes:
+            - .:/usr/src/app/
+            - ./www:/var/www/
+            - ./tmp:/tmp/
+        environment:
+            - DJANGO_SETTINGS_MODULE=obstracts.settings
+            - CELERY_BROKER_URL=redis://redis:6379/10
+            - POSTGRES_HOST=pgdb
+            - DEBUG=1
+        env_file:
+            - ./.env
+    django:
+        extends: env_django
+        command: >
+                bash -c "
+                    python manage.py collectstatic --no-input &&
+                    python manage.py makemigrations &&
+                            python manage.py migrate &&
+                            gunicorn obstracts.wsgi:application  --reload --bind 0.0.0.0:8001
+                    " 
+        ports:
+            - 8001:8001
+        depends_on:
+            - celery
+
+    celery:
+        extends: env_django
+        command: >
+                bash -c "
+                  celery -A obstracts.cjob worker -l INFO
+                  "
+        depends_on:
+            pgdb:
+                condition: service_healthy
+            redis:
+                condition: service_started
+    pgdb:
+        image: postgres
+        env_file:
+          - ./.env
+
+        volumes:
+            - pgdata:/var/lib/postgresql/data/
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+            interval: 10s
+            retries: 5
+            start_period: 10s
+            timeout: 10s
+    redis:
+        image: "redis:alpine"
+
+volumes:
+    pgdata:
