@@ -548,7 +548,7 @@ class JobView(viewsets.ModelViewSet):
     ),
 )
 class FeedJobView(JobView):
-    openapi_tags = ["Jobs", "Feeds"]
+    openapi_tags = ["Feeds"]
 
     class filterset_class(JobView.filterset_class):
         feed_id = None
