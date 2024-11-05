@@ -59,7 +59,6 @@ jobs:
             VULMATCH_HOST=${{ secrets.VULMATCH_HOST }}
             VULMATCH_APIKEY=${{ secrets.VULMATCH_APIKEY }}
             GOOGLE_VISION_API_KEY=${{ secrets.GOOGLE_VISION_API_KEY }}
-            MARKER_API_KEY=${{ secrets.MARKER_API_KEY }}
             USE_S3_STORAGE=${{ secrets.USE_S3_STORAGE }}1
             R2_ENDPOINT_URL=${{ secrets.R2_ENDPOINT_URL }}
             R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}
