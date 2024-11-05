@@ -125,4 +125,7 @@ wrapt==1.16.0; python_version >= '3.6'
 yarl==1.9.4; python_version >= '3.7'
 zipp==3.19.2; python_version >= '3.8'
 django-storages[s3]==1.14.4
-dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2024-11-01/dogesec_commons-0.0.1b0-py3-none-any.whl
+stix2arango @ https://github.com/muchdogesec/stix2arango/archive/main.zip
+file2txt @ https://github.com/muchdogesec/file2txt/archive/main.zip
+txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/ext_ref-2024-11-05/txt2stix-0.0.1b1-py3-none-any.whl
+dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/dep-2024-11-05/dogesec_commons-0.0.1b0-py3-none-any.whl
