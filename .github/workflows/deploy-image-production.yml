@@ -55,9 +55,7 @@ jobs:
             OPENAI_MODEL=${{ secrets.OPENAI_MODEL }}
             INPUT_TOKEN_LIMIT=${{ secrets.INPUT_TOKEN_LIMIT }}
             CTIBUTLER_HOST=${{ secrets.CTIBUTLER_HOST }}
-            CTIBUTLER_APIKEY=${{ secrets.CTIBUTLER_APIKEY }}
             VULMATCH_HOST=${{ secrets.VULMATCH_HOST }}
-            VULMATCH_APIKEY=${{ secrets.VULMATCH_APIKEY }}
             GOOGLE_VISION_API_KEY=${{ secrets.GOOGLE_VISION_API_KEY }}
             USE_S3_STORAGE=${{ secrets.USE_S3_STORAGE }}1
             R2_ENDPOINT_URL=${{ secrets.R2_ENDPOINT_URL }}
