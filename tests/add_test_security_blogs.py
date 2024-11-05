@@ -151,17 +151,17 @@ if __name__ == "__main__":
     # ecfdd2cb-9727-52c9-bf18-9266b2e2fd61
     test_blogs = [
         {
-            "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
+            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
             "url": "http://feeds.feedburner.com/Unit42",
             "include_remote_blogs": True
         },
+#        {
+#            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
+#            "url": "https://unit42.paloaltonetworks.com/category/threat-research/feed/",
+#            "include_remote_blogs": False
+#       },
         {
-            "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
-            "url": "https://unit42.paloaltonetworks.com/category/threat-research/feed/",
-            "include_remote_blogs": False
-        },
-        {
-          "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
+          "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
           "url": "https://www.crowdstrike.com/en-us/blog/feed",
           "include_remote_blogs": False
         },

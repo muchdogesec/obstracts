@@ -166,6 +166,7 @@ config*
 
 logs/
 output/
+tmp/
 
 # mac files
 .DS_Store

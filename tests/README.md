@@ -40,13 +40,3 @@ After adding test blogs successfully, you can use fakeblog123 to run stable test
 ```shell
 python3 tests/fake_blog_tests.py
 ```
-
-
-
-
-
-        {
-            "profile_id": "7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2",
-            "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata-partial.xml",
-            "include_remote_blogs": False
-        },
