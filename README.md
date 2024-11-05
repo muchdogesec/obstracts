@@ -32,14 +32,6 @@ It works at a high level like so:
 
 ## Install
 
-### Download and run history4feed
-
-Obstracts requires [history4feed](https://github.com/muchdogesec/history4feed) to download and store blog posts.
-
-You'll need to set the location of history4feed later in the Obstracts `.env` file.
-
-If you are running history4feed locally, be sure to set `HISTORY4FEED_URL='http://host.docker.internal:8002/'` in the `.env` file otherwise you will run into networking errors.
-
 ### Download and configure
 
 ```shell
@@ -57,24 +49,7 @@ To create one using the default settings:
 cp .env.example .env
 ```
 
-#### A note on ArangoDB secrets
-
-Note, this script will not install an ArangoDB instance.
-
-If you're new to ArangoDB, [you can install the community edition quickly by following the instructions here](https://arangodb.com/community-server/).
-
-If you are running ArangoDB locally, be sure to set `ARANGODB_HOST_URL='http://host.docker.internal:8529'` in the `.env` file otherwise you will run into networking errors.
-
-The script will automatically create a database called `obstracts_database` when the container is spun up (if it does not exist).
-
-For each blog added, two new collections will be created in the format
-
-`<FEED_NAME>_<FEED_ID>-<COLLECTION_TYPE>_collection`
-
-e.g.
-
-* `graham_cluley_9288374-0298740-94875-vertex_collection`
-* `graham_cluley_9288374-0298740-94875-edge_collection`
+To see more information about how to set the variables, and what they do, read the `.env.markdown` file.
 
 #### A note on Django and Postgres secrets
 
