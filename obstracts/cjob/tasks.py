@@ -157,6 +157,11 @@ def process_post(job_id, post, *args):
             confidence=0,
             labels=[],
             created=job.created,
+            kwargs=dict(external_references=[
+                dict(source_name='post_link', url=post['link']),
+                dict(source_name='obstracts_feed_id', external_id=job.feed.id),
+                dict(source_name='obstracts_profile_id', external_id=job.profile.id),
+            ])
         )
         processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
         processor.process()
