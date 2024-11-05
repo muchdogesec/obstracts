@@ -1,29 +1,23 @@
-#
-name: Create and publish the Public Docker image for Obstracts Web Staging
-description: This workflow builds a Docker image and pushes it to GitHub Container Registry (GHCR) when changes are pushed to the `main` branch. It uses secrets in the `obstracts_staging` environment and therefore keeps the visibility as private for the image.
+name: Create and publish the Docker image for Obstracts Web Staging
+description: This workflow builds a Docker image and pushes it to GitHub Container Registry (GHCR) when changes are pushed to the `staging` branch. It uses secrets in the `obstracts_staging` environment and therefore keeps the visibility as private for the image.
 
-# Configures this workflow to run every time a change is pushed to the branch called `release`.
 on:
   push:
-    branches: ['main']
+    branches: ['staging']
 
-# Defines two custom environment variables for the workflow. These are used for the Container registry domain, and a name for the Docker image that this workflow builds.
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}_staging
+  IMAGE_NAME: ${{ github.repository }}_web_staging
 
-# There is a single job in this workflow. It's configured to run on the latest available version of Ubuntu.
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
-    environment: obstracts_web_staging # Specify the GitHub environment here
-    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
+    environment: obstracts_web_staging
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
-      # 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -53,34 +47,19 @@ jobs:
             #django settings
             DJANGO_SECRET=${{ secrets.DJANGO_SECRET }}
             DJANGO_DEBUG=${{ secrets.DJANGO_DEBUG }}
-
-            #celery settings
             CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP=${{ secrets.CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP }}
-            # obstracts settings
             MAX_PAGE_SIZE=${{ secrets.MAX_PAGE_SIZE }}
             DEFAULT_PAGE_SIZE=${{ secrets.DEFAULT_PAGE_SIZE }}
-
-            # txt2stix settings
             BIN_LIST_API_KEY=${{ secrets.BIN_LIST_API_KEY }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             OPENAI_MODEL=${{ secrets.OPENAI_MODEL }}
             INPUT_TOKEN_LIMIT=${{ secrets.INPUT_TOKEN_LIMIT }}
-            INPUT_TOKEN_LIMIT=${{ secrets.INPUT_TOKEN_LIMIT }}
-
-            # CTIBUTLER FOR ATT&CK, CAPEC, CWE, ATLAS, AND LOCATION LOOKUPS
-
             CTIBUTLER_HOST=${{ secrets.CTIBUTLER_HOST }}
             CTIBUTLER_APIKEY=${{ secrets.CTIBUTLER_APIKEY }}
-
-            # VULMATCH FOR CVE AND CPE LOOKUPS
             VULMATCH_HOST=${{ secrets.VULMATCH_HOST }}
             VULMATCH_APIKEY=${{ secrets.VULMATCH_APIKEY }}
-
-            # file2txt settings
             GOOGLE_VISION_API_KEY=${{ secrets.GOOGLE_VISION_API_KEY }}
             MARKER_API_KEY=${{ secrets.MARKER_API_KEY }}
-
-            # R2 storage configuration
             USE_S3_STORAGE=${{ secrets.USE_S3_STORAGE }}1
             R2_ENDPOINT_URL=${{ secrets.R2_ENDPOINT_URL }}
             R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}
