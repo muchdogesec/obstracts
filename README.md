@@ -51,14 +51,6 @@ cp .env.example .env
 
 To see more information about how to set the variables, and what they do, read the `.env.markdown` file.
 
-#### A note on Django and Postgres secrets
-
-Note, if you intend on using this for testing, you can leave the variables in the `.env` as is. However, these need to be changed in a production install for security.
-
-#### A note Cloudflare R2 storage
-
-By default, all images will be stored locally on the server. This is fine if you're using Obstracts on your own machine. If running on a remote server, Obstracts support the storage of images on Cloudflare R2. This can be set in the `.env` file/
-
 ### Build the Docker Image
 
 ```shell
