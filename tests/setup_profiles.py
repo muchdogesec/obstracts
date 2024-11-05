@@ -67,7 +67,7 @@ if __name__ == "__main__":
     profiles = [
         #7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2
         {
-            "name": "Basic threat intel extractions. Standard relationship. Do not extract text from images.",
+            "name": "Basic threat intel extractions. Standard relationship. Extract text from images.",
             "extractions": [
                 "pattern_ipv4_address_only",
                 "pattern_ipv4_address_port",
@@ -104,7 +104,7 @@ if __name__ == "__main__":
                 "pattern_phone_number"
             ],
             "relationship_mode": "standard",
-            "extract_text_from_image": False,
+            "extract_text_from_image": True,
             "defang": True
         },
         #da4dddc2-86bd-52b7-8c09-37fc0f72b679

@@ -43,7 +43,7 @@ git clone https://github.com/muchdogesec/obstracts
 
 Obstracts has various settings that are defined in an `.env` file.
 
-To create one using the default settings:
+To create a template for the file:
 
 ```shell
 cp .env.example .env
