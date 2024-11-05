@@ -18,8 +18,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: staging
-          head: main
-          title: "Create PR from main to staging"
+          title: "Auto PR from main to staging"
           body: "This PR was automatically created to sync changes from `main` to `staging`."
           branch: auto-pr-main-to-staging
           delete-branch: true
