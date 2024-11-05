@@ -65,49 +65,7 @@ if __name__ == "__main__":
 
     # Step 3: Create new profiles
     profiles = [
-        #7e73c0b7-3ee1-54cf-86a7-8eaccd9392a2
-        {
-            "name": "Basic threat intel extractions. Standard relationship. Extract text from images.",
-            "extractions": [
-                "pattern_ipv4_address_only",
-                "pattern_ipv4_address_port",
-                "pattern_ipv4_address_cidr",
-                "pattern_ipv6_address_only",
-                "pattern_ipv6_address_port",
-                "pattern_ipv6_address_cidr",
-                "pattern_domain_name_only",
-                "pattern_domain_name_subdomain",
-                "pattern_url",
-                "pattern_url_file",
-                "pattern_host_name",
-                "pattern_url_path",
-                "pattern_host_name",
-                "pattern_host_name_subdomain",
-                "pattern_host_name_url",
-                "pattern_host_name_file",
-                "pattern_host_name_path",
-                "pattern_file_name",
-                "pattern_directory_windows",
-                "pattern_directory_windows_with_file",
-                "pattern_directory_unix",
-                "pattern_directory_unix_file",
-                "pattern_file_hash_md5",
-                "pattern_file_hash_sha_1",
-                "pattern_file_hash_sha_256",
-                "pattern_file_hash_sha_512",
-                "pattern_email_address",
-                "pattern_mac_address",
-                "pattern_windows_registry_key",
-                "pattern_user_agent",
-                "pattern_autonomous_system_number",
-                "pattern_iban_number",
-                "pattern_phone_number"
-            ],
-            "relationship_mode": "standard",
-            "extract_text_from_image": True,
-            "defang": True
-        },
-        #da4dddc2-86bd-52b7-8c09-37fc0f72b679
+        #da4dddc2-86bd-52b7-8c09-37fc0f72b679 
         {
             "name": "Basic threat intel extractions. Standard relationship. Extract text from images.",
             "extractions": [
