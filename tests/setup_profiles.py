@@ -107,6 +107,48 @@ if __name__ == "__main__":
             "extract_text_from_image": True,
             "defang": True
         },
+        # bcf09ec5-d124-528a-bb21-480114231795
+        {
+            "name": "Basic threat intel extractions. AI relationship. Extract text from images.",
+            "extractions": [
+                "pattern_ipv4_address_only",
+                "pattern_ipv4_address_port",
+                "pattern_ipv4_address_cidr",
+                "pattern_ipv6_address_only",
+                "pattern_ipv6_address_port",
+                "pattern_ipv6_address_cidr",
+                "pattern_domain_name_only",
+                "pattern_domain_name_subdomain",
+                "pattern_url",
+                "pattern_url_file",
+                "pattern_host_name",
+                "pattern_url_path",
+                "pattern_host_name",
+                "pattern_host_name_subdomain",
+                "pattern_host_name_url",
+                "pattern_host_name_file",
+                "pattern_host_name_path",
+                "pattern_file_name",
+                "pattern_directory_windows",
+                "pattern_directory_windows_with_file",
+                "pattern_directory_unix",
+                "pattern_directory_unix_file",
+                "pattern_file_hash_md5",
+                "pattern_file_hash_sha_1",
+                "pattern_file_hash_sha_256",
+                "pattern_file_hash_sha_512",
+                "pattern_email_address",
+                "pattern_mac_address",
+                "pattern_windows_registry_key",
+                "pattern_user_agent",
+                "pattern_autonomous_system_number",
+                "pattern_iban_number",
+                "pattern_phone_number"
+            ],
+            "relationship_mode": "ai",
+            "extract_text_from_image": True,
+            "defang": True
+        },
         # dba9d4b8-4b04-5794-96b7-56e74d6b08e1
         {
             "name": "External lookups. Standard relationship. Extract text from images.",
