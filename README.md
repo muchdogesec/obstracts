@@ -87,6 +87,7 @@ For anything else, then the Obstracts codebase is where you need to be :)
 
 ## Useful supporting tools
 
+* [Turn any blog post into structured threat intelligence](https://www.dogesec.com/blog/launching_obstracts_open_source/)
 * [An up-to-date list of threat intel blogs that post cyber threat intelligence research](https://github.com/muchdogesec/awesome_threat_intel_blogs)
 
 ## Support
