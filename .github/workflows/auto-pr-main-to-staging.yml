@@ -1,33 +1,45 @@
-name: Auto PR to Staging
+name: Auto Create Staging PR
 
 on:
   push:
     branches:
       - main
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
-  create-pr:
+  create-staging-pr:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Make a dummy commit to trigger PR
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git commit --allow-empty -m "Sync main to staging"
-      
-      - name: Create PR from main to staging
-        uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: staging
-          title: "Auto PR from main to staging"
-          body: "This PR was automatically created to sync changes from `main` to `staging`."
-          branch: auto-pr-main-to-staging
-          delete-branch: true
+          fetch-depth: 0  # Fetch all history for all branches
+
+      - name: Set up Git identity
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the latest commit message from main
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          # Create a new branch from main
+          BRANCH_NAME="auto-staging-update-$(date +%s)"
+          git checkout -b $BRANCH_NAME main
+          
+          # Push the branch
+          git push origin $BRANCH_NAME
+
+          # Create PR using GitHub CLI
+          gh pr create \
+            --base staging \
+            --head $BRANCH_NAME \
+            --title "Sync staging with main - $(date +%Y-%m-%d)" \
+            --body "This PR was automatically created to sync the following changes from main to staging:
+
+            Latest commit: $COMMIT_MSG
+            
+            Please review these changes carefully before merging to staging environment."
