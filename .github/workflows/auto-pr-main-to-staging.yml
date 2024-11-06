@@ -14,11 +14,6 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for all branches
 
-      - name: Set up Git identity
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
       - name: Create Pull Request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -26,17 +21,10 @@ jobs:
           # Get the latest commit message from main
           COMMIT_MSG=$(git log -1 --pretty=%B)
           
-          # Create a new branch from main
-          BRANCH_NAME="auto-staging-update-$(date +%s)"
-          git checkout -b $BRANCH_NAME main
-          
-          # Push the branch
-          git push origin $BRANCH_NAME
-
           # Create PR using GitHub CLI
           gh pr create \
             --base staging \
-            --head $BRANCH_NAME \
+            --head main \
             --title "Sync staging with main - $(date +%Y-%m-%d)" \
             --body "This PR was automatically created to sync the following changes from main to staging:
 
