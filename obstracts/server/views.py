@@ -46,7 +46,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
         src = token['attrs']['url']
         if not hyperlink.parse(src).absolute:
             try:
-                token['attrs']['url'] = self.request.build_absolute_uri(self.queryset.get(name=src).file)
+                token['attrs']['url'] = self.request.build_absolute_uri(self.queryset.get(name=src).file.url)
             except Exception as e:
                 pass
         return super().image(token, state)

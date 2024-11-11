@@ -194,7 +194,7 @@ if __name__ == "__main__":
     # Step 1: Define test blogs to add
     test_blogs = [
         {
-            "profile_id": "bcf09ec5-d124-528a-bb21-480114231795",
+            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml",
             "include_remote_blogs": False
         },
