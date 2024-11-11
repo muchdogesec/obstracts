@@ -44,24 +44,6 @@ jsonpointer==3.0.0; python_version >= '3.7'
 jsonschema==4.22.0; python_version >= '3.8'
 jsonschema-specifications==2023.12.1; python_version >= '3.8'
 kombu==5.3.7; python_version >= '3.8'
-langchain-core==0.2.11; python_version < '4.0' and python_full_version >= '3.8.1'
-langchain-openai==0.1.14; python_version < '4.0' and python_full_version >= '3.8.1'
-langsmith==0.1.84; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-cloud==0.0.6; python_version >= '3.8' and python_version < '4'
-llama-index==0.10.52; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-agent-openai==0.2.7; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-cli==0.1.12; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-core==0.10.52.post1; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-embeddings-openai==0.1.10; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-indices-managed-llama-cloud==0.2.3; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-legacy==0.9.48; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-llms-openai==0.1.25; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-multi-modal-llms-openai==0.1.7; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-program-openai==0.1.6; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-question-gen-openai==0.1.3; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-readers-file==0.1.28; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-index-readers-llama-parse==0.1.6; python_version < '4.0' and python_full_version >= '3.8.1'
-llama-parse==0.4.6; python_version < '4.0' and python_full_version >= '3.8.1'
 mistune==3.0.2
 marshmallow==3.21.3; python_version >= '3.8'
 multidict==6.0.5; python_version >= '3.7'
@@ -70,7 +52,6 @@ nest-asyncio==1.6.0; python_version >= '3.5'
 networkx==3.3; python_version >= '3.10'
 nltk==3.9.1; python_version >= '3.7'
 numpy==1.26.4; python_version >= '3.9'
-openai==1.35.10; python_full_version >= '3.7.1'
 orjson==3.10.6; python_version >= '3.8'
 packaging==24.1; python_version >= '3.8'
 pandas==2.2.2; python_version >= '3.9'
@@ -127,5 +108,5 @@ zipp==3.19.2; python_version >= '3.8'
 django-storages[s3]==1.14.4
 stix2arango @ https://github.com/muchdogesec/stix2arango/archive/main.zip
 file2txt @ https://github.com/muchdogesec/file2txt/archive/main.zip
-txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/ext_ref-2024-11-05/txt2stix-0.0.1b1-py3-none-any.whl
-dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/dep-2024-11-05/dogesec_commons-0.0.1b0-py3-none-any.whl
+txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/structured-output-2024-11-11/txt2stix-0.0.1b5-py3-none-any.whl
+dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/profile-update-2024-11-11/dogesec_commons-0.0.1b1-py3-none-any.whl
