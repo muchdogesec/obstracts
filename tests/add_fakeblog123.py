@@ -200,7 +200,7 @@ if __name__ == "__main__":
         },
         # following blog tests external lookups
         {
-            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
+            "profile_id": "bcf09ec5-d124-528a-bb21-480114231795",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-decoded.xml",
             "include_remote_blogs": False
         }
