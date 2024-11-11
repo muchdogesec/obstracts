@@ -146,6 +146,7 @@ if __name__ == "__main__":
                 "pattern_phone_number"
             ],
             "relationship_mode": "ai",
+            "ai_settings_relationships": "openai:gpt-4o",
             "extract_text_from_image": True,
             "defang": True
         },
@@ -173,6 +174,25 @@ if __name__ == "__main__":
                 "lookup_country_alpha2"
             ],
             "relationship_mode": "standard",
+            "extract_text_from_image": True,
+            "defang": True
+        },
+        {
+            "name": "AI extractions. AI relationship. Extract text from images.",
+            "extractions": [
+                "ai_mitre_attack_enterprise",
+                "ai_mitre_attack_mobile",
+                "ai_mitre_attack_ics",
+                "ai_mitre_capec",
+                "ai_mitre_cwe"
+            ],
+            "ai_settings_extractions": [
+                "openai:gpt-4o",
+                "anthropic:claude-3-5-sonnet-latest",
+                "gemini:models/gemini-1.5-pro-latest"
+            ],
+            "relationship_mode": "ai",
+            "ai_settings_relationships": "openai:gpt-4o",
             "extract_text_from_image": True,
             "defang": True
         }
