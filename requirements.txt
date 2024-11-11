@@ -108,5 +108,5 @@ zipp==3.19.2; python_version >= '3.8'
 django-storages[s3]==1.14.4
 stix2arango @ https://github.com/muchdogesec/stix2arango/archive/main.zip
 file2txt @ https://github.com/muchdogesec/file2txt/archive/main.zip
-txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/structured-output-2024-11-11/txt2stix-0.0.1b5-py3-none-any.whl
+txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/main-2024-11-11/txt2stix-0.0.1b5-py3-none-any.whl
 dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2024-11-11/dogesec_commons-0.0.1b1-py3-none-any.whl
