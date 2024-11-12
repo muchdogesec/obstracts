@@ -37,6 +37,7 @@ import textwrap
 import mistune
 from mistune.renderers.markdown import MarkdownRenderer
 from mistune.util import unescape
+
 class MarkdownImageReplacer(MarkdownRenderer):
     def __init__(self, request, queryset):
         self.request = request
@@ -55,7 +56,10 @@ class MarkdownImageReplacer(MarkdownRenderer):
         token['raw'] = unescape(token['raw'])
         return super().codespan(token, state)
 
-
+    @classmethod
+    def get_markdown(cls, request, md_text, images_qs: 'models.models.BaseManager[models.FileImage]'):
+        modify_links = mistune.create_markdown(escape=False, renderer=cls(request, images_qs))
+        return modify_links(md_text)
 
 @extend_schema_view(
     list=extend_schema(
@@ -446,8 +450,8 @@ class PostView(viewsets.ViewSet):
     @decorators.action(detail=True, methods=["GET"])
     def markdown(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
-        modify_links = mistune.create_markdown(escape=False, renderer=MarkdownImageReplacer(self.request, models.FileImage.objects.filter(report__post_id=post_id)))
-        return FileResponse(streaming_content=modify_links(obj.markdown_file.read().decode()), content_type='text/markdown', filename='markdown.md')
+        resp_text = MarkdownImageReplacer.get_markdown(request, obj.markdown_file.read().decode(), models.FileImage.objects.filter(report__post_id=post_id))
+        return FileResponse(streaming_content=resp_text, content_type='text/markdown', filename='markdown.md')
     
     @extend_schema(
             responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
@@ -484,6 +488,11 @@ class PostView(viewsets.ViewSet):
         for c in ["edge_collection", "vertex_collection"]:
             helper.execute_query(query, bind_vars={"@collection": f"{collection}_{c}", 'post_id': post_id}, paginate=False)
 
+
+    @decorators.action(methods=["GET"], detail=True, serializer_class=JobSerializer)
+    def summarize(self, request, feed_id=None, post_id=None):
+        obj = get_object_or_404(models.File, post_id=post_id)
+        return FileResponse(streaming_content=obj.summary, content_type='text/markdown', filename='summary.md')
 
 @extend_schema_view(
     list=extend_schema(
