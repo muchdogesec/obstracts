@@ -177,7 +177,7 @@ if __name__ == "__main__":
             "extract_text_from_image": True,
             "defang": True
         },
-        #
+        # a76c5353-a84b-552e-bbc4-ff6d0dc045e4
         {
             "name": "AI extractions. AI relationship. Extract text from images.",
             "extractions": [
