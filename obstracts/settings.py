@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import copy
 import logging
 import os
 from pathlib import Path
@@ -170,7 +171,7 @@ if os.getenv("USE_S3_STORAGE") == "1":
             'location': 'media',
         },
     }
-    STORAGES["staticfiles"] = STORAGES["default"].copy()
+    STORAGES["staticfiles"] = copy.deepcopy(STORAGES["default"])
     STORAGES["staticfiles"]["OPTIONS"]['location'] = 'staticfiles'
 
 
