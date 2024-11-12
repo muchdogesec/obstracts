@@ -60,7 +60,7 @@ def add_feed(profile_id, url, include_remote_blogs):
         print(f"Failed to add the new feed. Status code: {response.status_code}")
         return None, None
 
-def wait_for_job_success(job_id, retries=10, delay=20):
+def wait_for_job_success(job_id, retries=10, delay=60):
     job_url = f"http://localhost:8001/api/v1/jobs/{job_id}/"
     print(f"Checking job status for job ID: {job_id}...")
 
