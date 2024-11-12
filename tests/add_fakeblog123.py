@@ -193,18 +193,30 @@ if __name__ == "__main__":
 
     # Step 1: Define test blogs to add
     test_blogs = [
+     # Basic threat intel extractions. AI relationship. Extract text from images.
         {
             "profile_id": "bcf09ec5-d124-528a-bb21-480114231795",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml",
             "include_remote_blogs": False
         },
-        # following blog tests external lookups
+    # Basic threat intel extractions. Standard relationship. Extract text from images.
         {
             "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-decoded.xml",
             "include_remote_blogs": False
+        },
+    # AI extractions. AI relationship. Extract text from images.
+        {
+            "profile_id": "a76c5353-a84b-552e-bbc4-ff6d0dc045e4",
+            "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded-partial.xml",
+            "include_remote_blogs": False
+        },
+    # External lookups. Standard relationship. Extract text from images.
+        {
+            "profile_id": "dba9d4b8-4b04-5794-96b7-56e74d6b08e1",
+            "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-decoded-partial.xml",
+            "include_remote_blogs": False
         }
-        # Additional test blogs can be added here as needed
     ]
 
     # Step 2: Delete the specific feeds matching the blog URLs
