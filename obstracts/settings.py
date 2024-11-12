@@ -246,3 +246,5 @@ DEFAULT_PAGE_SIZE = int(os.getenv("DEFAULT_PAGE_SIZE", 50))
 GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY")
 if not GOOGLE_VISION_API_KEY:
     logging.warning("GOOGLE_VISION_API_KEY not set")
+
+INPUT_TOKEN_LIMIT = int(os.environ["INPUT_TOKEN_LIMIT"])
