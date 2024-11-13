@@ -26,9 +26,7 @@ class ObstractsAutoSchema(AutoSchema):
         OpenApiParameter('job_id', type=uuid.UUID, location=OpenApiParameter.PATH, description="You can search and retrieve a Job ID for a blog using the Get Jobs endpoint."),
         OpenApiParameter('object_id', type=str, location=OpenApiParameter.PATH, description="This is the STIX ID of an objects, e.g. `threat-actor--dfaa8d77-07e2-4e28-b2c8-92e9f7b04428`. You can search and retrieve a STIX object ID using the Get Objects SDO/SCO/SRO endpoints."),
         OpenApiParameter('profile_id', type=str, location=OpenApiParameter.PATH, description="You can search and retrieve a Profile ID for a Profile you have created using the Get Profiles endpoint."),
-        OpenApiParameter('extractor_id', type=str, location=OpenApiParameter.PATH, description="You can search and retrieve an Alias ID using the Get Aliases endpoint. An example ID is; `country_name_to_iso2`"),
-        OpenApiParameter('whitelist_id', type=str, location=OpenApiParameter.PATH, description="You can search and retrieve a Whitelist ID using the Get Whitelists endpoint. An example ID is; `alexa_top_1000_domains`"),
-        OpenApiParameter('alias_id', type=str, location=OpenApiParameter.PATH, description="You can search and retrieve an Extractor ID using the Get Extractor endpoint. An example ID is; `pattern_ipv4_address_only`"),
+        OpenApiParameter('extractor_id', type=str, location=OpenApiParameter.PATH, description="You can search and retrieve an Extractor ID using the Get Extractors endpoint. An example ID is; `lookup_mitre_cwe`"),
     ]
     def get_override_parameters(self):
         params = super().get_override_parameters()

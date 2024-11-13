@@ -23,6 +23,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from django.conf import settings
 import dogesec_commons.objects.views as arango_views
 from dogesec_commons.stixifier.views import ProfileView, ExtractorsView
+
 API_VERSION = "v1"
 
 router = routers.SimpleRouter(use_regex_path=False)
