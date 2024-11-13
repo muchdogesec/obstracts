@@ -19,7 +19,7 @@ class CreateTaskSerializer(serializers.Serializer):
         'does_not_exist': _('Invalid profile with id "{pk_value}" - object does not exist.'),
         'incorrect_type': _('Incorrect type. Expected profile id (uuid), received {data_type}.'),
     })
-    ai_summary_provider = serializers.CharField(allow_blank=True, allow_null=True, validators=[parse_summarizer_model], default=None)
+    ai_summary_provider = serializers.CharField(allow_blank=True, allow_null=True, validators=[parse_summarizer_model], default=None, write_only=True, help_text="AI Summary provider int the format provider:model e.g `openai:gpt-3.5-turbo`")
 
 class FeedSerializer(CreateTaskSerializer):
     url = serializers.URLField(help_text="The URL of the RSS or ATOM feed")
