@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 from urllib.parse import urljoin
@@ -205,12 +206,14 @@ class FeedView(viewsets.ViewSet):
         )
 
     def create(self, request, *args, **kwargs):
-        profile_id = self.parse_profile(request)
+
+        s = serializers.FeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
         resp = self.make_request(request, "/api/v1/feeds/")
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, profile_id)
+            job = tasks.new_task(out, s.data['profile_id'], s.data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
@@ -264,7 +267,7 @@ class FeedView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.data.get("profile_id", feed.profile.id))
+            job = tasks.new_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
@@ -366,7 +369,7 @@ class PostView(viewsets.ViewSet):
             self.remove_report(post_id, feed.collection_name)
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -383,7 +386,7 @@ class PostView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
@@ -492,7 +495,9 @@ class PostView(viewsets.ViewSet):
     @decorators.action(methods=["GET"], detail=True, serializer_class=JobSerializer)
     def summarize(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
-        return FileResponse(streaming_content=obj.summary, content_type='text/markdown', filename='summary.md')
+        if not obj.summary:
+            raise exceptions.NotFound(f"No Summary for post")
+        return FileResponse(streaming_content=io.BytesIO(obj.summary.encode()), content_type='text/markdown', filename='summary.md')
 
 @extend_schema_view(
     list=extend_schema(
