@@ -22,7 +22,7 @@ from rest_framework import routers
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from django.conf import settings
 import dogesec_commons.objects.views as arango_views
-from dogesec_commons.stixifier.views import ProfileView, ExtractorsView, WhitelistsView, AliasesView
+from dogesec_commons.stixifier.views import ProfileView, ExtractorsView
 
 API_VERSION = "v1"
 
@@ -43,8 +43,6 @@ router.register("object", arango_views.ObjectsWithReportsView, "object-view-orig
 
 # txt2stix views
 router.register('extractors', ExtractorsView, "extractors-view")
-router.register('whitelists', WhitelistsView, "whitelists-view")
-router.register('aliases', AliasesView, "aliases-view")
 
 
 urlpatterns = [
