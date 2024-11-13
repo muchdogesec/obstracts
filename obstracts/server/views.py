@@ -4,8 +4,8 @@ import logging
 from urllib.parse import urljoin
 from django.http import HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, decorators, exceptions, status
-from drf_spectacular.utils import OpenApiParameter
+from rest_framework import viewsets, decorators, exceptions, status, renderers
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
@@ -38,6 +38,10 @@ import textwrap
 import mistune
 from mistune.renderers.markdown import MarkdownRenderer
 from mistune.util import unescape
+
+class PlainMarkdownRenderer(renderers.BaseRenderer):
+    media_type = "text/markdown"
+    format = "text/markdown"
 
 class MarkdownImageReplacer(MarkdownRenderer):
     def __init__(self, request, queryset):
@@ -492,7 +496,12 @@ class PostView(viewsets.ViewSet):
             helper.execute_query(query, bind_vars={"@collection": f"{collection}_{c}", 'post_id': post_id}, paginate=False)
 
 
-    @decorators.action(methods=["GET"], detail=True, serializer_class=JobSerializer)
+    @extend_schema(
+            responses=None,
+            description="get summary of the file content",
+            summary="get summary of the file content",
+    )
+    @decorators.action(methods=["GET"], detail=True)
     def summarize(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
         if not obj.summary:
