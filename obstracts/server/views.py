@@ -498,15 +498,16 @@ class PostView(viewsets.ViewSet):
 
     @extend_schema(
             responses=None,
-            description="get summary of the file content",
-            summary="get summary of the file content",
+            description="Get the summary of the Post",
+            summary="Get the summary of the post if `ai_summary_provider` was enabled.",
     )
     @decorators.action(methods=["GET"], detail=True)
-    def summarize(self, request, feed_id=None, post_id=None):
+    def summary(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
         if not obj.summary:
             raise exceptions.NotFound(f"No Summary for post")
         return FileResponse(streaming_content=io.BytesIO(obj.summary.encode()), content_type='text/markdown', filename='summary.md')
+
 
 @extend_schema_view(
     list=extend_schema(
