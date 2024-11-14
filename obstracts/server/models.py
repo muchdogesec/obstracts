@@ -1,22 +1,9 @@
-import logging
 import os
-from pathlib import Path
-import sys
-from typing import Iterable
-from django.conf import settings
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
-import uuid
 from django.utils.text import slugify
-from urllib.parse import urlparse
-from functools import partial
 import txt2stix, txt2stix.extractions
 from django.core.exceptions import ValidationError
-from django.core import files
 from dogesec_commons.stixifier.models import Profile
-from django.db.models.signals import post_delete, pre_save
-from django.dispatch import receiver
-from django.core.files.storage import default_storage
 # Create your models here.
 
 
@@ -78,13 +65,6 @@ class File(models.Model):
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
     summary = models.CharField(max_length=65535, null=True)
 
-@receiver(post_delete, sender=FeedProfile)
-def remove_files_on_delete(sender, instance: FeedProfile, **kwargs):
-    try:
-        default_storage.delete(str(instance.id))
-    except Exception as e:
-        logging.info(e)
-        logging.debug(e)
 
 class FileImage(models.Model):
     report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
