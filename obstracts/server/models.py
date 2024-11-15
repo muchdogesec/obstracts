@@ -44,7 +44,7 @@ class FeedProfile(models.Model):
     id = models.UUIDField(primary_key=True)
     collection_name = models.CharField(max_length=200)
     last_run = models.DateTimeField(null=True)
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    profile = models.ForeignKey(Profile, on_delete=models.SET_NULL)
     title = models.CharField(max_length=1000)
 
     def save(self, *args, **kwargs) -> None:
@@ -64,7 +64,7 @@ class File(models.Model):
     post_id = models.UUIDField(primary_key=True)
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
     summary = models.CharField(max_length=65535, null=True)
-
+    profile = models.ForeignKey(Profile, on_delete=models.PROTECT, default=None, null=True)
 
 class FileImage(models.Model):
     report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
