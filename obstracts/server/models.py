@@ -35,6 +35,7 @@ def upload_to_func(instance: 'File', filename):
 class File(models.Model):
     post_id = models.UUIDField(primary_key=True)
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
+    summary = models.CharField(max_length=65535, null=True)
 
 
 class FileImage(models.Model):

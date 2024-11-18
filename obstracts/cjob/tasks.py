@@ -6,6 +6,7 @@ from django.conf import settings
 import typing
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
+from dogesec_commons.stixifier.summarizer import parse_summarizer_model
 from ..server.models import Job, FeedProfile
 from ..server import models
 
@@ -78,27 +79,27 @@ def poll_job(job_id):
         current_task.retry(max_retries=200)
 
 
-def new_task(feed_dict, profile_id):
+def new_task(feed_dict, profile_id, summary_provider):
     kwargs = dict(id=feed_dict["feed_id"], profile_id=profile_id)
     if title := feed_dict.get("title"):
         kwargs.update(title=title)
     feed, _ = FeedProfile.objects.update_or_create(defaults=kwargs, id=feed_dict["feed_id"])
     job = Job.objects.create(id=feed_dict["job_id"], feed=feed, profile_id=profile_id)
-    (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
+    (poll_job.s(job.id) | start_processing.s(job.id, summary_provider)).apply_async(
         countdown=5, root_id=job.id, task_id=job.id
     )
     return job
 
-def new_post_patch_task(input_dict, profile_id):
+def new_post_patch_task(input_dict, profile_id, summary_provider):
     job = Job.objects.create(id=input_dict["job_id"], feed_id=input_dict["feed_id"], profile_id=profile_id)
-    (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
+    (poll_job.s(job.id) | start_processing.s(job.id, summary_provider)).apply_async(
         countdown=5, root_id=job.id, task_id=job.id
     )
     return job
 
 
 @shared_task
-def start_processing(h4f_job, job_id):
+def start_processing(h4f_job, job_id, summary_provider):
     job = Job.objects.get(id=job_id)
     logging.info(
         f"processing {job_id=}, {job.feed_id=}, {current_task.request.root_id=}"
@@ -128,7 +129,7 @@ def start_processing(h4f_job, job_id):
             )
             break
     logging.info("processing %d posts for job %s", len(posts), job_id)
-    tasks = [process_post.si(job_id, post) for post in posts]
+    tasks = [process_post.si(job_id, post, summary_provider) for post in posts]
     tasks.append(job_completed_with_error.si(job_id))
     return chain(tasks).apply_async()
 
@@ -142,13 +143,13 @@ def set_job_completed(job_id):
 
 
 @shared_task
-def process_post(job_id, post, *args):
+def process_post(job_id, post, summary_provider, *args):
     job = Job.objects.get(id=job_id)
     post_id = str(post['id'])
     try:
-        file = io.BytesIO(post['description'].encode())
-        file.name = f"post-{post_id}.html"
-        processor = StixifyProcessor(file, job.profile, job_id=job.id, file2txt_mode="html_article", report_id=post_id, base_url=post['link'])
+        stream = io.BytesIO(post['description'].encode())
+        stream.name = f"post-{post_id}.html"
+        processor = StixifyProcessor(stream, job.profile, job_id=job.id, file2txt_mode="html_article", report_id=post_id, base_url=post['link'])
         processor.collection_name = job.feed.collection_name
         properties = ReportProperties(
             name=post['title'],
@@ -165,8 +166,17 @@ def process_post(job_id, post, *args):
         )
         processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
         processor.process()
-
         file, _ = models.File.objects.get_or_create(post_id=post_id)
+        if summary_provider:
+            logging.info(f"summarizing report {processor.report_id} using `{summary_provider}`")
+            try:
+                summary_provider = parse_summarizer_model(summary_provider)
+                file.summary = summary_provider.summarize(processor.output_md)
+            except BaseException as e:
+                print(f"got err {e}")
+                logging.info(f"got err {e}", exc_info=True)
+
+
         
         file.markdown_file.save('markdown.md', processor.md_file.open(), save=True)
         models.FileImage.objects.filter(report=file).delete() # remove old references
