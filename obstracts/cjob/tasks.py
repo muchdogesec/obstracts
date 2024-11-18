@@ -166,7 +166,8 @@ def process_post(job_id, post, summary_provider, *args):
         )
         processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
         processor.process()
-        file, _ = models.File.objects.get_or_create(post_id=post_id)
+
+        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id))
         if summary_provider:
             logging.info(f"summarizing report {processor.report_id} using `{summary_provider}`")
             try:
@@ -176,8 +177,6 @@ def process_post(job_id, post, summary_provider, *args):
                 print(f"got err {e}")
                 logging.info(f"got err {e}", exc_info=True)
 
-
-        
         file.markdown_file.save('markdown.md', processor.md_file.open(), save=True)
         models.FileImage.objects.filter(report=file).delete() # remove old references
 
