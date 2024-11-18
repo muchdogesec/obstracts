@@ -1,10 +1,11 @@
+import io
 import json
 import logging
 from urllib.parse import urljoin
 from django.http import HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, decorators, exceptions, status
-from drf_spectacular.utils import OpenApiParameter
+from rest_framework import viewsets, decorators, exceptions, status, renderers
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
@@ -37,6 +38,11 @@ import textwrap
 import mistune
 from mistune.renderers.markdown import MarkdownRenderer
 from mistune.util import unescape
+
+class PlainMarkdownRenderer(renderers.BaseRenderer):
+    media_type = "text/markdown"
+    format = "text/markdown"
+
 class MarkdownImageReplacer(MarkdownRenderer):
     def __init__(self, request, queryset):
         self.request = request
@@ -55,7 +61,10 @@ class MarkdownImageReplacer(MarkdownRenderer):
         token['raw'] = unescape(token['raw'])
         return super().codespan(token, state)
 
-
+    @classmethod
+    def get_markdown(cls, request, md_text, images_qs: 'models.models.BaseManager[models.FileImage]'):
+        modify_links = mistune.create_markdown(escape=False, renderer=cls(request, images_qs))
+        return modify_links(md_text)
 
 @extend_schema_view(
     list=extend_schema(
@@ -201,12 +210,14 @@ class FeedView(viewsets.ViewSet):
         )
 
     def create(self, request, *args, **kwargs):
-        profile_id = self.parse_profile(request)
+
+        s = serializers.FeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
         resp = self.make_request(request, "/api/v1/feeds/")
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, profile_id)
+            job = tasks.new_task(out, s.data['profile_id'], s.data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
@@ -260,7 +271,7 @@ class FeedView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.data.get("profile_id", feed.profile.id))
+            job = tasks.new_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
@@ -362,7 +373,7 @@ class PostView(viewsets.ViewSet):
             self.remove_report(post_id, feed.collection_name)
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -379,7 +390,7 @@ class PostView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
@@ -446,8 +457,8 @@ class PostView(viewsets.ViewSet):
     @decorators.action(detail=True, methods=["GET"])
     def markdown(self, request, feed_id=None, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
-        modify_links = mistune.create_markdown(escape=False, renderer=MarkdownImageReplacer(self.request, models.FileImage.objects.filter(report__post_id=post_id)))
-        return FileResponse(streaming_content=modify_links(obj.markdown_file.read().decode()), content_type='text/markdown', filename='markdown.md')
+        resp_text = MarkdownImageReplacer.get_markdown(request, obj.markdown_file.read().decode(), models.FileImage.objects.filter(report__post_id=post_id))
+        return FileResponse(streaming_content=resp_text, content_type='text/markdown', filename='markdown.md')
     
     @extend_schema(
             responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
@@ -483,6 +494,19 @@ class PostView(viewsets.ViewSet):
         """
         for c in ["edge_collection", "vertex_collection"]:
             helper.execute_query(query, bind_vars={"@collection": f"{collection}_{c}", 'post_id': post_id}, paginate=False)
+
+
+    @extend_schema(
+            responses=None,
+            description="Get the summary of the Post",
+            summary="Get the summary of the post if `ai_summary_provider` was enabled.",
+    )
+    @decorators.action(methods=["GET"], detail=True)
+    def summary(self, request, feed_id=None, post_id=None):
+        obj = get_object_or_404(models.File, post_id=post_id)
+        if not obj.summary:
+            raise exceptions.NotFound(f"No Summary for post")
+        return FileResponse(streaming_content=io.BytesIO(obj.summary.encode()), content_type='text/markdown', filename='summary.md')
 
 
 @extend_schema_view(

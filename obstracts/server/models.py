@@ -22,7 +22,10 @@ def upload_to_func(instance: 'File|FileImage', filename):
         instance = instance.report
     return os.path.join(str(instance.feed.id), 'posts', str(instance.post_id), filename)
 
-
+class File(models.Model):
+    post_id = models.UUIDField(primary_key=True)
+    markdown_file = models.FileField(upload_to=upload_to_func, null=True)
+    summary = models.CharField(max_length=65535, null=True)
 
 class JobState(models.TextChoices):
     RETRIEVING = "retrieving"
