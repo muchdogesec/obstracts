@@ -225,7 +225,7 @@ class FeedView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.data['profile_id'], s.data['ai_summary_provider'])
+            job = tasks.new_task(out, s.validated_data['profile_id'], s.validated_data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
