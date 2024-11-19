@@ -525,10 +525,14 @@ class PostView(viewsets.ViewSet):
 
     @extend_schema(
             responses=None,
-            summary="Get the summary of the post if `ai_summary_provider` was enabled.",
+            summary="Get a summary of the post content",
             description=textwrap.dedent(
                 """
-                Get the summary of the Post
+                If `ai_summary_provider` was enabled, this endpoint will return a summary of the post. This is useful to get a quick understanding of the contents of the post.
+
+                The prompt used to generate the summary can be seen in [dogesec_commons here](https://github.com/muchdogesec/dogesec_commons/blob/main/dogesec_commons/stixifier/summarizer.py).
+
+                If you want a summary but `ai_summary_provider` was not enabled during processing, you will need to process the post again.
                 """
             ),        
     )
