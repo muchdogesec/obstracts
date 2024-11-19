@@ -218,10 +218,10 @@ class FeedView(viewsets.ViewSet):
         )
 
     def create(self, request, *args, **kwargs):
-
+        request_body = request.body
         s = serializers.FeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        resp = self.make_request(request, "/api/v1/feeds/")
+        resp = self.make_request(request, "/api/v1/feeds/", request_body=request_body)
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
