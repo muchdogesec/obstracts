@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "rest_framework",
     'dogesec_commons.objects.app.ArangoObjectsViewApp',
     "drf_spectacular",
+    'django.contrib.postgres',
     "obstracts.server",
 ]
 
@@ -185,6 +186,7 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "obstracts.server.autoschema.ObstractsAutoSchema",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": [],
+    'EXCEPTION_HANDLER': "obstracts.server.autoschema.custom_exception_handler",
 }
 
 

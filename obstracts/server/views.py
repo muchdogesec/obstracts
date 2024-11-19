@@ -134,7 +134,20 @@ class FeedView(viewsets.ViewSet):
     serializer_class = H4fFeedSerializer
     pagination_class = Pagination("feeds")
 
-
+    @property
+    def action(self):
+        action = self._action
+        if action == 'list':
+            return 'list_objects'
+        return action
+    
+    @property
+    def list_objects(self):
+        return self.list
+    
+    @action.setter
+    def action(self, value):
+        self._action = value
 
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
     ordering_fields = [

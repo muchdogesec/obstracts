@@ -227,6 +227,6 @@ class H4fPostSerializer(serializers.Serializer):
 
 
 class ErrorSerializer(serializers.Serializer):
-    message = serializers.CharField(required=True)
+    message = serializers.CharField(required=False)
     code    = serializers.IntegerField(required=True)
-    details = serializers.DictField(required=False)
+    details = serializers.JSONField(required=False)

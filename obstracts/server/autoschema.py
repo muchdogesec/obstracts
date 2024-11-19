@@ -1,13 +1,22 @@
-from typing import List, Literal
+from typing import List
 import uuid
 from drf_spectacular.openapi import AutoSchema
-from drf_spectacular.plumbing import ResolvedComponent
-from rest_framework.serializers import Serializer
 import uritemplate
 from .serializers import ErrorSerializer
 from drf_spectacular.utils import OpenApiResponse, OpenApiExample, OpenApiParameter
-from drf_spectacular.contrib.django_filters import DjangoFilterExtension, get_view_model, get_manager
+from drf_spectacular.contrib.django_filters import DjangoFilterExtension, get_view_model
 
+from rest_framework.views import exception_handler
+from rest_framework.exceptions import ValidationError
+from django.core import exceptions
+
+def custom_exception_handler(exc, context):
+    if isinstance(exc, exceptions.ValidationError):
+        exc = ValidationError(detail=exc.messages, code=exc.code)
+    resp = exception_handler(exc, context)
+    if resp is not None:
+        resp.data = dict(code=resp.status_code, details=resp.data)
+    return resp
 
 
 class OverrideDjangoFilterExtension(DjangoFilterExtension):
