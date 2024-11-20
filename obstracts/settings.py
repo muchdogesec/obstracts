@@ -186,7 +186,7 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "obstracts.server.autoschema.ObstractsAutoSchema",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": [],
-    'EXCEPTION_HANDLER': "obstracts.server.autoschema.custom_exception_handler",
+    'EXCEPTION_HANDLER': "dogesec_commons.utils.custom_exception_handler",
 }
 
 

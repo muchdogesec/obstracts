@@ -1,23 +1,15 @@
 from typing import List
 import uuid
 from drf_spectacular.openapi import AutoSchema
+from dogesec_commons.utils.autoschema import CustomAutoSchema
 import uritemplate
-from .serializers import ErrorSerializer
+from dogesec_commons.utils.serializers import CommonErrorSerializer as ErrorSerializer
 from drf_spectacular.utils import OpenApiResponse, OpenApiExample, OpenApiParameter
 from drf_spectacular.contrib.django_filters import DjangoFilterExtension, get_view_model
 
 from rest_framework.views import exception_handler
 from rest_framework.exceptions import ValidationError
 from django.core import exceptions
-
-def custom_exception_handler(exc, context):
-    if isinstance(exc, exceptions.ValidationError):
-        exc = ValidationError(detail=exc.messages, code=exc.code)
-    resp = exception_handler(exc, context)
-    if resp is not None:
-        resp.data = dict(code=resp.status_code, details=resp.data)
-    return resp
-
 
 class OverrideDjangoFilterExtension(DjangoFilterExtension):
     priority = 1
@@ -28,7 +20,7 @@ class OverrideDjangoFilterExtension(DjangoFilterExtension):
         return super().get_schema_operation_parameters(auto_schema, *args, **kwargs)
 
 
-class ObstractsAutoSchema(AutoSchema):
+class ObstractsAutoSchema(CustomAutoSchema):
     url_path_params: list[OpenApiParameter] = [
         OpenApiParameter('feed_id', type=uuid.UUID, location=OpenApiParameter.PATH, description="You can search and retrieve a Feed ID for a blog using the Get Feeds endpoint."),
         OpenApiParameter('post_id', type=uuid.UUID, location=OpenApiParameter.PATH, description="You can search and retrieve a Post ID for a blog using the Get Posts for a Feed endpoint."),
@@ -54,7 +46,7 @@ class ObstractsAutoSchema(AutoSchema):
         if getattr(serializer, "get_schema", None):
             return serializer.get_schema()
         return super()._map_serializer(serializer, direction, bypass_extensions)
-
+    
 
 DEFAULT_400_ERROR = OpenApiResponse(
     ErrorSerializer,
