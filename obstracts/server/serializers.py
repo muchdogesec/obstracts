@@ -206,6 +206,11 @@ class H4fPostSerializer(serializers.Serializer):
                     "readOnly": true,
                     "description": "content type of the description"
                 },
+                "ai_summary_provider": {
+                    "type": "string",
+                    "readOnly": true,
+                    "description": "provider used for summary"
+                },
                 "added_manually": {
                     "type": "boolean"
                 },
@@ -215,6 +220,11 @@ class H4fPostSerializer(serializers.Serializer):
                         "type": "string"
                     },
                     "description": "categories of the post"
+                },
+                "ai_summary_provider": {
+                    "type": "string",
+                    "readOnly": true,
+                    "description": "provider used for summary"
                 }
             },
             "required": [

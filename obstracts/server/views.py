@@ -372,14 +372,33 @@ class PostView(viewsets.ViewSet):
         job_id = UUIDFilter(label="Filter the Post by Job ID the Post was downloaded in.")
 
     def list(self, request, *args, feed_id=None, **kwargs):
-        return FeedView.make_request(
+        return self.add_ai_summary_provider(FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/"
-        )
+        ))
 
     def retrieve(self, request, *args, feed_id=None, post_id=None):
-        return FeedView.make_request(
+        return self.add_ai_summary_provider(FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/{post_id}"
-        )
+        ))
+
+    def add_ai_summary_provider(self, response: HttpResponse):
+        if response.status_code != 200:
+            return response
+        data = json.loads(response.content)
+
+        def get_providers(ids):
+            data = {}
+            for post_id, ai_summary_provider in models.File.objects.filter(post_id__in=ids).values_list('post_id', 'ai_summary_provider'):
+                data[str(post_id)] = ai_summary_provider
+            return data
+        if data.get('id'):
+            post_id = data['id']
+            data["ai_summary_provider"] = get_providers([post_id]).get(post_id)
+        else:
+            id_provider_map = get_providers([d['id'] for d in data['posts']])
+            for d in data['posts']:
+                d["ai_summary_provider"] = id_provider_map.get(d['id'])
+        return Response(data, status=response.status_code)
 
     def partial_update(self, request, *args, **kwargs):
         request_body = request.body

@@ -167,7 +167,7 @@ def process_post(job_id, post, summary_provider, *args):
         processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
         processor.process()
 
-        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id))
+        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, ai_summary_provider=summary_provider))
         if summary_provider:
             logging.info(f"summarizing report {processor.report_id} using `{summary_provider}`")
             try:
