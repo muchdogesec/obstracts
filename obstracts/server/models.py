@@ -1,20 +1,9 @@
-import logging
 import os
-from pathlib import Path
-import sys
-from typing import Iterable
-from django.conf import settings
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
-import uuid
 from django.utils.text import slugify
-from urllib.parse import urlparse
-from functools import partial
 import txt2stix, txt2stix.extractions
 from django.core.exceptions import ValidationError
-from django.core import files
 from dogesec_commons.stixifier.models import Profile
-
 # Create your models here.
 
 
@@ -28,23 +17,15 @@ def validate_extractor(types, name):
     raise ValidationError(f"{name} does not exist", 400)
 
 
-def upload_to_func(instance: 'File', filename):
-    return os.path.join(str(instance.post_id), 'files', filename)
-
+def upload_to_func(instance: 'File|FileImage', filename):
+    if isinstance(instance, FileImage):
+        instance = instance.report
+    return os.path.join(str(instance.feed.id), 'posts', str(instance.post_id), filename)
 
 class File(models.Model):
     post_id = models.UUIDField(primary_key=True)
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
-
-
-class FileImage(models.Model):
-    report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
-    file = models.ImageField(upload_to=upload_to_func)
-    name = models.CharField(max_length=256)
-
-    @property
-    def post_id(self):
-        return self.report.post_id
+    summary = models.CharField(max_length=65535, null=True)
 
 class JobState(models.TextChoices):
     RETRIEVING = "retrieving"
@@ -66,7 +47,7 @@ class FeedProfile(models.Model):
     id = models.UUIDField(primary_key=True)
     collection_name = models.CharField(max_length=200)
     last_run = models.DateTimeField(null=True)
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
     title = models.CharField(max_length=1000)
 
     def save(self, *args, **kwargs) -> None:
@@ -76,7 +57,26 @@ class FeedProfile(models.Model):
     def generate_collection_name(self):
         if self.collection_name:
             return self.collection_name
-        return f"{slugify(self.title)}_{self.id}".strip("_")
+        slug = slugify(self.title).replace('-', '_')
+        return f"{slug}_{self.id}".strip("_").replace('-', '')
+    
+
+
+class File(models.Model):
+    feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, default=None, null=True)
+    post_id = models.UUIDField(primary_key=True)
+    markdown_file = models.FileField(upload_to=upload_to_func, null=True)
+    summary = models.CharField(max_length=65535, null=True)
+    profile = models.ForeignKey(Profile, on_delete=models.PROTECT, default=None, null=True)
+
+class FileImage(models.Model):
+    report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
+    file = models.ImageField(upload_to=upload_to_func)
+    name = models.CharField(max_length=256)
+
+    @property
+    def post_id(self):
+        return self.report.post_id
 
 class Job(models.Model):
     id = models.UUIDField(primary_key=True)

@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     'django.contrib.postgres',
     "obstracts.server",
+    'django_cleanup.apps.CleanupConfig',
 ]
 
 MIDDLEWARE = [
@@ -161,20 +162,22 @@ STORAGES = {
 }
 
 if os.getenv("USE_S3_STORAGE") == "1":
+    options = {
+        "bucket_name": os.environ["R2_BUCKET_NAME"],
+        "endpoint_url": os.environ["R2_ENDPOINT_URL"],
+        "access_key": os.environ["R2_ACCESS_KEY"],
+        "secret_key": os.environ["R2_SECRET_KEY"],
+        'custom_domain': os.environ["R2_CUSTOM_DOMAIN"],
+        'location': 'feed',
+    }
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
-        "OPTIONS": {
-            "bucket_name": os.environ["R2_BUCKET_NAME"],
-            "endpoint_url": os.environ["R2_ENDPOINT_URL"],
-            "access_key": os.environ["R2_ACCESS_KEY"],
-            "secret_key": os.environ["R2_SECRET_KEY"],
-            'custom_domain': os.environ["R2_CUSTOM_DOMAIN"],
-            'location': 'media',
-        },
+        "OPTIONS": options,
     }
-    STORAGES["staticfiles"] = copy.deepcopy(STORAGES["default"])
-    STORAGES["staticfiles"]["OPTIONS"]['location'] = 'staticfiles'
-
+    STORAGES["staticfiles"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {**options, 'location':'django/staticfiles'},
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

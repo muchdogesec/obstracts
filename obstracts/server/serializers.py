@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import Profile, Job, FileImage
-from drf_spectacular.utils import extend_schema_serializer, extend_schema_field
+from drf_spectacular.utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
+from dogesec_commons.stixifier.summarizer import parse_summarizer_model
 
 
 class JobSerializer(serializers.ModelSerializer):
@@ -12,25 +13,30 @@ class JobSerializer(serializers.ModelSerializer):
         # fields = "__all__"
         exclude = ["feed", "profile"]
 
+class ProfileIDField(serializers.PrimaryKeyRelatedField):
+    def __init__(self, **kwargs):
+        super().__init__(queryset=Profile.objects, error_messages={
+                'required': _('This field is required.'),
+                'does_not_exist': _('Invalid profile with id "{pk_value}" - object does not exist.'),
+                'incorrect_type': _('Incorrect type. Expected profile id (uuid), received {data_type}.'),
+            },**kwargs)
+        
+    def to_internal_value(self, data):
+        return super().to_internal_value(data).pk
 
-class FeedSerializer(serializers.Serializer):
-    profile_id = serializers.PrimaryKeyRelatedField(queryset=Profile.objects, error_messages={
-        'required': _('This field is required.'),
-        'does_not_exist': _('Invalid profile with id "{pk_value}" - object does not exist.'),
-        'incorrect_type': _('Incorrect type. Expected profile id (uuid), received {data_type}.'),
-    })
+class CreateTaskSerializer(serializers.Serializer):
+    profile_id = ProfileIDField(help_text="profile id to use")
+    ai_summary_provider = serializers.CharField(allow_blank=True, allow_null=True, validators=[parse_summarizer_model], default=None, write_only=True, help_text="AI Summary provider int the format provider:model e.g `openai:gpt-3.5-turbo`")
+
+class FeedSerializer(CreateTaskSerializer):
     url = serializers.URLField(help_text="The URL of the RSS or ATOM feed")
     include_remote_blogs = serializers.BooleanField(help_text="", default=False, required=False)
 
 class PatchFeedSerializer(FeedSerializer):
     url = None
 
-class PatchPostSerializer(serializers.Serializer):
-    profile_id = serializers.PrimaryKeyRelatedField(queryset=Profile.objects, error_messages={
-        'required': _('This field is required.'),
-        'does_not_exist': _('Invalid profile with id "{pk_value}" - object does not exist.'),
-        'incorrect_type': _('Incorrect type. Expected profile id (uuid), received {data_type}.'),
-    })
+class PatchPostSerializer(CreateTaskSerializer):
+    pass
 
 class PostCreateSerializer(PatchPostSerializer):
     title = serializers.CharField()
