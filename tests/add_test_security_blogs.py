@@ -46,7 +46,8 @@ def add_feed(profile_id, url, include_remote_blogs):
     feed_data = {
         "profile_id": profile_id,
         "url": url,
-        "include_remote_blogs": include_remote_blogs
+        "include_remote_blogs": include_remote_blogs,
+        "ai_summary_provider": "openai:gpt-4o"
     }
     print("Request body:")
     print(feed_data)

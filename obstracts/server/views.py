@@ -74,6 +74,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.
             """
         ),
+        responses={200: H4fFeedSerializer, 400: api_schema.DEFAULT_400_ERROR}
     ),
     retrieve=extend_schema(
         summary="Get a Feed",
@@ -82,10 +83,11 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required.
             """
         ),
+        responses={200: H4fFeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR}
     ),
     create=extend_schema(
         request=FeedSerializer,
-        responses={201:JobSerializer},
+        responses={201:JobSerializer, 400: api_schema.DEFAULT_400_ERROR},
         summary="Create a new Feed",
         description=textwrap.dedent(
             """
@@ -116,10 +118,11 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.
             """
         ),
+        responses={200: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
     partial_update=extend_schema(
         request=serializers.PatchFeedSerializer,
-        responses={201: JobSerializer},
+        responses={201: JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Feed",
         description=textwrap.dedent(
             """
@@ -150,8 +153,6 @@ class FeedView(viewsets.ViewSet):
     openapi_tags = ["Feeds"]
     serializer_class = H4fFeedSerializer
     pagination_class = Pagination("feeds")
-
-
 
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
     ordering_fields = [
@@ -302,7 +303,7 @@ class FeedView(viewsets.ViewSet):
     ),
     partial_update=extend_schema(
         request=serializers.PatchPostSerializer,
-        responses={201:JobSerializer},
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR},
         summary="Update a Post in A Feed",
         description=textwrap.dedent(
             """
@@ -320,7 +321,7 @@ class FeedView(viewsets.ViewSet):
     ),
     create=extend_schema(
         request=serializers.PostCreateSerializer,
-        responses={201:JobSerializer},
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR},
         summary="Backfill a Post into A Feed",
         description=textwrap.dedent(
             """
