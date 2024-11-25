@@ -329,7 +329,6 @@ class FeedView(viewsets.ViewSet):
             The following key/values are accepted in the body of the request:
 
             * `profile_id` (required): a valid profile ID to define how the post should be processed.
-
             * `link` (required - must be unique): The URL of the blog post. This is where the content of the post is found. It cannot be the same as the `url` of a post already in this feed. If you want to update the post, use the PATCH post endpoint.
             * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.
             * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
