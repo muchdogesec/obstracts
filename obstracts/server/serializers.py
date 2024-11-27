@@ -33,7 +33,7 @@ class ProfileIDField(serializers.PrimaryKeyRelatedField):
         return super().to_representation(value)
 
 class CreateTaskSerializer(serializers.Serializer):
-    profile_id = ProfileIDField(help_text="profile id to use")
+    profile_id = ProfileIDField(help_text="profile id to use", write_only=True)
     ai_summary_provider = serializers.CharField(allow_blank=True, allow_null=True, validators=[parse_summarizer_model], default=None, write_only=True, help_text="AI Summary provider int the format provider:model e.g `openai:gpt-3.5-turbo`")
 
 class FeedSerializer(CreateTaskSerializer, h4fserializers.FeedXSerializer):
@@ -42,11 +42,11 @@ class FeedSerializer(CreateTaskSerializer, h4fserializers.FeedXSerializer):
 class SkeletonFeedSerializer(h4fserializers.SkeletonFeedXSerializer):
     pass
 
-class PatchSkeletonFeedSerializer(SkeletonFeedSerializer):
+class PatchFeedSerializer(SkeletonFeedSerializer):
     url = None
 
-class PatchFeedSerializer(FeedSerializer):
-    url = None
+class FetchFeedSerializer(CreateTaskSerializer):
+    pass
 
 class PatchPostSerializer(CreateTaskSerializer):
     pass

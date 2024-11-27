@@ -18,7 +18,7 @@ from .utils import (
     Pagination,
     Response,
 )
-from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter, MultipleChoiceFilter
 from .serializers import (
     JobSerializer,
     FeedSerializer,
@@ -132,9 +132,19 @@ class MarkdownImageReplacer(MarkdownRenderer):
         responses={200: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
     partial_update=extend_schema(
-        request=PolymorphicProxySerializer("PatchRegularOrSkeletonFeed", serializers=[serializers.PatchFeedSerializer, serializers.PatchSkeletonFeedSerializer(partial=True)], resource_type_field_name=None),
-        responses={201: PolymorphicProxySerializer("PatchRegularOrSkeletonFeed", serializers=[serializers.JobSerializer, serializers.SkeletonFeedSerializer], resource_type_field_name=None), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        request=serializers.PatchFeedSerializer,
+        responses={201: serializers.FeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Feed",
+        description=textwrap.dedent(
+            """
+            Update feed information
+            """
+        ),
+    ),
+    fetch=extend_schema(
+        request=serializers.FetchFeedSerializer,
+        responses={201: serializers.JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Fetch updates for a Feed",
         description=textwrap.dedent(
             """
             Use this endpoint to check for new posts on this blog since the last post time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.
@@ -189,6 +199,10 @@ class FeedView(viewsets.ViewSet):
         )
         id = BaseCSVFilter(
             label="Filter by feed id(s), comma-separated, e.g `6c6e6448-04d4-42a3-9214-4f0f7d02694e,2bce5b30-7014-4a5d-ade7-12913fe6ac36`",
+        )
+        feed_type = MultipleChoiceFilter(
+            help_text="Filter by feed_type",
+            choices=h4fserializers.FeedType.choices,
         )
     
     @classmethod
@@ -285,26 +299,29 @@ class FeedView(viewsets.ViewSet):
         raise Http404(f"feed with id: `{feed_id}` not found in h4f")
     
     def partial_update(self, request, *args, **kwargs):
-        remote_feed = self.get_remote_feed(kwargs.get(self.lookup_url_kwarg))
         request_body = request.body
-        if remote_feed['feed_type'] == h4fserializers.FeedType.SKELETON:
-            s = serializers.SkeletonFeedSerializer(data=request.data, partial=True)
-        else:
-            s = serializers.PatchFeedSerializer(data=request.data)
+        s = serializers.PatchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         resp = self.make_request(
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/", request_body=request_body
         )
-
+        return resp
+    
+    @decorators.action(methods=["PATCH"], detail=True)
+    def fetch(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.FetchFeedSerializer(data=request.data, partial=True)
+        s.is_valid(raise_exception=True)
+        resp = self.make_request(
+            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/fetch/", request_body=request_body
+        )
         if resp.status_code == 201:
             out = json.loads(resp.content)
-            if out['feed_type'] == h4fserializers.FeedType.SKELETON:
-                return resp
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.data.get("profile_id"), s.validated_data['ai_summary_provider'])
+            job = tasks.new_task(out, s.data.get("profile_id"), s.validated_data.get('ai_summary_provider'))
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
-
+    
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Posts in a Feed",
@@ -406,7 +423,7 @@ class PostView(viewsets.ViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         request_body = request.body
-        s = serializers.PatchFeedSerializer(data=request.data)
+        s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         feed_id = kwargs.get(FeedView.lookup_url_kwarg)
         post_id = kwargs.get(self.lookup_url_kwarg)
@@ -424,7 +441,7 @@ class PostView(viewsets.ViewSet):
     
     def create(self, request, *args, **kwargs):
         request_body = request.body
-        s = serializers.PatchFeedSerializer(data=request.data)
+        s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
 
         feed_id = kwargs.get(FeedView.lookup_url_kwarg)
