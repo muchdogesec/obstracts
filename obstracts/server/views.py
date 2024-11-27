@@ -303,7 +303,7 @@ class FeedView(viewsets.ViewSet):
     ),
     partial_update=extend_schema(
         request=serializers.PatchPostSerializer,
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR},
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Post in A Feed",
         description=textwrap.dedent(
             """
@@ -321,7 +321,7 @@ class FeedView(viewsets.ViewSet):
     ),
     create=extend_schema(
         request=serializers.PostCreateSerializer,
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR},
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Backfill a Post into A Feed",
         description=textwrap.dedent(
             """
