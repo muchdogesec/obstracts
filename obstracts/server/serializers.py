@@ -240,9 +240,3 @@ class H4fPostSerializer(serializers.Serializer):
                 "title"
             ]
         }
-
-
-class ErrorSerializer(serializers.Serializer):
-    message = serializers.CharField(required=True)
-    code    = serializers.IntegerField(required=True)
-    details = serializers.DictField(required=False)
