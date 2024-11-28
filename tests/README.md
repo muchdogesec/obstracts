@@ -39,7 +39,8 @@ python3 tests/add_fakeblog123.py
 If you only want to import one of the blogs listed in the test, grab its url and run the following;
 
 ```shell
-python tests/add_fakeblog123.py --url "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml"
+python tests/add_fakeblog123.py \
+	--url "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml"
 ```
 
 This test will delete all existing blogs and add real security using the profile created by the previous script
