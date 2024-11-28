@@ -69,6 +69,9 @@ class File(models.Model):
     summary = models.CharField(max_length=65535, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.PROTECT, default=None, null=True)
 
+    def __str__(self) -> str:
+        return f'File(feed_id={self.feed_id}, post_id={self.post_id})'
+
 class FileImage(models.Model):
     report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
     file = models.ImageField(upload_to=upload_to_func)
