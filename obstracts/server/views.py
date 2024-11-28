@@ -2,10 +2,10 @@ import io
 import json
 import logging
 from urllib.parse import urljoin
-from django.http import HttpResponse, FileResponse
+from django.http import Http404, HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, decorators, exceptions, status, renderers
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, PolymorphicProxySerializer
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
@@ -18,13 +18,12 @@ from .utils import (
     Pagination,
     Response,
 )
-from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter, MultipleChoiceFilter
 from .serializers import (
-    H4fFeedSerializer,
-    H4fPostSerializer,
     JobSerializer,
     FeedSerializer,
 )
+from . import h4fserializers
 import txt2stix.txt2stix
 import requests
 from django.conf import settings
@@ -74,7 +73,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.
             """
         ),
-        responses={200: H4fFeedSerializer, 400: api_schema.DEFAULT_400_ERROR}
+        responses={200: h4fserializers.FeedXSerializer, 400: api_schema.DEFAULT_400_ERROR}
     ),
     retrieve=extend_schema(
         summary="Get a Feed",
@@ -83,7 +82,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required.
             """
         ),
-        responses={200: H4fFeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR}
+        responses={200: h4fserializers.FeedXSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR}
     ),
     create=extend_schema(
         request=FeedSerializer,
@@ -102,12 +101,34 @@ class MarkdownImageReplacer(MarkdownRenderer):
                 * `openai:`, models e.g.: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4` ([More here](https://platform.openai.com/docs/models))
                 * `anthropic:`, models e.g.: `claude-3-5-sonnet-latest`, `claude-3-5-haiku-latest`, `claude-3-opus-latest` ([More here](https://docs.anthropic.com/en/docs/about-claude/models))
                 * `gemini:models/`, models: `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest` ([More here](https://ai.google.dev/gemini-api/docs/models/gemini))
+            * `pretty_url` (optional): you can also include a secondary URL in the database. This is designed to be used to show the link to the blog (not the RSS/ATOM) feed so that a user can navigate to the blog in their browser.
+            * `title` (optional): the title of the feed will be used if not passed. You can also manually pass the title of the blog here.
+            * `description` (optional): the description of the feed will be used if not passed. You can also manually pass the description of the blog here.
 
             The `id` of a Feed is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used is `<FEED_URL>` (e.g. `https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml` would have the id `d1d96b71-c687-50db-9d2b-d0092d1d163a`). Therefore, you cannot add a URL that already exists, you must first delete it to add it with new settings.
 
             Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
 
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+            """
+        ),
+    ),
+    create_skeleton=extend_schema(
+        request=serializers.SkeletonFeedSerializer,
+        responses={201:FeedSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Create a new Skeleton Feed",
+        description=textwrap.dedent(
+            """
+            Sometimes blogs don't have an RSS or ATOM feed. It might also be the case you want to curate a blog manually using various URLs. This is what `skeleton` feeds are designed for, allowing you to create a skeleton feed and then add posts to it manually later on using the add post manually endpoint.
+
+            The following key/values are accepted in the body of the request:
+
+            * `url` (required): the URL to be attached to the feed. Needs to be a URL (because this is what feed ID is generated from), however does not need to be valid.
+            * `pretty_url` (optional): you can also include a secondary URL in the database. This is designed to be used to show the link to the blog (not the RSS/ATOM) feed so that a user can navigate to the blog in their browser.
+            * `title` (required): the title of the feed
+            * `description` (optional): the description of the feed
+
+            The response will return the created Feed object with the Feed `id`.
             """
         ),
     ),
@@ -122,8 +143,28 @@ class MarkdownImageReplacer(MarkdownRenderer):
     ),
     partial_update=extend_schema(
         request=serializers.PatchFeedSerializer,
-        responses={201: JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Update a Feed",
+        responses={201: serializers.FeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Update a Feeds Metadata",
+        description=textwrap.dedent(
+            """
+            Update the metadata of the Feed. To leave a property unchanged from its current state do not pass it in the request.
+
+            Note, it is not possible to update the `url` of the feed. You must delete the Feed and add it again to modify the `url`.
+
+            The following key/values are accepted in the body of the request:
+
+            * `title` (optional): update the `title` of the Feed
+            * `description` (optional): update the `description` of the Feed
+            * `pretty_url` (optional): update the `pretty_url of the Feed
+
+            The response will contain the newly updated Feed object.
+            """
+        ),
+    ),
+    fetch=extend_schema(
+        request=serializers.FetchFeedSerializer,
+        responses={201: serializers.JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Fetch updates for a Feed",
         description=textwrap.dedent(
             """
             Use this endpoint to check for new posts on this blog since the last post time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.
@@ -151,7 +192,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
     openapi_tags = ["Feeds"]
-    serializer_class = H4fFeedSerializer
+    serializer_class = h4fserializers.FeedXSerializer
     pagination_class = Pagination("feeds")
 
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
@@ -179,21 +220,10 @@ class FeedView(viewsets.ViewSet):
         id = BaseCSVFilter(
             label="Filter by feed id(s), comma-separated, e.g `6c6e6448-04d4-42a3-9214-4f0f7d02694e,2bce5b30-7014-4a5d-ade7-12913fe6ac36`",
         )
-
-    @classmethod
-    def parse_profile(cls, request):
-        try:
-            obj = json.loads(request.body)
-        except:
-            obj = None
-        if not isinstance(obj, dict):
-            raise exceptions.ValidationError(detail="could not process request body")
-        profile_id = obj.get('profile_id')
-        try:
-            models.Profile.objects.get(pk=profile_id)
-        except:
-            raise exceptions.ValidationError(detail=f"no profile with id: {profile_id}")
-        return profile_id
+        feed_type = MultipleChoiceFilter(
+            help_text="Filter by `feed_type`",
+            choices=h4fserializers.FeedType.choices,
+        )
     
     @classmethod
     def make_request(cls, request, path, request_body=None):
@@ -229,7 +259,20 @@ class FeedView(viewsets.ViewSet):
             job = tasks.new_task(out, s.validated_data['profile_id'], s.validated_data['ai_summary_provider'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
-
+    
+    @decorators.action(methods=['POST'], url_path="skeleton", detail=False)
+    def create_skeleton(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.SkeletonFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        resp = self.make_request(request, "/api/v1/feeds/skeleton/", request_body=request_body)
+        if resp.status_code == 201:
+            out = json.loads(resp.content)
+            out['feed_id'] = out['id']
+            feed, _ = models.FeedProfile.objects.update_or_create(defaults=kwargs, id=out['id'])
+            return resp
+        return resp
+    
     def list(self, request, *args, **kwargs):
         return self.make_request(request, "/api/v1/feeds/")
 
@@ -268,22 +311,37 @@ class FeedView(viewsets.ViewSet):
             logging.exception(e)
             raise exceptions.ValidationError(detail=f"no feed with id: {feed_id}")
         return feed
-
+    
+    def get_remote_feed(self, feed_id):
+        resp = make_h4f_request(f"/api/v1/feeds/{feed_id}/")
+        if resp.ok:
+            return resp.json()
+        raise Http404(f"feed with id: `{feed_id}` not found in h4f")
+    
     def partial_update(self, request, *args, **kwargs):
         request_body = request.body
         s = serializers.PatchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        feed = self.get_feed(kwargs.get(self.lookup_url_kwarg))
         resp = self.make_request(
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/", request_body=request_body
+        )
+        return resp
+    
+    @decorators.action(methods=["PATCH"], detail=True)
+    def fetch(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.FetchFeedSerializer(data=request.data, partial=True)
+        s.is_valid(raise_exception=True)
+        resp = self.make_request(
+            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/fetch/", request_body=request_body
         )
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
+            job = tasks.new_task(out, s.data.get("profile_id"), s.validated_data.get('ai_summary_provider'))
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
-
+    
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Posts in a Feed",
@@ -292,6 +350,7 @@ class FeedView(viewsets.ViewSet):
             Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
             """
         ),
+        responses={200:h4fserializers.PostXSerializer, 400: api_schema.DEFAULT_400_ERROR},
     ),
     retrieve=extend_schema(
         summary="Retrieve a post in a Feed",
@@ -350,7 +409,7 @@ class FeedView(viewsets.ViewSet):
     ),
 ) 
 class PostView(viewsets.ViewSet):
-    serializer_class = H4fPostSerializer
+    serializer_class = h4fserializers.PostXSerializer
     lookup_url_kwarg = 'post_id'
     openapi_tags = ["Feeds"]
 
@@ -402,7 +461,7 @@ class PostView(viewsets.ViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         request_body = request.body
-        s = serializers.PatchFeedSerializer(data=request.data)
+        s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         feed_id = kwargs.get(FeedView.lookup_url_kwarg)
         post_id = kwargs.get(self.lookup_url_kwarg)
@@ -420,7 +479,7 @@ class PostView(viewsets.ViewSet):
     
     def create(self, request, *args, **kwargs):
         request_body = request.body
-        s = serializers.PatchFeedSerializer(data=request.data)
+        s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
 
         feed_id = kwargs.get(FeedView.lookup_url_kwarg)
