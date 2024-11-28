@@ -79,27 +79,27 @@ def poll_job(job_id):
         current_task.retry(max_retries=200)
 
 
-def new_task(feed_dict, profile_id, summary_provider):
+def new_task(feed_dict, profile_id):
     kwargs = dict(id=feed_dict["feed_id"], profile_id=profile_id)
     if title := feed_dict.get("title"):
         kwargs.update(title=title)
     feed, _ = FeedProfile.objects.update_or_create(defaults=kwargs, id=feed_dict["feed_id"])
     job = Job.objects.create(id=feed_dict["job_id"], feed=feed, profile_id=profile_id)
-    (poll_job.s(job.id) | start_processing.s(job.id, summary_provider)).apply_async(
+    (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
         countdown=5, root_id=job.id, task_id=job.id
     )
     return job
 
-def new_post_patch_task(input_dict, profile_id, summary_provider):
+def new_post_patch_task(input_dict, profile_id):
     job = Job.objects.create(id=input_dict["job_id"], feed_id=input_dict["feed_id"], profile_id=profile_id)
-    (poll_job.s(job.id) | start_processing.s(job.id, summary_provider)).apply_async(
+    (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
         countdown=5, root_id=job.id, task_id=job.id
     )
     return job
 
 
 @shared_task
-def start_processing(h4f_job, job_id, summary_provider):
+def start_processing(h4f_job, job_id):
     job = Job.objects.get(id=job_id)
     logging.info(
         f"processing {job_id=}, {job.feed_id=}, {current_task.request.root_id=}"
@@ -129,7 +129,7 @@ def start_processing(h4f_job, job_id, summary_provider):
             )
             break
     logging.info("processing %d posts for job %s", len(posts), job_id)
-    tasks = [process_post.si(job_id, post, summary_provider) for post in posts]
+    tasks = [process_post.si(job_id, post) for post in posts]
     tasks.append(job_completed_with_error.si(job_id))
     return chain(tasks).apply_async()
 
@@ -143,7 +143,7 @@ def set_job_completed(job_id):
 
 
 @shared_task
-def process_post(job_id, post, summary_provider, *args):
+def process_post(job_id, post, *args):
     job = Job.objects.get(id=job_id)
     post_id = str(post['id'])
     try:
@@ -167,12 +167,12 @@ def process_post(job_id, post, summary_provider, *args):
         processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
         processor.process()
 
-        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, ai_summary_provider=summary_provider))
-        if summary_provider:
-            logging.info(f"summarizing report {processor.report_id} using `{summary_provider}`")
+        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, profile=job.profile))
+        if job.profile.ai_summary_provider:
+            logging.info(f"summarizing report {processor.report_id} using `{job.profile.ai_summary_provider}`")
             try:
-                summary_provider = parse_summarizer_model(summary_provider)
-                file.summary = summary_provider.summarize(processor.output_md)
+                summary_extractor = parse_summarizer_model(job.profile.ai_summary_provider)
+                file.summary = summary_extractor.summarize(processor.output_md)
             except BaseException as e:
                 print(f"got err {e}")
                 logging.info(f"got err {e}", exc_info=True)

@@ -97,10 +97,6 @@ class MarkdownImageReplacer(MarkdownRenderer):
             * `url` (required): should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned. If the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.
             * `profile_id` (required - valid Profile ID): You can view existing Profiles, or generated a new one using the Profiles endpoints. You can update the `profile` used for future posts in a Feed, or reindex Posts using a different `profile_id` later. See the Patch Feed and Patch Post endpoints for more information.
             * `include_remote_blogs` (required): is a boolean setting and will ask history4feed to ignore any feeds not on the same domain as the URL of the feed. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false. The one exception is when things like feed aggregators (e.g. Feedburner) URLs are used, where the actual blog posts are not on the `feedburner.com` (or whatever) domain. In this case `include_remote_blogs` should be set to `true`.
-            * `ai_summary_provider` (optional): you can optionally get an AI model to produce a summary of the blog. You must pass the request in format `provider:model`. Currently supported providers are:
-                * `openai:`, models e.g.: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4` ([More here](https://platform.openai.com/docs/models))
-                * `anthropic:`, models e.g.: `claude-3-5-sonnet-latest`, `claude-3-5-haiku-latest`, `claude-3-opus-latest` ([More here](https://docs.anthropic.com/en/docs/about-claude/models))
-                * `gemini:models/`, models: `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest` ([More here](https://ai.google.dev/gemini-api/docs/models/gemini))
             * `pretty_url` (optional): you can also include a secondary URL in the database. This is designed to be used to show the link to the blog (not the RSS/ATOM) feed so that a user can navigate to the blog in their browser.
             * `title` (optional): the title of the feed will be used if not passed. You can also manually pass the title of the blog here.
             * `description` (optional): the description of the feed will be used if not passed. You can also manually pass the description of the blog here.
@@ -177,10 +173,6 @@ class MarkdownImageReplacer(MarkdownRenderer):
 
             * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and feed id. Changing this setting will only apply to posts after the `latest_item_pubdate`.
             * `include_remote_blogs` (required): You get the last `include_remote_blogs` used for this feed using the Get Jobs endpoint and feed id. Changing this setting will only apply to posts after the `latest_item_pubdate`.
-            * `ai_summary_provider` (optional): you can optionally get an AI model to produce a summary of the blog. You must pass the request in format `provider:model`. Currently supported providers are:
-                * `openai:`, models e.g.: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4` ([More here](https://platform.openai.com/docs/models))
-                * `anthropic:`, models e.g.: `claude-3-5-sonnet-latest`, `claude-3-5-haiku-latest`, `claude-3-opus-latest` ([More here](https://docs.anthropic.com/en/docs/about-claude/models))
-                * `gemini:models/`, models: `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest` ([More here](https://ai.google.dev/gemini-api/docs/models/gemini))
 
             Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
 
@@ -256,7 +248,7 @@ class FeedView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.validated_data['profile_id'], s.validated_data['ai_summary_provider'])
+            job = tasks.new_task(out, s.validated_data['profile_id'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -338,7 +330,7 @@ class FeedView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.data.get("profile_id"), s.validated_data.get('ai_summary_provider'))
+            job = tasks.new_task(out, s.data.get("profile_id"))
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -394,10 +386,6 @@ class FeedView(viewsets.ViewSet):
             * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
             * `author` (optional): the value to be stored for the author of the post.
             * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
-            * `ai_summary_provider` (optional): you can optionally get an AI model to produce a summary of the blog. You must pass the request in format `provider:model`. Currently supported providers are:
-                * `openai:`, models e.g.: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4` ([More here](https://platform.openai.com/docs/models))
-                * `anthropic:`, models e.g.: `claude-3-5-sonnet-latest`, `claude-3-5-haiku-latest`, `claude-3-opus-latest` ([More here](https://docs.anthropic.com/en/docs/about-claude/models))
-                * `gemini:models/`, models: `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest` ([More here](https://ai.google.dev/gemini-api/docs/models/gemini))
 
             Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
 
@@ -409,7 +397,7 @@ class FeedView(viewsets.ViewSet):
     ),
 ) 
 class PostView(viewsets.ViewSet):
-    serializer_class = h4fserializers.PostXSerializer
+    serializer_class = serializers.PostSerializer
     lookup_url_kwarg = 'post_id'
     openapi_tags = ["Feeds"]
 
@@ -431,32 +419,32 @@ class PostView(viewsets.ViewSet):
         job_id = UUIDFilter(label="Filter the Post by Job ID the Post was downloaded in.")
 
     def list(self, request, *args, feed_id=None, **kwargs):
-        return self.add_ai_summary_provider(FeedView.make_request(
+        return self.add_obstract_props(FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/"
         ))
 
     def retrieve(self, request, *args, feed_id=None, post_id=None):
-        return self.add_ai_summary_provider(FeedView.make_request(
+        return self.add_obstract_props(FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/{post_id}"
         ))
 
-    def add_ai_summary_provider(self, response: HttpResponse):
+    def add_obstract_props(self, response: HttpResponse):
         if response.status_code != 200:
             return response
         data = json.loads(response.content)
 
         def get_providers(ids):
             data = {}
-            for post_id, ai_summary_provider in models.File.objects.filter(post_id__in=ids).values_list('post_id', 'ai_summary_provider'):
-                data[str(post_id)] = ai_summary_provider
+            for file in models.File.objects.filter(post_id__in=ids):
+                data[str(file.post_id)] = serializers.FileSerializer(file).data
             return data
         if data.get('id'):
             post_id = data['id']
-            data["ai_summary_provider"] = get_providers([post_id]).get(post_id)
+            data.update(get_providers([post_id]).get(post_id), {})
         else:
             id_provider_map = get_providers([d['id'] for d in data['posts']])
             for d in data['posts']:
-                d["ai_summary_provider"] = id_provider_map.get(d['id'])
+                d.update(id_provider_map.get(d['id'], {}))
         return Response(data, status=response.status_code)
 
     def partial_update(self, request, *args, **kwargs):
@@ -473,7 +461,7 @@ class PostView(viewsets.ViewSet):
             self.remove_report(post_id, feed.collection_name)
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -482,15 +470,13 @@ class PostView(viewsets.ViewSet):
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
 
-        feed_id = kwargs.get(FeedView.lookup_url_kwarg)
-        feed = FeedView.get_feed(feed_id)
         resp = FeedView.make_request(
             request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
         )
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id), s.data['ai_summary_provider'])
+            job = tasks.new_post_patch_task(out, s.data.get("profile_id"))
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 

@@ -2,7 +2,7 @@ import uuid
 from rest_framework import serializers
 
 from obstracts.server import h4fserializers
-from .models import Profile, Job, FileImage
+from .models import File, Profile, Job, FileImage
 from drf_spectacular.utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from dogesec_commons.stixifier.summarizer import parse_summarizer_model
@@ -34,7 +34,6 @@ class ProfileIDField(serializers.PrimaryKeyRelatedField):
 
 class CreateTaskSerializer(serializers.Serializer):
     profile_id = ProfileIDField(help_text="profile id to use", write_only=True)
-    ai_summary_provider = serializers.CharField(allow_blank=True, allow_null=True, validators=[parse_summarizer_model], default=None, write_only=True, help_text="AI Summary provider int the format provider:model e.g `openai:gpt-3.5-turbo`")
 
 class FeedSerializer(CreateTaskSerializer, h4fserializers.FeedXSerializer):
     pass
@@ -58,6 +57,18 @@ class PostCreateSerializer(PatchPostSerializer):
     author = serializers.CharField(required=False)
     categories = serializers.ListField(child=serializers.CharField(), required=False)
 
+
+
+
+class FileSerializer(serializers.ModelSerializer):
+    ai_summary_provider = serializers.CharField(source='profile.ai_summary_provider', default=None, allow_null=True)
+    profile_id = serializers.UUIDField()
+    class Meta:
+        model = File
+        exclude = ["profile", "feed", "post_id"]
+
+class PostSerializer(FileSerializer, h4fserializers.PostXSerializer):
+    pass
 
 class ImageSerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()

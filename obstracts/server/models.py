@@ -68,7 +68,6 @@ class File(models.Model):
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
     summary = models.CharField(max_length=65535, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.PROTECT, default=None, null=True)
-    ai_summary_provider = models.CharField(null=True, default=None, max_length=256)
 
 class FileImage(models.Model):
     report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
