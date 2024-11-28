@@ -34,14 +34,22 @@ def delete_feed(feed_id):
     else:
         print(f"Failed to delete feed with ID: {feed_id}. Status code: {response.status_code}")
 
-def add_feed(profile_id, url, include_remote_blogs):
+def add_feed(profile_id, url, include_remote_blogs, blog_entry):
     print(f"Sending POST request to add a new feed with URL: {url}...")
+    # Build feed data with optional fields
     feed_data = {
         "profile_id": profile_id,
         "url": url,
         "include_remote_blogs": include_remote_blogs,
-        "ai_summary_provider": "openai:gpt-4o"
     }
+    # Add optional fields only if they are defined in the blog entry
+    if "pretty_url" in blog_entry:
+        feed_data["pretty_url"] = blog_entry["pretty_url"]
+    if "title" in blog_entry:
+        feed_data["title"] = blog_entry["title"]
+    if "description" in blog_entry:
+        feed_data["description"] = blog_entry["description"]
+
     print("Request body:")
     print(feed_data)
 
@@ -98,10 +106,14 @@ if __name__ == "__main__":
 
     # Test blogs list
     test_blogs = [
+    # title/desc/pretty url
         {
             "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml",
-            "include_remote_blogs": False
+            "include_remote_blogs": False,
+            "pretty_url": "https://muchdogesec.github.io/fakeblog123/feeds",
+            "title": "custom title",
+            "description": "custom description"
         },
         {
             "profile_id": "bcf09ec5-d124-528a-bb21-480114231795",
@@ -133,10 +145,11 @@ if __name__ == "__main__":
     for blog in test_blogs:
         feed_id = generate_feed_id(blog["url"])
         delete_feed(feed_id)
-        feed_id, job_id = add_feed(blog["profile_id"], blog["url"], blog["include_remote_blogs"])
+        feed_id, job_id = add_feed(blog["profile_id"], blog["url"], blog["include_remote_blogs"], blog)
         if feed_id and job_id:
             if not wait_for_job_success(job_id):
                 print("Job failed. Exiting script.")
                 exit(1)
+
 
     print("Feed processing completed.")
