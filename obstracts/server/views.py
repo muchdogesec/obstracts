@@ -101,6 +101,9 @@ class MarkdownImageReplacer(MarkdownRenderer):
                 * `openai:`, models e.g.: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4` ([More here](https://platform.openai.com/docs/models))
                 * `anthropic:`, models e.g.: `claude-3-5-sonnet-latest`, `claude-3-5-haiku-latest`, `claude-3-opus-latest` ([More here](https://docs.anthropic.com/en/docs/about-claude/models))
                 * `gemini:models/`, models: `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest` ([More here](https://ai.google.dev/gemini-api/docs/models/gemini))
+            * `pretty_url` (optional): you can also include a secondary URL in the database. This is designed to be used to show the link to the blog (not the RSS/ATOM) feed so that a user can navigate to the blog in their browser.
+            * `title` (optional): the title of the feed will be used if not passed. You can also manually pass the title of the blog here.
+            * `description` (optional): the description of the feed will be used if not passed. You can also manually pass the description of the blog here.
 
             The `id` of a Feed is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used is `<FEED_URL>` (e.g. `https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml` would have the id `d1d96b71-c687-50db-9d2b-d0092d1d163a`). Therefore, you cannot add a URL that already exists, you must first delete it to add it with new settings.
 
@@ -116,9 +119,16 @@ class MarkdownImageReplacer(MarkdownRenderer):
         summary="Create a new Skeleton Feed",
         description=textwrap.dedent(
             """
-            Use this endpoint to create to a new Skeleton Feed.
+            Sometimes blogs don't have an RSS or ATOM feed. It might also be the case you want to curate a blog manually using various URLs. This is what `skeleton` feeds are designed for, allowing you to create a skeleton feed and then add posts to it manually later on using the add post manually endpoint.
 
-            The response will return the Feed information.
+            The following key/values are accepted in the body of the request:
+
+            * `url` (required): the URL to be attached to the feed. Needs to be a URL (because this is what feed ID is generated from), however does not need to be valid.
+            * `pretty_url` (optional): you can also include a secondary URL in the database. This is designed to be used to show the link to the blog (not the RSS/ATOM) feed so that a user can navigate to the blog in their browser.
+            * `title` (required): the title of the feed
+            * `description` (optional): the description of the feed
+
+            The response will return the created Feed object with the Feed `id`.
             """
         ),
     ),
@@ -134,10 +144,20 @@ class MarkdownImageReplacer(MarkdownRenderer):
     partial_update=extend_schema(
         request=serializers.PatchFeedSerializer,
         responses={201: serializers.FeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Update a Feed",
+        summary="Update a Feeds Metadata",
         description=textwrap.dedent(
             """
-            Update feed information
+            Update the metadata of the Feed. To leave a property unchanged from its current state do not pass it in the request.
+
+            Note, it is not possible to update the `url` of the feed. You must delete the Feed and add it again to modify the `url`.
+
+            The following key/values are accepted in the body of the request:
+
+            * `title` (optional): update the `title` of the Feed
+            * `description` (optional): update the `description` of the Feed
+            * `pretty_url` (optional): update the `pretty_url of the Feed
+
+            The response will contain the newly updated Feed object.
             """
         ),
     ),
