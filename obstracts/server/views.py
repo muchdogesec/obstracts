@@ -312,7 +312,7 @@ class FeedView(viewsets.ViewSet):
     
     def partial_update(self, request, *args, **kwargs):
         request_body = request.body
-        s = serializers.PatchFeedSerializer(data=request.data)
+        s = serializers.PatchFeedSerializer(data=request.data, partial=True)
         s.is_valid(raise_exception=True)
         resp = self.make_request(
             request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/", request_body=request_body
