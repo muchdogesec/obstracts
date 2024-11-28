@@ -45,7 +45,8 @@ class PatchFeedSerializer(SkeletonFeedSerializer):
     url = None
 
 class FetchFeedSerializer(CreateTaskSerializer):
-    pass
+    include_remote_blogs = serializers.BooleanField(write_only=True, default=False)
+
 
 class PatchPostSerializer(CreateTaskSerializer):
     pass
