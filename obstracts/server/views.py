@@ -221,7 +221,7 @@ class FeedView(viewsets.ViewSet):
             label="Filter by feed id(s), comma-separated, e.g `6c6e6448-04d4-42a3-9214-4f0f7d02694e,2bce5b30-7014-4a5d-ade7-12913fe6ac36`",
         )
         feed_type = MultipleChoiceFilter(
-            help_text="Filter by feed_type",
+            help_text="Filter by `feed_type`",
             choices=h4fserializers.FeedType.choices,
         )
     
