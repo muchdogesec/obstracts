@@ -104,7 +104,6 @@ validators==0.31.0; python_version >= '3.8'
 vine==5.1.0; python_version >= '3.6'
 wcwidth==0.2.13
 wrapt==1.16.0; python_version >= '3.6'
-yarl==1.9.4; python_version >= '3.7'
 zipp==3.19.2; python_version >= '3.8'
 django-storages[s3]==1.14.4
 django-cleanup==9.0.0

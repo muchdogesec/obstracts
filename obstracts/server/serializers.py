@@ -62,11 +62,10 @@ class PostCreateSerializer(PatchPostSerializer):
 
 
 class FileSerializer(serializers.ModelSerializer):
-    ai_summary_provider = serializers.CharField(source='profile.ai_summary_provider', default=None, allow_null=True)
     profile_id = serializers.UUIDField()
     class Meta:
         model = File
-        exclude = ["profile", "feed", "post_id"]
+        exclude = ["profile", "feed", "post_id", "summary"]
 
 class PostSerializer(FileSerializer, h4fserializers.PostXSerializer):
     pass

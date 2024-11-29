@@ -438,9 +438,8 @@ class PostView(viewsets.ViewSet):
             for file in models.File.objects.filter(post_id__in=ids):
                 data[str(file.post_id)] = serializers.FileSerializer(file).data
             return data
-        if data.get('id'):
-            post_id = data['id']
-            data.update(get_providers([post_id]).get(post_id), {})
+        if post_id := data.get('id'):
+            data.update(get_providers([post_id]).get(post_id, {}))
         else:
             id_provider_map = get_providers([d['id'] for d in data['posts']])
             for d in data['posts']:
