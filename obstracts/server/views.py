@@ -352,6 +352,15 @@ class FeedView(viewsets.ViewSet):
              """
         ),
     ),
+    destroy=extend_schema(
+        summary="Delete a post in a Feed",
+        description=textwrap.dedent(
+            """
+            Use this endpoint to delete a post using its ID and feed_id. This will delete post as well as all the STIX objects.
+            """
+        ),
+        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
+    ),
     partial_update=extend_schema(
         request=serializers.PatchPostSerializer,
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
@@ -427,6 +436,18 @@ class PostView(viewsets.ViewSet):
         return self.add_obstract_props(FeedView.make_request(
             request, f"/api/v1/feeds/{feed_id}/posts/{post_id}"
         ))
+    
+    def destroy(self, request, *args, feed_id=None, post_id=None):
+        resp = FeedView.make_request(
+            request, f"/api/v1/feeds/{feed_id}/posts/{post_id}/"
+        )
+        if resp.status_code != 204:
+            return resp
+        try:
+            models.File.objects.get(post_id=post_id).delete()
+        except Exception as e:
+            print(e)
+        return resp
 
     def add_obstract_props(self, response: HttpResponse):
         if response.status_code != 200:
