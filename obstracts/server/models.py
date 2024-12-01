@@ -1,9 +1,15 @@
+import logging
 import os
+from types import SimpleNamespace
 from django.db import models
 from django.utils.text import slugify
 import txt2stix, txt2stix.extractions
 from django.core.exceptions import ValidationError
 from dogesec_commons.stixifier.models import Profile
+
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+from dogesec_commons.objects.helpers import ArangoDBHelper
 # Create your models here.
 
 
@@ -71,6 +77,37 @@ class File(models.Model):
 
     def __str__(self) -> str:
         return f'File(feed_id={self.feed_id}, post_id={self.post_id})'
+    
+    def delete(self, *args, **kwargs):
+        self._deleted_directly = True
+        return super().delete(*args, **kwargs)
+    
+
+@receiver(post_delete, sender=File)
+def remove_files(sender, instance: File, **kwargs):
+    if not getattr(instance, '_deleted_directly', False):
+        return False
+    
+    q = """
+    LET removed_edges = (
+        FOR de IN @@edge
+        FILTER de._obstracts_post_id == @post_id
+        REMOVE de IN @@edge
+        RETURN de.id
+    )
+
+    LET removed_vertices = (
+        FOR dv IN @@vertex
+        FILTER dv._obstracts_post_id == @post_id
+        REMOVE dv IN @@vertex
+        RETURN dv.id
+    )
+    RETURN {removed_edges, removed_vertices}
+    """
+    out = ArangoDBHelper(None, SimpleNamespace(GET=dict(), query_params=SimpleNamespace(dict=lambda:dict()))).execute_query(q, {'@vertex': instance.feed.collection_name+'_vertex_collection', '@edge': instance.feed.collection_name+'_edge_collection', 'post_id': str(instance.post_id)}, paginate=False)
+    logging.debug(f"POST's objects removed {out}")
+    return True
+    
 
 class FileImage(models.Model):
     report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
