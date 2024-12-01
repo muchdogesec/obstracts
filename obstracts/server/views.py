@@ -356,7 +356,9 @@ class FeedView(viewsets.ViewSet):
         summary="Delete a post in a Feed",
         description=textwrap.dedent(
             """
-            Use this endpoint to delete a post using its ID and feed_id. This will delete post as well as all the STIX objects.
+            Use this endpoint to delete a post using its `id`
+
+            IMPORTANT: this WILL delete the content of the post and any STIX objects directly linked to it. Any objects linked to other reports WILL NOT be deleted.
             """
         ),
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
