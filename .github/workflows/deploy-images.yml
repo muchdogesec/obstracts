@@ -60,20 +60,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           visibility: private
           build-args: |
-            MAX_PAGE_SIZE=50
-            DEFAULT_PAGE_SIZE=50
-            CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP=1
-            INPUT_TOKEN_LIMIT=12500
-            USE_S3_STORAGE=1
-            CTIBUTLER_HOST='http://37.27.208.239:8006'
-            VULMATCH_HOST='http://37.27.208.239:8005'
-            HISTORY4FEED_URL='http://host.docker.internal:8002/'
-            ARANGODB_USERNAME=deployer
-            ARANGODB_HOST_URL='http://host.docker.internal:8529'
-            POSTGRES_USER=deployer
-            POSTGRES_DB='obstracts_database'
-            POSTGRES_HOST='host.docker.internal'
-            R2_ENDPOINT_URL='https://34fe0652772b226d5f06050bf5050738.r2.cloudflarestorage.com'
             DJANGO_DEBUG=${{ matrix.environment.django_debug }}
             R2_CUSTOM_DOMAIN=${{ matrix.environment.r2_custom_domain }}
             R2_BUCKET_NAME=${{ matrix.environment.r2_bucket_name }}
