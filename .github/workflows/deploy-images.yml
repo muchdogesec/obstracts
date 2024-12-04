@@ -5,7 +5,7 @@ description: This workflow builds and pushes Docker images for staging and produ
 on:
   push:
     branches:
-      - image-deploy
+      - main
 
 env:
   REGISTRY: ghcr.io
