@@ -22,7 +22,7 @@ jobs:
       matrix:
         environment:
           - name: staging
-            branch: refs/heads/staging
+            branch: refs/heads/main
             environment: obstracts_web_staging
             image_suffix: _web_staging
           - name: production
