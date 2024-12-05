@@ -18,7 +18,7 @@ from .utils import (
     Pagination,
     Response,
 )
-from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter, MultipleChoiceFilter
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter, MultipleChoiceFilter, filters
 from .serializers import (
     JobSerializer,
     FeedSerializer,
@@ -336,13 +336,97 @@ class FeedView(viewsets.ViewSet):
     
 @extend_schema_view(
     list=extend_schema(
+        summary="Search for Posts",
+        description=textwrap.dedent(
+            """
+            Returns all Posts indexed. Filter by the ones you're interested in.
+            """
+        ),
+        responses={200:serializers.PostWithFeedIDSerializer, 400: api_schema.DEFAULT_400_ERROR},
+    ),
+    retrieve=extend_schema(
+        summary="Get a Post",
+        description=textwrap.dedent(
+            """
+            This will return a single Post by its ID. It is useful if you only want to get the data for a single entry.
+            """
+        ),
+    ),
+)
+class PostOnlyView(viewsets.ViewSet):
+    serializer_class = serializers.PostWithFeedIDSerializer
+    lookup_url_kwarg = 'post_id'
+    openapi_tags = ["Posts"]
+
+    pagination_class = Pagination("posts")
+    filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
+    ordering_fields = ["pubdate", "title"]
+    ordering = ["-pubdate"]
+    minmax_date_fields = ["pubdate"]
+
+    class filterset_class(FilterSet):
+        feed_id = filters.BaseInFilter(help_text="filter by one or more `feed_id`(s)")
+        title = Filter(
+            help_text="Filter the content by the `title` of the post. Will search for titles that contain the value entered. Search is wildcard so `exploit` will match `exploited` and `exploits`.",
+            lookup_expr="icontains",
+        )
+        description = Filter(
+            help_text="Filter by the content post `description`. Will search for descriptions that contain the value entered. Search is wildcard so `exploit` will match `exploited` and `exploits`.",
+            lookup_expr="icontains",
+        )
+        link = Filter(
+            help_text="Filter the content by a posts `link`. Will search for links that contain the value entered. Search is wildcard so `dogesec` will return any URL that contains the string `dogesec`.",
+            lookup_expr="icontains",
+        )
+        job_id = Filter(help_text="Filter the Post by Job ID the Post was downloaded in.")
+
+
+    def list(self, request, *args, feed_id=None, **kwargs):
+        if feed_id:
+            url = f"/api/v1/feeds/{feed_id}/posts/"
+        else:
+            url = f"/api/v1/posts/"
+        return self.add_obstract_props(FeedView.make_request(
+            request, url
+        ))
+
+    def retrieve(self, request, *args, feed_id=None, post_id=None):
+        if feed_id:
+            url = f"/api/v1/feeds/{feed_id}/posts/{post_id}/"
+        else:
+            url = f"/api/v1/posts/{post_id}/"
+        return self.add_obstract_props(FeedView.make_request(
+            request, url
+        ))
+    
+    def add_obstract_props(self, response: HttpResponse):
+        if response.status_code != 200:
+            return response
+        data = json.loads(response.content)
+
+        def get_providers(ids):
+            data = {}
+            for file in models.File.objects.filter(post_id__in=ids):
+                data[str(file.post_id)] = serializers.FileSerializer(file).data
+            return data
+        if post_id := data.get('id'):
+            data.update(get_providers([post_id]).get(post_id, {}))
+        else:
+            id_provider_map = get_providers([d['id'] for d in data['posts']])
+            for d in data['posts']:
+                d.update(id_provider_map.get(d['id'], {}))
+        return Response(data, status=response.status_code)
+
+
+@extend_schema_view(
+    list=extend_schema(
         summary="Search for Posts in a Feed",
         description=textwrap.dedent(
             """
             Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
             """
         ),
-        responses={200:h4fserializers.PostXSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        responses={200:serializers.PostSerializer, 400: api_schema.DEFAULT_400_ERROR},
     ),
     retrieve=extend_schema(
         summary="Retrieve a post in a Feed",
@@ -407,37 +491,14 @@ class FeedView(viewsets.ViewSet):
         ),
     ),
 ) 
-class PostView(viewsets.ViewSet):
+class FeedPostView(PostOnlyView):
     serializer_class = serializers.PostSerializer
     lookup_url_kwarg = 'post_id'
     openapi_tags = ["Feeds"]
 
-    pagination_class = Pagination("posts")
-    filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
-    ordering_fields = ["pubdate", "title"]
-    ordering = ["-pubdate"]
-    minmax_date_fields = ["pubdate"]
 
-    class filterset_class(FilterSet):
-        title = Filter(
-            label="Filter by the content in a posts title. Will search for titles that contain the value entered.",
-            lookup_expr="search",
-        )
-        description = Filter(
-            label="Filter by the content in a posts description. Will search for descriptions that contain the value entered.",
-            lookup_expr="search",
-        )
-        job_id = UUIDFilter(label="Filter the Post by Job ID the Post was downloaded in.")
-
-    def list(self, request, *args, feed_id=None, **kwargs):
-        return self.add_obstract_props(FeedView.make_request(
-            request, f"/api/v1/feeds/{feed_id}/posts/"
-        ))
-
-    def retrieve(self, request, *args, feed_id=None, post_id=None):
-        return self.add_obstract_props(FeedView.make_request(
-            request, f"/api/v1/feeds/{feed_id}/posts/{post_id}"
-        ))
+    class filterset_class(PostOnlyView.filterset_class):
+        feed_id = None
     
     def destroy(self, request, *args, feed_id=None, post_id=None):
         resp = FeedView.make_request(
@@ -450,24 +511,6 @@ class PostView(viewsets.ViewSet):
         except Exception as e:
             print(e)
         return resp
-
-    def add_obstract_props(self, response: HttpResponse):
-        if response.status_code != 200:
-            return response
-        data = json.loads(response.content)
-
-        def get_providers(ids):
-            data = {}
-            for file in models.File.objects.filter(post_id__in=ids):
-                data[str(file.post_id)] = serializers.FileSerializer(file).data
-            return data
-        if post_id := data.get('id'):
-            data.update(get_providers([post_id]).get(post_id, {}))
-        else:
-            id_provider_map = get_providers([d['id'] for d in data['posts']])
-            for d in data['posts']:
-                d.update(id_provider_map.get(d['id'], {}))
-        return Response(data, status=response.status_code)
 
     def partial_update(self, request, *args, **kwargs):
         request_body = request.body

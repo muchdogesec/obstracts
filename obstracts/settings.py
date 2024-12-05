@@ -212,6 +212,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Profiles", "description": "Create and search for extraction profile applied to text in blog posts"},
         {"name": "Extractors", "description": "Search through extractors that can be used in profiles"},
         {"name": "Jobs", "description": "Check the status of data retrieval from blogs"},
+        {"name": "Posts", "description": "retrieve posts"},
     ]
 }
 APP_LABEL = "server"
