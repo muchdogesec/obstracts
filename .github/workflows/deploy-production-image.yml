@@ -1,42 +1,22 @@
-name: Create and publish Docker images for Obstracts Web
-
-description: This workflow builds and pushes Docker images for staging and production environments when changes are pushed to respective branches.
+name: Create and publish the Docker image for Obstracts Web Production
 
 on:
   push:
-    branches:
-      - main
+    branches: ['main']
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}_web_production
 
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
+    environment: obstracts_web_production
     permissions:
       contents: read
       packages: write
       attestations: write
-      id-token: write
-    strategy:
-      matrix:
-        environment:
-          - name: staging
-            branch: refs/heads/main
-            environment: obstracts_web_staging
-            image_suffix: _web_staging
-            django_debug: true
-            r2_access_key: '12763a8c243ac6fe8d37fff77a966b70'
-            r2_custom_domain: 'static.obstracts.staging.signalscorps.com'
-            r2_bucket_name: 'obstracts-web-core-staging'
-          - name: production
-            branch: refs/heads/main
-            environment: obstracts_web_production
-            image_suffix: _web_production
-            django_debug: false
-            r2_access_key: '63337c0d7032845f17a6647215bbdadf'
-            r2_custom_domain: 'static.obstracts.com'
-            r2_bucket_name: 'obstracts-web-core-production'
+      id-token: write 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,7 +30,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}${{ matrix.environment.image_suffix }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6
@@ -60,12 +40,11 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          visibility: private
           build-args: |
-            DJANGO_DEBUG=${{ matrix.environment.django_debug }}
-            R2_ACCESS_KEY=${{ matrix.environment.r2_access_key }}
-            R2_CUSTOM_DOMAIN=${{ matrix.environment.r2_custom_domain }}
-            R2_BUCKET_NAME=${{ matrix.environment.r2_bucket_name }}
+            DJANGO_DEBUG=FALSE
+            R2_ACCESS_KEY=63337c0d7032845f17a6647215bbdadf
+            R2_CUSTOM_DOMAIN=static.obstracts.com
+            R2_BUCKET_NAME=obstracts-web-core-production
             DJANGO_SECRET=${{ secrets.DJANGO_SECRET }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             ARANGODB_PASSWORD=${{ secrets.ARANGODB_PASSWORD }}
@@ -78,6 +57,6 @@ jobs:
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ github.repository }}${{ matrix.environment.image_suffix }}
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
