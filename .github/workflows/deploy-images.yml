@@ -75,7 +75,6 @@ jobs:
             GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
             GOOGLE_VISION_API_KEY=${{ secrets.GOOGLE_VISION_API_KEY }}
             R2_SECRET_KEY=${{ secrets.R2_SECRET_KEY }}
-            CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
