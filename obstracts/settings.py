@@ -208,6 +208,7 @@ SPECTACULAR_SETTINGS = {
     },
     "TAGS": [
         {"name": "Feeds", "description": "Subscribe and retrieve blogs and blog posts"},
+        {"name": "Posts", "description": "Retrieve Posts from all blogs"},
         {"name": "Objects", "description": "Search through STIX object extracted from blog posts"},
         {"name": "Profiles", "description": "Create and search for extraction profile applied to text in blog posts"},
         {"name": "Extractors", "description": "Search through extractors that can be used in profiles"},

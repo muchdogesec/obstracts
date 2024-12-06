@@ -50,4 +50,3 @@ class PostXSerializer(serializers.Serializer):
     is_full_text = serializers.BooleanField(default=False, read_only=True, help_text="If full text has been retrieved")
     content_type = serializers.CharField(max_length=200, default="plain/text", read_only=True, help_text="Content type of the description")
     added_manually = serializers.BooleanField(default=False, read_only=True, help_text="Indicates whether the post was added manually")
-    profile_id = serializers.UUIDField(required=False, default=None)
