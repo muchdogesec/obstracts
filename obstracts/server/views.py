@@ -339,7 +339,7 @@ class FeedView(viewsets.ViewSet):
         summary="Search for Posts",
         description=textwrap.dedent(
             """
-            Returns all Posts indexed. Filter by the ones you're interested in.
+            Search through Posts from all Blogs. Filter by the ones you're interested in.
             """
         ),
         responses={200:serializers.PostWithFeedIDSerializer, 400: api_schema.DEFAULT_400_ERROR},
