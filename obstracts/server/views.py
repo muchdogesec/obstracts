@@ -579,7 +579,6 @@ class FeedPostView(PostOnlyView):
             "@edge_collection": post_file.feed.edge_collection,
             "report_id": post_file.report_id,
         }
-        print(json.dumps(bind_vars))
         query = """
 
 LET report = FIRST(
