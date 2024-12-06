@@ -569,23 +569,53 @@ class FeedPostView(PostOnlyView):
         return self.get_post_objects(post_id, feed_id)
     
     def get_post_objects(self, post_id, feed_id):
+        post_file = get_object_or_404(models.File, post_id=post_id)
+
         helper = ArangoDBHelper(settings.VIEW_NAME, self.request)
         types = helper.query.get('types', "")
         bind_vars = {
-            "@view": helper.collection,
-            "matcher": dict(_obstracts_post_id=str(post_id), _obstracts_feed_id=str(feed_id)),
             "types": list(OBJECT_TYPES.intersection(types.split(","))) if types else None,
+            "@vertex_collection":post_file.feed.vertex_collection,
+            "@edge_collection": post_file.feed.edge_collection,
+            "report_id": post_file.report_id,
         }
+        print(json.dumps(bind_vars))
         query = """
-            FOR doc in @@view
-            FILTER doc.type IN @types OR NOT @types
-            FILTER MATCHES(doc, @matcher)
 
-            COLLECT id = doc.id INTO docs
-            LET doc = FIRST(FOR d in docs[*].doc SORT d.modified OR d.created DESC RETURN d)
+LET report = FIRST(
+    FOR report IN @@vertex_collection
+    FILTER report.id == @report_id
+    RETURN report
+)
 
-            LIMIT @offset, @count
-            RETURN KEEP(doc, KEYS(doc, true))
+LET original_objects = APPEND([report], (
+    FOR doc IN @@vertex_collection
+    FILTER doc.id IN report.object_refs
+    RETURN doc
+))
+
+
+LET relationship_objects = (
+    FOR doc IN @@edge_collection
+    FILTER doc.source_ref IN original_objects[*].id OR doc.target_ref IN original_objects[*].id
+    RETURN doc
+)
+
+LET report_ref_vertices = (
+    FOR doc IN @@vertex_collection
+    FILTER doc.id IN APPEND(report.object_marking_refs, [report.created_by_ref])
+    RETURN doc
+)
+
+FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_objects)
+    FILTER NOT @types OR doc.type IN @types
+    
+    COLLECT id = doc.id  INTO docs
+    LET dd = FIRST(FOR doc IN docs[*].doc RETURN doc)
+    
+    LIMIT @offset, @count
+    RETURN KEEP(dd, KEYS(dd, TRUE))
+
         """
 
         return helper.execute_query(query, bind_vars=bind_vars)
