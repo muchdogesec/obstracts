@@ -65,7 +65,7 @@ class FileSerializer(serializers.ModelSerializer):
     profile_id = serializers.UUIDField(required=False)
     class Meta:
         model = File
-        exclude = ["profile", "feed", "post_id", "summary"]
+        exclude = ["profile", "feed", "post_id", "summary", "markdown_file"]
 
 class PostSerializer(FileSerializer, h4fserializers.PostXSerializer):
     pass
