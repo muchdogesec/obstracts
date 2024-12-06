@@ -330,7 +330,7 @@ class FeedView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.data.get("profile_id"))
+            job = tasks.new_task(out, s.validated_data['profile_id'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -526,7 +526,7 @@ class FeedPostView(PostOnlyView):
             self.remove_report(post_id, feed.collection_name)
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.data.get("profile_id", feed.profile.id))
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -541,7 +541,7 @@ class FeedPostView(PostOnlyView):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.data.get("profile_id"))
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
