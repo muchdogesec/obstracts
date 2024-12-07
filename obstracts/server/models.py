@@ -28,11 +28,6 @@ def upload_to_func(instance: 'File|FileImage', filename):
         instance = instance.report
     return os.path.join(str(instance.feed.id), 'posts', str(instance.post_id), filename)
 
-class File(models.Model):
-    post_id = models.UUIDField(primary_key=True)
-    markdown_file = models.FileField(upload_to=upload_to_func, null=True)
-    summary = models.CharField(max_length=65535, null=True)
-
 class JobState(models.TextChoices):
     RETRIEVING = "retrieving"
     PROCESSING = "processing"
@@ -66,6 +61,14 @@ class FeedProfile(models.Model):
         slug = slugify(self.title).replace('-', '_')
         return f"{slug}_{self.id}".strip("_").replace('-', '')
     
+    @property
+    def edge_collection(self):
+        return self.collection_name + "_edge_collection"
+    
+    @property
+    def vertex_collection(self):
+        return self.collection_name + "_vertex_collection"
+    
 
 
 class File(models.Model):
@@ -81,6 +84,10 @@ class File(models.Model):
     def delete(self, *args, **kwargs):
         self._deleted_directly = True
         return super().delete(*args, **kwargs)
+    
+    @property
+    def report_id(self):
+        return "report--" + str(self.post_id)
     
 
 @receiver(post_delete, sender=File)
