@@ -355,6 +355,7 @@ class FeedView(viewsets.ViewSet):
 )
 class PostOnlyView(viewsets.ViewSet):
     serializer_class = serializers.PostWithFeedIDSerializer
+    file_serializer_class = serializers.FileWithSummary
     lookup_url_kwarg = 'post_id'
     openapi_tags = ["Posts"]
 
@@ -407,7 +408,7 @@ class PostOnlyView(viewsets.ViewSet):
         def get_providers(ids):
             data = {}
             for file in models.File.objects.filter(post_id__in=ids):
-                data[str(file.post_id)] = serializers.FileSerializer(file).data
+                data[str(file.post_id)] = self.file_serializer_class(file).data
             return data
         if post_id := data.get('id'):
             data.update(get_providers([post_id]).get(post_id, {}))
@@ -493,6 +494,8 @@ class PostOnlyView(viewsets.ViewSet):
 ) 
 class FeedPostView(PostOnlyView):
     serializer_class = serializers.PostSerializer
+    file_serializer_class = serializers.FileSerializer
+
     lookup_url_kwarg = 'post_id'
     openapi_tags = ["Feeds"]
 
