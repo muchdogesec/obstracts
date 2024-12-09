@@ -67,10 +67,18 @@ class FileSerializer(serializers.ModelSerializer):
         model = File
         exclude = ["profile", "feed", "post_id", "summary", "markdown_file"]
 
+
 class PostSerializer(FileSerializer, h4fserializers.PostXSerializer):
     pass
 
-class PostWithFeedIDSerializer(PostSerializer):
+
+
+class FileWithSummary(FileSerializer):
+    class Meta:
+        model = File
+        exclude = ["profile", "feed", "post_id", "markdown_file"]
+
+class PostWithFeedIDSerializer(FileWithSummary, h4fserializers.PostXSerializer):
     feed_id = serializers.UUIDField(help_text="containing feed's id")
 
 class ImageSerializer(serializers.ModelSerializer):
