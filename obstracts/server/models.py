@@ -30,6 +30,7 @@ def upload_to_func(instance: 'File|FileImage', filename):
 
 class JobState(models.TextChoices):
     RETRIEVING = "retrieving"
+    QUEUED     = "in-queue"
     PROCESSING = "processing"
     PROCESSED = "processed"
     PROCESS_FAILED = "processing_failed"
