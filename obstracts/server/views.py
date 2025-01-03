@@ -87,7 +87,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
     create=extend_schema(
         request=FeedSerializer,
         responses={201:JobSerializer, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Create a new Feed",
+        summary="Create a New Feed",
         description=textwrap.dedent(
             """
             Use this endpoint to create to a new Feed.
@@ -112,7 +112,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
     create_skeleton=extend_schema(
         request=serializers.SkeletonFeedSerializer,
         responses={201:FeedSerializer, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Create a new Skeleton Feed",
+        summary="Create a New Skeleton Feed",
         description=textwrap.dedent(
             """
             Sometimes blogs don't have an RSS or ATOM feed. It might also be the case you want to curate a blog manually using various URLs. This is what `skeleton` feeds are designed for, allowing you to create a skeleton feed and then add posts to it manually later on using the add post manually endpoint.
@@ -143,7 +143,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
         summary="Update a Feeds Metadata",
         description=textwrap.dedent(
             """
-            Update the metadata of the Feed. To leave a property unchanged from its current state do not pass it in the request.
+            Update the metadata of the Feed.
 
             Note, it is not possible to update the `url` of the feed. You must delete the Feed and add it again to modify the `url`.
 
@@ -153,6 +153,8 @@ class MarkdownImageReplacer(MarkdownRenderer):
             * `description` (optional): update the `description` of the Feed
             * `pretty_url` (optional): update the `pretty_url of the Feed
 
+            Only one/key value is required in the request. For those not passed, the current value will remain unchanged.
+
             The response will contain the newly updated Feed object.
             """
         ),
@@ -160,12 +162,12 @@ class MarkdownImageReplacer(MarkdownRenderer):
     fetch=extend_schema(
         request=serializers.FetchFeedSerializer,
         responses={201: serializers.JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Fetch updates for a Feed",
+        summary="Fetch Updates for a Feed",
         description=textwrap.dedent(
             """
             Use this endpoint to check for new posts on this blog since the last post time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.
 
-            Note, this endpoint can miss updates that have happened to currently indexed posts (where the RSS or ATOM feed does not report the updated date correctly -- which is actually very common). To solve this issue for currently indexed blog posts, use the Update Post endpoint directly.
+            Note, this endpoint can miss updates that have happened to currently indexed posts (where the RSS or ATOM feed does not report the updated date correctly -- which is actually very common). To solve this issue for currently indexed blog posts, use the Update a Post in a Feed endpoint directly.
 
             Whilst it is possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed we would recommend using the same `profile_id` and `include_remote_blogs` as set originally because. it can becoming confusing quickly managing different settings on a per post basis. Generally it's better to reindex the whole blog using the new setting unless you have a good reason not to.
 
@@ -176,6 +178,8 @@ class MarkdownImageReplacer(MarkdownRenderer):
 
             Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
 
+            IMPORTANT: this request will fail if run against a Skeleton type feed. Skeleton feeds can only be updated by adding posts to them manually using the Manually Add a Post to a Feed endpoint.
+
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
         ),
@@ -183,10 +187,14 @@ class MarkdownImageReplacer(MarkdownRenderer):
     create_posts=extend_schema(
         request=serializers.PostCreateSerializer,
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Backfill a Post into A Feed",
+        summary="Manually Add a Post to A Feed",
         description=textwrap.dedent(
             """
-            This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.
+            Sometimes historic posts are missed when a feed is indexed (typically when no Wayback Machine archive exists).
+
+            This endpoint allows you to add Posts manually to a Feed.
+
+            If the feed you want to add a post to does not already exist, you should first add it using the POST Feed or POST skeleton feed endpoints.
 
             The following key/values are accepted in the body of the request:
 
@@ -412,21 +420,42 @@ class FeedView(viewsets.ViewSet):
         summary="Update a Post in A Feed",
         description=textwrap.dedent(
             """
-            Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in the database matches the currently published post you make a request to this endpoint using the Post ID to update it.
+            When blog posts are modified at source, the RSS and ATOM feeds that serve them are not often updated with new modification. As such, fetching for blog will cause these updated posts to be missed.
+
+            To ensure the post stored in the database matches the one currently published you can make a request to this endpoint using the Post ID to update it.
 
             The following key/values are accepted in the body of the request:
 
             * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.
 
-            **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text.
+            This update will only change the content (`description`) stored for the Post. It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
+
+            **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
 
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
         ),
     ),
     partial_update=extend_schema(
-        description="update post metadata",
-        summary="update post metadata",
+        summary="Update a Posts Metadata",
+        description=textwrap.dedent(
+            """
+            In most cases, the automatically indexed metadata (or user submitted metadata in the case of manually added Posts) will be fine.
+
+            However, these may be occasions you want to change the values of the `title`, `pubdate`, `author`, or `categories` for a Post.
+
+            The following key/values are accepted in the body of the request:
+
+            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.
+            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
+            * `author` (optional): the value to be stored for the author of the post.
+            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
+
+            Only one key/value is required. If no values are passed, they will be remain unchanged from the current state.
+
+            It is not possible to manually modify any other values for the Post object. You can update the post content using the Update a Post in A Feed endpoint.
+            """
+        ),
 
         responses={
             201: serializers.PostWithFeedIDSerializer,
@@ -633,7 +662,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
     @extend_schema(
             responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
             filters=False,
-            summary="Retrieve images found in a Post",
+            summary="Get Local URLs for Images in a Post",
             description=textwrap.dedent(
             """
             When [file2txt](https://github.com/muchdogesec/file2txt/) processes a file it will extract all images from the file and store them locally. You can see these images referenced in the markdown produced (see Post markdown endpoint). This endpoint lists the image files found in the Post selected.
