@@ -737,8 +737,9 @@ class JobView(viewsets.ModelViewSet):
 
 
     class filterset_class(FilterSet):
-        feed_id = Filter(
+        feed_id = BaseCSVFilter(
             label="Filter by Feed ID (e.g. `6c6e6448-04d4-42a3-9214-4f0f7d02694e`.",
+            lookup_expr='in'
         )
         state = Filter(
             label="Filter by state.",
