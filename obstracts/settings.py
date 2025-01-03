@@ -221,8 +221,8 @@ SPECTACULAR_SETTINGS = {
         "url": "https://github.com/muchdogesec/obstracts",
     },
     "TAGS": [
-        {"name": "Feeds", "description": "Subscribe and retrieve Feed"},
-        {"name": "Posts", "description": "Retrieve posts from Feeds"},
+        {"name": "Feeds", "description": "Subscribe and retrieve Feeds"},
+        {"name": "Posts", "description": "Retrieve Posts in Feeds"},
         {"name": "Objects", "description": "Search through STIX object extracted from Posts"},
         {"name": "Profiles", "description": "Create and search for extraction profile applied to text in Posts"},
         {"name": "Extractors", "description": "Search through extractors that can be used in Profiles"},
