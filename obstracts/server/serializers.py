@@ -51,21 +51,22 @@ class FetchFeedSerializer(CreateTaskSerializer):
 class PatchPostSerializer(CreateTaskSerializer):
     pass
 
-class PostCreateSerializer(PatchPostSerializer):
+class H4fPostCreateSerializer(serializers.Serializer):
     title = serializers.CharField()
     link = serializers.URLField()
     pubdate = serializers.DateTimeField()
     author = serializers.CharField(required=False)
     categories = serializers.ListField(child=serializers.CharField(), required=False)
-
-
+    
+class PostCreateSerializer(CreateTaskSerializer):
+    posts = serializers.ListSerializer(child=H4fPostCreateSerializer(), allow_empty=False)
 
 
 class FileSerializer(serializers.ModelSerializer):
     profile_id = serializers.UUIDField(required=False)
     class Meta:
         model = File
-        exclude = ["profile", "feed", "post_id", "summary", "markdown_file"]
+        exclude = ["profile", "feed", "post_id", "markdown_file"]
 
 
 class PostSerializer(FileSerializer, h4fserializers.PostXSerializer):
@@ -73,12 +74,7 @@ class PostSerializer(FileSerializer, h4fserializers.PostXSerializer):
 
 
 
-class FileWithSummary(FileSerializer):
-    class Meta:
-        model = File
-        exclude = ["profile", "feed", "post_id", "markdown_file"]
-
-class PostWithFeedIDSerializer(FileWithSummary, h4fserializers.PostXSerializer):
+class PostWithFeedIDSerializer(FileSerializer, h4fserializers.PostXSerializer):
     feed_id = serializers.UUIDField(help_text="containing feed's id")
 
 class ImageSerializer(serializers.ModelSerializer):

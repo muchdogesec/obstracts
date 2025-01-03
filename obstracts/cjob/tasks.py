@@ -139,7 +139,7 @@ def start_processing(h4f_job, job_id):
     item_count = job.item_count
     while len(posts) < item_count:
         resp = make_h4f_request(
-            f"/api/v1/feeds/{job.feed_id}/posts/",
+            f"/api/v1/posts/",
             params={"job_id": job_id, "page": current_page},
         )
         if resp.ok:
