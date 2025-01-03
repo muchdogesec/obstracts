@@ -51,14 +51,15 @@ class FetchFeedSerializer(CreateTaskSerializer):
 class PatchPostSerializer(CreateTaskSerializer):
     pass
 
-class PostCreateSerializer(PatchPostSerializer):
+class H4fPostCreateSerializer(serializers.Serializer):
     title = serializers.CharField()
     link = serializers.URLField()
     pubdate = serializers.DateTimeField()
     author = serializers.CharField(required=False)
     categories = serializers.ListField(child=serializers.CharField(), required=False)
-
-
+    
+class PostCreateSerializer(CreateTaskSerializer):
+    posts = serializers.ListSerializer(child=H4fPostCreateSerializer(), allow_empty=False)
 
 
 class FileSerializer(serializers.ModelSerializer):
