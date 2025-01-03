@@ -180,6 +180,31 @@ class MarkdownImageReplacer(MarkdownRenderer):
             """
         ),
     ),
+    create_posts=extend_schema(
+        request=serializers.PostCreateSerializer,
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Backfill a Post into A Feed",
+        description=textwrap.dedent(
+            """
+            This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.
+
+            The following key/values are accepted in the body of the request:
+
+            * `profile_id` (required): a valid profile ID to define how the post should be processed.
+            * `link` (required - must be unique): The URL of the blog post. This is where the content of the post is found. It cannot be the same as the `url` of a post already in this feed. If you want to update the post, use the PATCH post endpoint.
+            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.
+            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
+            * `author` (optional): the value to be stored for the author of the post.
+            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
+
+            Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
+
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+
+            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
+            """
+        ),
+    ),
 )
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
@@ -334,6 +359,24 @@ class FeedView(viewsets.ViewSet):
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
+    @decorators.action(detail=True, methods=["POST"], url_path='posts')
+    def create_posts(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.FetchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        resp = FeedView.make_request(
+            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
+        )
+        if resp.status_code == 201:
+            out = json.loads(resp.content)
+            out['job_id'] = out['id']
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return resp
+
+
+    
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Posts",
@@ -349,6 +392,35 @@ class FeedView(viewsets.ViewSet):
         description=textwrap.dedent(
             """
             This will return a single Post by its ID. It is useful if you only want to get the data for a single entry.
+            """
+        ),
+    ),
+    destroy=extend_schema(
+        summary="Delete a post in a Feed",
+        description=textwrap.dedent(
+            """
+            Use this endpoint to delete a post using its `id`
+
+            IMPORTANT: this WILL delete the content of the post and any STIX objects directly linked to it. Any objects linked to other reports WILL NOT be deleted.
+            """
+        ),
+        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
+    ),
+    partial_update=extend_schema(
+        request=serializers.PatchPostSerializer,
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Update a Post in A Feed",
+        description=textwrap.dedent(
+            """
+            Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in the database matches the currently published post you make a request to this endpoint using the Post ID to update it.
+
+            The following key/values are accepted in the body of the request:
+
+            * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.
+
+            **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text.
+
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
         ),
     ),
@@ -383,19 +455,13 @@ class PostOnlyView(viewsets.ViewSet):
 
 
     def list(self, request, *args, feed_id=None, **kwargs):
-        if feed_id:
-            url = f"/api/v1/feeds/{feed_id}/posts/"
-        else:
-            url = f"/api/v1/posts/"
+        url = f"/api/v1/posts/"
         return self.add_obstract_props(FeedView.make_request(
             request, url
         ))
 
     def retrieve(self, request, *args, feed_id=None, post_id=None):
-        if feed_id:
-            url = f"/api/v1/feeds/{feed_id}/posts/{post_id}/"
-        else:
-            url = f"/api/v1/posts/{post_id}/"
+        url = f"/api/v1/posts/{post_id}/"
         return self.add_obstract_props(FeedView.make_request(
             request, url
         ))
@@ -417,95 +483,10 @@ class PostOnlyView(viewsets.ViewSet):
             for d in data['posts']:
                 d.update(id_provider_map.get(d['id'], {}))
         return Response(data, status=response.status_code)
-
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="Search for Posts in a Feed",
-        description=textwrap.dedent(
-            """
-            Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
-            """
-        ),
-        responses={200:serializers.PostSerializer, 400: api_schema.DEFAULT_400_ERROR},
-    ),
-    retrieve=extend_schema(
-        summary="Retrieve a post in a Feed",
-        description=textwrap.dedent(
-            """
-            Use this endpoint if you want to search through all Posts in a Feed. The response of this endpoint is JSON, and is useful if you're building a custom integration to a downstream tool. If you just want to import the data for this blog into your feed reader use the RSS version of this endpoint.
-             """
-        ),
-    ),
-    destroy=extend_schema(
-        summary="Delete a post in a Feed",
-        description=textwrap.dedent(
-            """
-            Use this endpoint to delete a post using its `id`
-
-            IMPORTANT: this WILL delete the content of the post and any STIX objects directly linked to it. Any objects linked to other reports WILL NOT be deleted.
-            """
-        ),
-        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
-    ),
-    partial_update=extend_schema(
-        request=serializers.PatchPostSerializer,
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Update a Post in A Feed",
-        description=textwrap.dedent(
-            """
-            Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in the database matches the currently published post you make a request to this endpoint using the Post ID to update it.
-
-            The following key/values are accepted in the body of the request:
-
-            * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.
-
-            **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text.
-
-            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
-            """
-        ),
-    ),
-    create=extend_schema(
-        request=serializers.PostCreateSerializer,
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Backfill a Post into A Feed",
-        description=textwrap.dedent(
-            """
-            This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.
-
-            The following key/values are accepted in the body of the request:
-
-            * `profile_id` (required): a valid profile ID to define how the post should be processed.
-            * `link` (required - must be unique): The URL of the blog post. This is where the content of the post is found. It cannot be the same as the `url` of a post already in this feed. If you want to update the post, use the PATCH post endpoint.
-            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.
-            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
-            * `author` (optional): the value to be stored for the author of the post.
-            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
-
-            Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
-
-            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
-
-            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
-            """
-        ),
-    ),
-) 
-class FeedPostView(PostOnlyView):
-    serializer_class = serializers.PostSerializer
-    file_serializer_class = serializers.FileSerializer
-
-    lookup_url_kwarg = 'post_id'
-    openapi_tags = ["Feeds"]
-
-
-    class filterset_class(PostOnlyView.filterset_class):
-        feed_id = None
     
-    def destroy(self, request, *args, feed_id=None, post_id=None):
+    def destroy(self, request, *args, post_id=None):
         resp = FeedView.make_request(
-            request, f"/api/v1/feeds/{feed_id}/posts/{post_id}/"
+            request, f"/api/v1/posts/{post_id}/"
         )
         if resp.status_code != 204:
             return resp
@@ -519,35 +500,18 @@ class FeedPostView(PostOnlyView):
         request_body = request.body
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        feed_id = kwargs.get(FeedView.lookup_url_kwarg)
         post_id = kwargs.get(self.lookup_url_kwarg)
-        feed = FeedView.get_feed(feed_id)
         resp = FeedView.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/{post_id}/", request_body=request_body
+            request, f"/api/v1/posts/{post_id}/", request_body=request_body
         )
         if resp.status_code == 201:
-            self.remove_report(post_id, feed.collection_name)
+            self.remove_report(post_id)
             out = json.loads(resp.content)
             out['job_id'] = out['id']
             job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
-    def create(self, request, *args, **kwargs):
-        request_body = request.body
-        s = serializers.FetchFeedSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
-
-        resp = FeedView.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
-        )
-        if resp.status_code == 201:
-            out = json.loads(resp.content)
-            out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
-            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
-        return resp
-
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters()
@@ -569,9 +533,9 @@ class FeedPostView(PostOnlyView):
     )
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, feed_id=None, post_id=None):
-        return self.get_post_objects(post_id, feed_id)
+        return self.get_post_objects(post_id)
     
-    def get_post_objects(self, post_id, feed_id):
+    def get_post_objects(self, post_id):
         post_file = get_object_or_404(models.File, post_id=post_id)
 
         helper = ArangoDBHelper(settings.VIEW_NAME, self.request)
@@ -643,7 +607,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
         ],
     )
     @decorators.action(detail=True, methods=["GET"])
-    def markdown(self, request, feed_id=None, post_id=None):
+    def markdown(self, request, post_id=None):
         obj = get_object_or_404(models.File, post_id=post_id)
         resp_text = MarkdownImageReplacer.get_markdown(request, obj.markdown_file.read().decode(), models.FileImage.objects.filter(report__post_id=post_id))
         return FileResponse(streaming_content=resp_text, content_type='text/markdown', filename='markdown.md')
@@ -659,7 +623,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
         ),
     )
     @decorators.action(detail=True, pagination_class=Pagination("images"))
-    def images(self, request, feed_id=None, post_id=None, image=None):
+    def images(self, request, post_id=None, image=None):
         queryset = models.FileImage.objects.filter(report__post_id=post_id).order_by('name')
         paginator = Pagination('images')
 
@@ -672,16 +636,22 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    def remove_report(self, post_id, collection):
-        helper = ArangoDBHelper(settings.VIEW_NAME, self.request)
-        query = """ 
-        FOR doc IN @@collection
-        FILTER doc._obstracts_post_id == @post_id
-        REMOVE doc IN @@collection
-        RETURN NULL
-        """
-        for c in ["edge_collection", "vertex_collection"]:
-            helper.execute_query(query, bind_vars={"@collection": f"{collection}_{c}", 'post_id': post_id}, paginate=False)
+    def remove_report(self, post_id):
+        try:
+            post: models.File = get_object_or_404(models.File, post_id=post_id)
+            collection = post.feed.collection_name
+
+            helper = ArangoDBHelper(settings.VIEW_NAME, self.request)
+            query = """ 
+            FOR doc IN @@collection
+            FILTER doc._obstracts_post_id == @post_id
+            REMOVE doc IN @@collection
+            RETURN NULL
+            """
+            for c in ["edge_collection", "vertex_collection"]:
+                helper.execute_query(query, bind_vars={"@collection": f"{collection}_{c}", 'post_id': post_id}, paginate=False)
+        except Exception as e:
+            logging.exception("remove_report failed")
 
 
 @extend_schema_view(
