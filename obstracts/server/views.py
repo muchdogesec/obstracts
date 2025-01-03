@@ -355,7 +355,7 @@ class FeedView(viewsets.ViewSet):
 )
 class PostOnlyView(viewsets.ViewSet):
     serializer_class = serializers.PostWithFeedIDSerializer
-    file_serializer_class = serializers.FileWithSummary
+    file_serializer_class = serializers.FileSerializer
     lookup_url_kwarg = 'post_id'
     openapi_tags = ["Posts"]
 
@@ -682,27 +682,6 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
         """
         for c in ["edge_collection", "vertex_collection"]:
             helper.execute_query(query, bind_vars={"@collection": f"{collection}_{c}", 'post_id': post_id}, paginate=False)
-
-
-    @extend_schema(
-            responses=None,
-            summary="Get a summary of the post content",
-            description=textwrap.dedent(
-                """
-                If `ai_summary_provider` was enabled, this endpoint will return a summary of the post. This is useful to get a quick understanding of the contents of the post.
-
-                The prompt used to generate the summary can be seen in [dogesec_commons here](https://github.com/muchdogesec/dogesec_commons/blob/main/dogesec_commons/stixifier/summarizer.py).
-
-                If you want a summary but `ai_summary_provider` was not enabled during processing, you will need to process the post again.
-                """
-            ),        
-    )
-    @decorators.action(methods=["GET"], detail=True)
-    def summary(self, request, feed_id=None, post_id=None):
-        obj = get_object_or_404(models.File, post_id=post_id)
-        if not obj.summary:
-            raise exceptions.NotFound(f"No Summary for post")
-        return FileResponse(streaming_content=io.BytesIO(obj.summary.encode()), content_type='text/markdown', filename='summary.md')
 
 
 @extend_schema_view(
