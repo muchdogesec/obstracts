@@ -406,8 +406,8 @@ class FeedView(viewsets.ViewSet):
         ),
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
-    partial_update=extend_schema(
-        request=serializers.PatchPostSerializer,
+    fetch=extend_schema(
+        request=serializers.FetchPostSerializer,
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Post in A Feed",
         description=textwrap.dedent(
@@ -423,6 +423,17 @@ class FeedView(viewsets.ViewSet):
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
         ),
+    ),
+    partial_update=extend_schema(
+        description="update post metadata",
+        summary="update post metadata",
+
+        responses={
+            201: serializers.PostWithFeedIDSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+        request=serializers.PatchPostSerializer,
     ),
 )
 class PostOnlyView(viewsets.ViewSet):
@@ -466,6 +477,12 @@ class PostOnlyView(viewsets.ViewSet):
             request, url
         ))
     
+    def partial_update(self, request, *args, feed_id=None, post_id=None):
+        url = f"/api/v1/posts/{post_id}/"
+        return self.add_obstract_props(FeedView.make_request(
+            request, url
+        ))
+    
     def add_obstract_props(self, response: HttpResponse):
         if response.status_code != 200:
             return response
@@ -496,7 +513,8 @@ class PostOnlyView(viewsets.ViewSet):
             print(e)
         return resp
 
-    def partial_update(self, request, *args, **kwargs):
+    @decorators.action(detail=True, methods=['PATCH'])
+    def fetch(self, request, *args, **kwargs):
         request_body = request.body
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
