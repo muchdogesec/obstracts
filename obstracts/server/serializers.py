@@ -48,7 +48,7 @@ class FetchFeedSerializer(CreateTaskSerializer):
     include_remote_blogs = serializers.BooleanField(write_only=True, default=False)
 
 
-class PatchPostSerializer(CreateTaskSerializer):
+class FetchPostSerializer(CreateTaskSerializer):
     pass
 
 class H4fPostCreateSerializer(serializers.Serializer):
@@ -57,6 +57,10 @@ class H4fPostCreateSerializer(serializers.Serializer):
     pubdate = serializers.DateTimeField()
     author = serializers.CharField(required=False)
     categories = serializers.ListField(child=serializers.CharField(), required=False)
+
+class PatchPostSerializer(H4fPostCreateSerializer):
+    link = None
+
     
 class PostCreateSerializer(CreateTaskSerializer):
     posts = serializers.ListSerializer(child=H4fPostCreateSerializer(), allow_empty=False)
