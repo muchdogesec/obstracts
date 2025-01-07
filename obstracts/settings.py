@@ -221,12 +221,12 @@ SPECTACULAR_SETTINGS = {
         "url": "https://github.com/muchdogesec/obstracts",
     },
     "TAGS": [
-        {"name": "Feeds", "description": "Subscribe and retrieve blogs and blog posts"},
-        {"name": "Posts", "description": "Retrieve Posts from all blogs"},
-        {"name": "Objects", "description": "Search through STIX object extracted from blog posts"},
-        {"name": "Profiles", "description": "Create and search for extraction profile applied to text in blog posts"},
-        {"name": "Extractors", "description": "Search through extractors that can be used in profiles"},
-        {"name": "Jobs", "description": "Check the status of data retrieval from blogs"},
+        {"name": "Feeds", "description": "Subscribe and retrieve Feeds"},
+        {"name": "Posts", "description": "Retrieve Posts in Feeds"},
+        {"name": "Objects", "description": "Search through STIX object extracted from Posts"},
+        {"name": "Profiles", "description": "Create and search for extraction profile applied to text in Posts"},
+        {"name": "Extractors", "description": "Search through extractors that can be used in Profiles"},
+        {"name": "Jobs", "description": "Check the status of data retrieval from Feeds"},
     ]
 }
 APP_LABEL = "server"
