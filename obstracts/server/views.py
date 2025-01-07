@@ -187,35 +187,6 @@ class MarkdownImageReplacer(MarkdownRenderer):
     create_posts=extend_schema(
         request=serializers.PostCreateSerializer,
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Manually Add a Post to A Feed",
-        description=textwrap.dedent(
-            """
-            Sometimes historic posts are missed when a feed is indexed (typically when no Wayback Machine archive exists).
-
-            This endpoint allows you to add Posts manually to a Feed.
-
-            If the feed you want to add a post to does not already exist, you should first add it using the POST Feed or POST skeleton feed endpoints.
-
-            The following key/values are accepted in the body of the request:
-
-            * `profile_id` (required): a valid profile ID to define how the post should be processed.
-            * `link` (required - must be unique): The URL of the blog post. This is where the content of the post is found. It cannot be the same as the `url` of a post already in this feed. If you want to update the post, use the PATCH post endpoint.
-            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.
-            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
-            * `author` (optional): the value to be stored for the author of the post.
-            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
-
-            Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
-
-            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
-
-            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
-            """
-        ),
-    ),
-    create_posts=extend_schema(
-        request=serializers.PostCreateSerializer,
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Backfill a Post into A Feed",
         description=textwrap.dedent(
             """
