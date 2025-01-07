@@ -184,31 +184,6 @@ class MarkdownImageReplacer(MarkdownRenderer):
             """
         ),
     ),
-    create_posts=extend_schema(
-        request=serializers.PostCreateSerializer,
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Backfill a Post into A Feed",
-        description=textwrap.dedent(
-            """
-            This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.
-
-            The following key/values are accepted in the body of the request:
-
-            * `profile_id` (required): a valid profile ID to define how the post should be processed.
-            * `link` (required - must be unique): The URL of the blog post. This is where the content of the post is found. It cannot be the same as the `url` of a post already in this feed. If you want to update the post, use the PATCH post endpoint.
-            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.
-            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
-            * `author` (optional): the value to be stored for the author of the post.
-            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
-
-            Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
-
-            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
-
-            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
-            """
-        ),
-    ),
 )
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
@@ -362,22 +337,6 @@ class FeedView(viewsets.ViewSet):
             job = tasks.new_task(out, s.validated_data['profile_id'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
-    
-    @decorators.action(detail=True, methods=["POST"], url_path='posts')
-    def create_posts(self, request, *args, **kwargs):
-        request_body = request.body
-        s = serializers.FetchFeedSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
-
-        resp = FeedView.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
-        )
-        if resp.status_code == 201:
-            out = json.loads(resp.content)
-            out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
-            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
-        return resp
 
 
     
@@ -473,6 +432,7 @@ class PostOnlyView(viewsets.ViewSet):
     ordering_fields = ["pubdate", "title"]
     ordering = ["-pubdate"]
     minmax_date_fields = ["pubdate"]
+    h4f_base_path = "/api/v1/posts"
 
     class filterset_class(FilterSet):
         feed_id = filters.BaseInFilter(help_text="filter by one or more `feed_id`(s)")
@@ -491,20 +451,20 @@ class PostOnlyView(viewsets.ViewSet):
         job_id = Filter(help_text="Filter the Post by Job ID the Post was downloaded in.")
 
 
-    def list(self, request, *args, feed_id=None, **kwargs):
-        url = f"/api/v1/posts/"
+    def list(self, request, *args, **kwargs):
+        url = self.h4f_base_path + "/"
         return self.add_obstract_props(FeedView.make_request(
             request, url
         ))
 
-    def retrieve(self, request, *args, feed_id=None, post_id=None):
-        url = f"/api/v1/posts/{post_id}/"
+    def retrieve(self, request, *args,  post_id=None, **kwargs):
+        url = f"{self.h4f_base_path}/{post_id}/"
         return self.add_obstract_props(FeedView.make_request(
             request, url
         ))
     
-    def partial_update(self, request, *args, feed_id=None, post_id=None):
-        url = f"/api/v1/posts/{post_id}/"
+    def partial_update(self, request, *args, post_id=None, **kwargs):
+        url = f"{self.h4f_base_path}/{post_id}/"
 
         return self.add_obstract_props(FeedView.make_request(
             request, url
@@ -528,9 +488,9 @@ class PostOnlyView(viewsets.ViewSet):
                 d.update(id_provider_map.get(d['id'], {}))
         return Response(data, status=response.status_code)
     
-    def destroy(self, request, *args, post_id=None):
+    def destroy(self, request, *args, post_id=None, **kwargs):
         resp = FeedView.make_request(
-            request, f"/api/v1/posts/{post_id}/"
+            request, f"{self.h4f_base_path}/{post_id}/"
         )
         if resp.status_code != 204:
             return resp
@@ -547,7 +507,7 @@ class PostOnlyView(viewsets.ViewSet):
         s.is_valid(raise_exception=True)
         post_id = kwargs.get(self.lookup_url_kwarg)
         resp = FeedView.make_request(
-            request, f"/api/v1/posts/{post_id}/", request_body=request_body
+            request, f"{self.h4f_base_path}/{post_id}/", request_body=request_body
         )
         if resp.status_code == 201:
             self.remove_report(post_id)
@@ -577,7 +537,7 @@ class PostOnlyView(viewsets.ViewSet):
         ),
     )
     @decorators.action(detail=True, methods=["GET"])
-    def objects(self, request, feed_id=None, post_id=None):
+    def objects(self, request, post_id=None, **kwargs):
         return self.get_post_objects(post_id)
     
     def get_post_objects(self, post_id):
@@ -652,7 +612,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
         ],
     )
     @decorators.action(detail=True, methods=["GET"])
-    def markdown(self, request, post_id=None):
+    def markdown(self, request, post_id=None, **kwargs):
         obj = get_object_or_404(models.File, post_id=post_id)
         resp_text = MarkdownImageReplacer.get_markdown(request, obj.markdown_file.read().decode(), models.FileImage.objects.filter(report__post_id=post_id))
         return FileResponse(streaming_content=resp_text, content_type='text/markdown', filename='markdown.md')
@@ -668,7 +628,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
         ),
     )
     @decorators.action(detail=True, pagination_class=Pagination("images"))
-    def images(self, request, post_id=None, image=None):
+    def images(self, request, post_id=None, image=None, **kwargs):
         queryset = models.FileImage.objects.filter(report__post_id=post_id).order_by('name')
         paginator = Pagination('images')
 
@@ -698,6 +658,53 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
         except Exception as e:
             logging.exception("remove_report failed")
 
+@extend_schema_view(
+    create_posts=extend_schema(
+        request=serializers.PostCreateSerializer,
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Backfill a Post into A Feed",
+        description=textwrap.dedent(
+            """
+            This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.
+
+            The following key/values are accepted in the body of the request:
+
+            * `profile_id` (required): a valid profile ID to define how the post should be processed.
+            * `link` (required - must be unique): The URL of the blog post. This is where the content of the post is found. It cannot be the same as the `url` of a post already in this feed. If you want to update the post, use the PATCH post endpoint.
+            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.
+            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
+            * `author` (optional): the value to be stored for the author of the post.
+            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
+
+            Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
+
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+
+            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
+            """
+        ),
+    ),
+)
+class FeedPostView(PostOnlyView):
+    openapi_tags = [ "Feeds"]
+    @property
+    def h4f_base_path(self):
+        return f"/api/v1/feeds/{self.kwargs['feed_id']}/posts"
+
+    def create(self, request, *args, **kwargs):
+        request_body = request.body
+        s = serializers.FetchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        resp = FeedView.make_request(
+            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
+        )
+        if resp.status_code == 201:
+            out = json.loads(resp.content)
+            out['job_id'] = out['id']
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return resp
 
 @extend_schema_view(
     list=extend_schema(
