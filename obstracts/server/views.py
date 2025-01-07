@@ -533,6 +533,8 @@ class PostOnlyView(viewsets.ViewSet):
         description=textwrap.dedent(
             """
             This endpoint will return all objects extracted for a post. If you want more flexibility to filter the objects or search for STIX objects across different Posts, use the Get Object endpoints.
+
+            You can find these objects in the database using the filter `_stix2arango_note` and value `stixify-job--<POST ID>`.
             """
         ),
     )
