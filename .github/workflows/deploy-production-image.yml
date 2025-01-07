@@ -54,6 +54,8 @@ jobs:
             GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
             GOOGLE_VISION_API_KEY=${{ secrets.GOOGLE_VISION_API_KEY }}
             R2_SECRET_KEY=${{ secrets.R2_SECRET_KEY }}
+            CTIBUTLER_API_KEY=${{ secrets.CTIBUTLER_API_KEY }}
+            VULMATCH_API_KEY=${{ secrets.VULMATCH_API_KEY }}
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
