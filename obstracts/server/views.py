@@ -213,6 +213,31 @@ class MarkdownImageReplacer(MarkdownRenderer):
             """
         ),
     ),
+    create_posts=extend_schema(
+        request=serializers.PostCreateSerializer,
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Backfill a Post into A Feed",
+        description=textwrap.dedent(
+            """
+            This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.
+
+            The following key/values are accepted in the body of the request:
+
+            * `profile_id` (required): a valid profile ID to define how the post should be processed.
+            * `link` (required - must be unique): The URL of the blog post. This is where the content of the post is found. It cannot be the same as the `url` of a post already in this feed. If you want to update the post, use the PATCH post endpoint.
+            * `pubdate` (required): The date of the blog post in the format `YYYY-MM-DD`. history4feed cannot accurately determine a post date in all cases, so you must enter it manually.
+            * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
+            * `author` (optional): the value to be stored for the author of the post.
+            * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
+
+            Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
+
+            The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
+
+            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
+            """
+        ),
+    ),
 )
 class FeedView(viewsets.ViewSet):
     lookup_url_kwarg = "feed_id"
@@ -416,13 +441,13 @@ class FeedView(viewsets.ViewSet):
     ),
     fetch=extend_schema(
         request=serializers.FetchPostSerializer,
+
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Post in A Feed",
         description=textwrap.dedent(
             """
-            When blog posts are modified at source, the RSS and ATOM feeds that serve them are not often updated with new modification. As such, fetching for blog will cause these updated posts to be missed.
 
-            To ensure the post stored in the database matches the one currently published you can make a request to this endpoint using the Post ID to update it.
+            Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in the database matches the currently published post you make a request to this endpoint using the Post ID to update it.
 
             The following key/values are accepted in the body of the request:
 
@@ -431,6 +456,7 @@ class FeedView(viewsets.ViewSet):
             This update will only change the content (`description`) stored for the Post. It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
 
             **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
+
 
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
@@ -508,6 +534,7 @@ class PostOnlyView(viewsets.ViewSet):
     
     def partial_update(self, request, *args, feed_id=None, post_id=None):
         url = f"/api/v1/posts/{post_id}/"
+
         return self.add_obstract_props(FeedView.make_request(
             request, url
         ))

@@ -60,6 +60,7 @@ class H4fPostCreateSerializer(serializers.Serializer):
 
 class PatchPostSerializer(H4fPostCreateSerializer):
     link = None
+
     
 class PostCreateSerializer(CreateTaskSerializer):
     posts = serializers.ListSerializer(child=H4fPostCreateSerializer(), allow_empty=False)
