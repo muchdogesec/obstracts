@@ -707,6 +707,33 @@ class FeedPostView(PostOnlyView):
             job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
+    
+
+    @extend_schema(
+        summary="Reindex a feed",
+        description=textwrap.dedent(
+            """
+                Refetch all the posts in a Feed
+            """
+        ),
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        request=serializers.CreateTaskSerializer,
+    )
+    @decorators.action(methods=["PATCH"], detail=False)
+    def reindex(self, request, *args, feed_id=None, **kwargs):
+        request_body = request.body
+        s = serializers.CreateTaskSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        resp = FeedView.make_request(
+            request, f"/api/v1/feeds/{feed_id}/posts/reindex/", request_body=request_body
+        )
+        if resp.status_code == 201:
+            out = json.loads(resp.content)
+            out['job_id'] = out['id']
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return resp
 
 @extend_schema_view(
     list=extend_schema(
