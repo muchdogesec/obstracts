@@ -373,7 +373,7 @@ class FeedView(viewsets.ViewSet):
         request=serializers.FetchPostSerializer,
 
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Update a Post in A Feed",
+        summary="Update a Post in a Feed",
         description=textwrap.dedent(
             """
 
