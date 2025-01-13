@@ -369,11 +369,11 @@ class FeedView(viewsets.ViewSet):
         ),
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
-    fetch=extend_schema(
+    reindex=extend_schema(
         request=serializers.FetchPostSerializer,
 
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Update a Post in A Feed",
+        summary="Update a Post in a Feed",
         description=textwrap.dedent(
             """
 
@@ -383,10 +383,11 @@ class FeedView(viewsets.ViewSet):
 
             * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.
 
-            This update will only change the content (`description`) stored for the Post. It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
+            This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
+
+            It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
 
             **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
-
 
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
@@ -501,13 +502,13 @@ class PostOnlyView(viewsets.ViewSet):
         return resp
 
     @decorators.action(detail=True, methods=['PATCH'])
-    def fetch(self, request, *args, **kwargs):
+    def reindex(self, request, *args, **kwargs):
         request_body = request.body
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         post_id = kwargs.get(self.lookup_url_kwarg)
         resp = FeedView.make_request(
-            request, f"{self.h4f_base_path}/{post_id}/", request_body=request_body
+            request, f"{self.h4f_base_path}/{post_id}/reindex/", request_body=request_body
         )
         if resp.status_code == 201:
             self.remove_report(post_id)
@@ -661,7 +662,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
             logging.exception("remove_report failed")
 
 @extend_schema_view(
-    create_posts=extend_schema(
+    create=extend_schema(
         request=serializers.PostCreateSerializer,
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Backfill a Post into A Feed",
@@ -700,6 +701,47 @@ class FeedPostView(PostOnlyView):
 
         resp = FeedView.make_request(
             request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
+        )
+        if resp.status_code == 201:
+            out = json.loads(resp.content)
+            out['job_id'] = out['id']
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
+            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return resp
+    
+
+    @extend_schema(
+        summary="Update all Posts in a feed",
+        description=textwrap.dedent(
+            """
+                This endpoint will reindex the Post content (`description`) for all Post IDs currently listed in the Feed.
+
+                The following key/values are accepted in the body of the request:
+
+                * profile_id (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on reindex.
+
+                This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
+
+                It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
+
+                **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
+
+                Note, if you only want to update the content of a single post, it is much more effecient to use the Update a Post in a Feed endpoint.
+
+                The response will return the Job information responsible for getting the requested data you can track using the id returned via the GET Jobs by ID endpoint.
+            """
+        ),
+        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        request=serializers.CreateTaskSerializer,
+    )
+    @decorators.action(methods=["PATCH"], detail=False, url_path='reindex')
+    def reindex_feed(self, request, *args, feed_id=None, **kwargs):
+        request_body = request.body
+        s = serializers.CreateTaskSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        resp = FeedView.make_request(
+            request, f"/api/v1/feeds/{feed_id}/posts/reindex/", request_body=request_body
         )
         if resp.status_code == 201:
             out = json.loads(resp.content)
