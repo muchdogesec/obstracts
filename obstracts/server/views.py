@@ -383,10 +383,11 @@ class FeedView(viewsets.ViewSet):
 
             * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.
 
-            This update will only change the content (`description`) stored for the Post. It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
+            This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
+
+            It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
 
             **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
-
 
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
@@ -719,9 +720,11 @@ class FeedPostView(PostOnlyView):
 
                 * profile_id (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on reindex.
 
-                This request will only change the content (`description`) stored for the Post ID. It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
+                This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
 
-                IMPORTANT: This action will delete the original post content as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
+                It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
+
+                **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
 
                 Note, if you only want to update the content of a single post, it is much more effecient to use the Update a Post in a Feed endpoint.
 
