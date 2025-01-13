@@ -369,7 +369,7 @@ class FeedView(viewsets.ViewSet):
         ),
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
-    fetch=extend_schema(
+    reindex=extend_schema(
         request=serializers.FetchPostSerializer,
 
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
@@ -501,13 +501,13 @@ class PostOnlyView(viewsets.ViewSet):
         return resp
 
     @decorators.action(detail=True, methods=['PATCH'])
-    def fetch(self, request, *args, **kwargs):
+    def reindex(self, request, *args, **kwargs):
         request_body = request.body
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         post_id = kwargs.get(self.lookup_url_kwarg)
         resp = FeedView.make_request(
-            request, f"{self.h4f_base_path}/{post_id}/", request_body=request_body
+            request, f"{self.h4f_base_path}/{post_id}/reindex/", request_body=request_body
         )
         if resp.status_code == 201:
             self.remove_report(post_id)
@@ -661,7 +661,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
             logging.exception("remove_report failed")
 
 @extend_schema_view(
-    create_posts=extend_schema(
+    create=extend_schema(
         request=serializers.PostCreateSerializer,
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Backfill a Post into A Feed",
@@ -731,8 +731,8 @@ class FeedPostView(PostOnlyView):
         responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         request=serializers.CreateTaskSerializer,
     )
-    @decorators.action(methods=["PATCH"], detail=False)
-    def reindex(self, request, *args, feed_id=None, **kwargs):
+    @decorators.action(methods=["PATCH"], detail=False, url_path='reindex')
+    def reindex_feed(self, request, *args, feed_id=None, **kwargs):
         request_body = request.body
         s = serializers.CreateTaskSerializer(data=request.data)
         s.is_valid(raise_exception=True)
