@@ -47,11 +47,12 @@ router.register("posts", views.PostOnlyView, "post-view")
 router.register('jobs', views.JobView, "job-view")
 
 ## objects
-router.register('objects/smos', arango_views.SMOView, "object-view-smo")
-router.register('objects/scos', arango_views.SCOView, "object-view-sco")
-router.register('objects/sros', arango_views.SROView, "object-view-sro")
-router.register('objects/sdos', arango_views.SDOView, "object-view-sdo")
-router.register("object", arango_views.ObjectsWithReportsView, "object-view-orig")
+obj_router = routers.SimpleRouter(use_regex_path=True)
+obj_router.register("objects", arango_views.ObjectsWithReportsView, "object-view-orig")
+obj_router.register('objects/smos', arango_views.SMOView, "object-view-smo")
+obj_router.register('objects/scos', arango_views.SCOView, "object-view-sco")
+obj_router.register('objects/sros', arango_views.SROView, "object-view-sro")
+obj_router.register('objects/sdos', arango_views.SDOView, "object-view-sdo")
 
 # txt2stix views
 router.register('extractors', ExtractorsView, "extractors-view")
@@ -59,6 +60,7 @@ router.register('extractors', ExtractorsView, "extractors-view")
 
 urlpatterns = [
     path(f'api/{API_VERSION}/', include(router.urls)),
+    path(f'api/{API_VERSION}/', include(obj_router.urls)),
     path('admin/', admin.site.urls),
     # YOUR PATTERNS
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
