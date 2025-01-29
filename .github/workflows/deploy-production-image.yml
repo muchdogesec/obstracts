@@ -41,7 +41,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            DJANGO_DEBUG=FALSE
+            DJANGO_DEBUG=False
             R2_ACCESS_KEY=63337c0d7032845f17a6647215bbdadf
             R2_CUSTOM_DOMAIN=static.obstracts.com
             R2_BUCKET_NAME=obstracts-web-core-production

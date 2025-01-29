@@ -41,7 +41,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            DJANGO_DEBUG=TRUE
+            DJANGO_DEBUG=True
             R2_ACCESS_KEY=12763a8c243ac6fe8d37fff77a966b70
             R2_CUSTOM_DOMAIN=static.obstracts.staging.signalscorps.com
             R2_BUCKET_NAME=obstracts-web-core-staging
