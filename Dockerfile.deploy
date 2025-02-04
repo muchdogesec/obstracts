@@ -49,6 +49,7 @@ ENV POSTGRES_USER=obstracts
 ENV POSTGRES_DB=obstracts_database
 ENV POSTGRES_HOST=host.docker.internal
 ENV R2_ENDPOINT_URL=https://34fe0652772b226d5f06050bf5050738.r2.cloudflarestorage.com
+ENV SRO_OBJECTS_ONLY_LATEST=False
 
 WORKDIR /usr/src/app
 COPY requirements.txt ./
