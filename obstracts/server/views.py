@@ -252,7 +252,7 @@ class FeedView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.validated_data['profile_id'])
+            job = tasks.new_task(out, s.validated_data['profile_id'], s.validated_data['ai_content_check_variable'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -334,7 +334,7 @@ class FeedView(viewsets.ViewSet):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.validated_data['profile_id'])
+            job = tasks.new_task(out, s.validated_data['profile_id'], s.validated_data['ai_content_check_variable'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
@@ -514,7 +514,7 @@ class PostOnlyView(viewsets.ViewSet):
             self.remove_report(post_id)
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"], s.validated_data['ai_content_check_variable'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -705,7 +705,7 @@ class FeedPostView(PostOnlyView):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"], s.validated_data['ai_content_check_variable'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
     
@@ -746,7 +746,7 @@ class FeedPostView(PostOnlyView):
         if resp.status_code == 201:
             out = json.loads(resp.content)
             out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
+            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"], s.validated_data['ai_content_check_variable'])
             return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
         return resp
 
