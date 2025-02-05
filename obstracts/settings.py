@@ -266,3 +266,5 @@ if not GOOGLE_VISION_API_KEY:
     logging.warning("GOOGLE_VISION_API_KEY not set")
 
 INPUT_TOKEN_LIMIT = int(os.environ["INPUT_TOKEN_LIMIT"])
+
+SRO_OBJECTS_ONLY_LATEST = os.getenv('SRO_OBJECTS_ONLY_LATEST', False)
