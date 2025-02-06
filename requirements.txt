@@ -107,5 +107,5 @@ django-storages[s3]==1.14.4
 django-cleanup==9.0.0
 file2txt @ https://github.com/muchdogesec/file2txt/releases/download/main-2024-11-29-15-39-43/file2txt-0.0.1b2-py3-none-any.whl
 txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/main-2025-01-29-10-35-28/txt2stix-0.0.1b5-py3-none-any.whl
-dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-02-04-13-24-47/dogesec_commons-0.0.4rc1-py3-none-any.whl
+dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-02-06-06-09-21/dogesec_commons-0.0.4rc1-py3-none-any.whl
 stix2arango @ https://github.com/muchdogesec/stix2arango/releases/download/main-2025-02-04-14-14-39/stix2arango-0.0.4rc0-py3-none-any.whl
