@@ -201,9 +201,10 @@ def process_post(job_id, post, *args):
         if job.ai_content_check_variable:
             ai_content_check_model = parse_model(job.ai_content_check_variable)
             content_described  = ai_content_check_model.check_content(processor.output_md)
-            file.describes_incident = content_described.describes_incident
-            file.incident_summary = content_described.explanation
-        if not job.ai_content_check_variable or file.describes_incident:
+            file.ai_describes_incident = content_described.describes_incident
+            file.ai_incident_summary = content_described.explanation
+            file.ai_incident_classification = content_described.incident_classification
+        if not job.ai_content_check_variable or file.ai_describes_incident:
             logging.info(f"running txt2stix on {processor.task_name}")
             bundler = processor.txt2stix()
             processor.write_bundle(bundler)

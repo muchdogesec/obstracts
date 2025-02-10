@@ -78,8 +78,9 @@ class File(models.Model):
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
     summary = models.CharField(max_length=65535, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.PROTECT, default=None, null=True)
-    describes_incident = models.BooleanField(default=None, null=True)
-    incident_summary = models.CharField(default=None, max_length=65535, null=True)
+    ai_describes_incident = models.BooleanField(default=None, null=True)
+    ai_incident_summary = models.CharField(default=None, max_length=65535, null=True)
+    ai_incident_classification = models.CharField(default=None, max_length=256, null=True)
 
     def __str__(self) -> str:
         return f'File(feed_id={self.feed_id}, post_id={self.post_id})'
