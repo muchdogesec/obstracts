@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('server', '0009_profile_ignore_extraction_boundary'),
+        ('server', '0010_profile_ignore_embedded_relationships_and_more'),
     ]
 
     operations = [
