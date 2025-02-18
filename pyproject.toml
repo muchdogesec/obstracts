@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "obstracts"
+version = "0.0.1-pre"
+authors = [
+  { name="DOGESEC", email="support@dogesec.com" },
+]
+description = "Obstracts"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "djangorestframework>=3.15.2",
+    "drf-spectacular>=0.27.2",
+    "celery>=5.4.0; python_version >= '3.8'",
+    "psycopg2-binary>=2.9.10",
+    "redis",
+    "history4feed",
+    "dogesec_commons[stixifier]",
+    "hyperlink",
+    "django-filter>=24.2",
+    "django-cors-headers",
+    "django-storages[s3]",
+    "django-cleanup",
+  ]
+[project.urls]
+Homepage = "https://github.com/muchdogesec/obstracts"
+Issues = "https://github.com/muchdogesec/obstracts/issues"

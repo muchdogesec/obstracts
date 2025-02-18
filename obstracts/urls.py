@@ -45,6 +45,7 @@ router.register("posts", views.PostOnlyView, "post-view")
 
 
 router.register('jobs', views.JobView, "job-view")
+router.register('h4f_jobs', views.h4f_views.JobView, "h4f-job-view")
 
 ## objects
 obj_router = routers.SimpleRouter(use_regex_path=True)
