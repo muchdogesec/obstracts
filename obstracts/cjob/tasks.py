@@ -7,7 +7,6 @@ import typing
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
 from dogesec_commons.stixifier.summarizer import parse_summarizer_model
-from txt2stix.txt2stix import parse_model
 from ..server.models import Job, FeedProfile
 from ..server import models
 from django.core.cache import cache
@@ -104,19 +103,19 @@ def poll_job(job_id):
         current_task.retry(max_retries=200)
 
 
-def new_task(feed_dict, profile_id, ai_content_check_variable):
+def new_task(feed_dict, profile_id):
     kwargs = dict(id=feed_dict["feed_id"], profile_id=profile_id)
     if title := feed_dict.get("title"):
         kwargs.update(title=title)
     feed, _ = FeedProfile.objects.update_or_create(defaults=kwargs, id=feed_dict["feed_id"])
-    job = Job.objects.create(id=feed_dict["job_id"], feed=feed, profile_id=profile_id, ai_content_check_variable=ai_content_check_variable)
+    job = Job.objects.create(id=feed_dict["job_id"], feed=feed, profile_id=profile_id)
     (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
         countdown=5, root_id=job.id, task_id=job.id
     )
     return job
 
-def new_post_patch_task(input_dict, profile_id, ai_content_check_variable):
-    job = Job.objects.create(id=input_dict["job_id"], feed_id=input_dict["feed_id"], profile_id=profile_id, ai_content_check_variable=ai_content_check_variable)
+def new_post_patch_task(input_dict, profile_id):
+    job = Job.objects.create(id=input_dict["job_id"], feed_id=input_dict["feed_id"], profile_id=profile_id)
     (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
         countdown=5, root_id=job.id, task_id=job.id
     )
@@ -175,8 +174,6 @@ def process_post(job_id, post, *args):
     job = Job.objects.get(id=job_id)
     post_id = str(post['id'])
     try:
-        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, profile=job.profile))
-
         stream = io.BytesIO(post['description'].encode())
         stream.name = f"post-{post_id}.html"
         processor = StixifyProcessor(stream, job.profile, job_id=job.id, file2txt_mode="html_article", report_id=post_id, base_url=post['link'])
@@ -195,24 +192,9 @@ def process_post(job_id, post, *args):
             ])
         )
         processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
-        ## processor.process() start
-        logging.info(f"running file2txt on {processor.task_name}")
-        processor.file2txt()
-        if job.ai_content_check_variable:
-            ai_content_check_model = parse_model(job.ai_content_check_variable)
-            content_described  = ai_content_check_model.check_content(processor.output_md)
-            file.ai_describes_incident = content_described.describes_incident
-            file.ai_incident_summary = content_described.explanation
-            file.ai_incident_classification = content_described.incident_classification
-        if not job.ai_content_check_variable or file.ai_describes_incident:
-            logging.info(f"running txt2stix on {processor.task_name}")
-            bundler = processor.txt2stix()
-            processor.write_bundle(bundler)
-            logging.info(f"uploading {processor.task_name} to arangodb via stix2arango")
-            processor.upload_to_arango()
-        # return bundler.report.id
-        ## processor.process() endss
+        processor.process()
 
+        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, profile=job.profile))
         if job.profile.ai_summary_provider:
             logging.info(f"summarizing report {processor.report_id} using `{job.profile.ai_summary_provider}`")
             try:
