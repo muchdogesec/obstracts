@@ -10,7 +10,7 @@ from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
 import hyperlink
-
+from django.db.models import OuterRef, Subquery
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from .utils import (
     MinMaxDateFilter,
@@ -28,7 +28,10 @@ import txt2stix.txt2stix
 import requests
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from history4feed.app import views as h4f_views
 from . import models
+from .autoschema import ObstractsAutoSchema
+from dogesec_commons.utils import custom_exception_handler
 
 from ..cjob import tasks
 from obstracts.server import serializers
@@ -185,158 +188,28 @@ class MarkdownImageReplacer(MarkdownRenderer):
         ),
     ),
 )
-class FeedView(viewsets.ViewSet):
+class FeedView(h4f_views.FeedView):
     lookup_url_kwarg = "feed_id"
     openapi_tags = ["Feeds"]
-    serializer_class = h4fserializers.FeedXSerializer
+    serializer_class = serializers.FeedSerializer
     pagination_class = Pagination("feeds")
-
-    filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
-    ordering_fields = [
-        "datetime_added",
-        "title",
-        "url",
-        "count_of_posts",
-        "earliest_item_pubdate",
-        "latest_item_pubdate",
-    ]
-    ordering = ["-datetime_added"]
-    minmax_date_fields = ["earliest_item_pubdate", "latest_item_pubdate"]
-
-    class filterset_class(FilterSet):
-        title = CharFilter(
-            label="Filter the content by the `title` of the feed. Will search for titles that contain the value entered. Search is wildcard so `exploit` will match `exploited` and `exploits`.",
-        )
-        description = CharFilter(
-            label="Filter by the content in feed `description`. Will search for descriptions that contain the value entered. Search is wildcard so `exploit` will match `exploited` and `exploits`.",
-        )
-        url = CharFilter(
-            label="Filter the content by a feeds URL. This is the RSS or ATOM feed used when adding the blog. Will search for URLs that contain the value entered.  Search is wildcard so `dogesec` will return any URL that contains the string `dogesec`.",
-        )
-        id = BaseCSVFilter(
-            label="Filter by feed id(s), comma-separated, e.g `6c6e6448-04d4-42a3-9214-4f0f7d02694e,2bce5b30-7014-4a5d-ade7-12913fe6ac36`",
-        )
-        feed_type = MultipleChoiceFilter(
-            help_text="Filter by `feed_type`",
-            choices=h4fserializers.FeedType.choices,
-        )
-    
-    @classmethod
-    def make_request(cls, request, path, request_body=None):
-        request_kwargs = {
-            "headers": {},
-            "method": request.method,
-            "body": request_body or request.body,
-            "params": request.GET.copy(),
-        }
-        headers = request_kwargs["headers"]
-        for key, value in request.META.items():
-            if key.startswith("HTTP_") and key != "HTTP_HOST":
-                key = "-".join(key.lower().split("_")[1:])
-                headers[key] = value
-            elif key == "CONTENT_TYPE":
-                headers["content-type"] = value
-
-        resp = make_h4f_request(path, **request_kwargs)
-        return HttpResponse(
-            resp.content,
-            status=resp.status_code,
-            content_type=resp.headers.get("content-type"),
-        )
+    schema = ObstractsAutoSchema()
 
     def create(self, request, *args, **kwargs):
         request_body = request.body
         s = serializers.FeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        resp = self.make_request(request, "/api/v1/feeds/", request_body=request_body)
-        if resp.status_code == 201:
-            out = json.loads(resp.content)
-            out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.validated_data['profile_id'])
-            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
-        return resp
-    
-    @decorators.action(methods=['POST'], url_path="skeleton", detail=False)
-    def create_skeleton(self, request, *args, **kwargs):
-        request_body = request.body
-        s = serializers.SkeletonFeedSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
-        resp = self.make_request(request, "/api/v1/feeds/skeleton/", request_body=request_body)
-        if resp.status_code == 201:
-            out = json.loads(resp.content)
-            out['feed_id'] = out['id']
-            feed, _ = models.FeedProfile.objects.update_or_create(defaults=kwargs, id=out['id'])
-            return resp
-        return resp
-    
-    def list(self, request, *args, **kwargs):
-        return self.make_request(request, "/api/v1/feeds/")
-
-    def retrieve(self, request, *args, **kwargs):
-        return self.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/"
-        )
-
-    def delete_collections(self, feed: models.FeedProfile):
-        db = ArangoDBHelper(feed.collection_name, self.request).db
-        try:
-            graph = db.graph(db.name.split('_database')[0]+'_graph')
-            graph.delete_edge_definition(feed.collection_name+'_edge_collection', purge=True)
-            graph.delete_vertex_collection(feed.collection_name+'_vertex_collection', purge=True)
-        except BaseException as e:
-            logging.error(f"cannot delete collection `{feed.collection_name}`: {e}")
-
-    def destroy(self, request, *args, **kwargs):
-        feed_id = kwargs.get(self.lookup_url_kwarg)
-        resp = self.make_request(
-            request, f"/api/v1/feeds/{feed_id}/"
-        )
-        try:
-            feed = self.get_feed(feed_id)
-            self.delete_collections(feed)
-            feed.delete()
-        except BaseException as e:
-            logging.exception(e)
-        return resp
-    
-    @classmethod
-    def get_feed(self, feed_id):
-        try:
-            feed = models.FeedProfile.objects.get(id=feed_id)
-        except Exception as e:
-            logging.exception(e)
-            raise exceptions.ValidationError(detail=f"no feed with id: {feed_id}")
-        return feed
-    
-    def get_remote_feed(self, feed_id):
-        resp = make_h4f_request(f"/api/v1/feeds/{feed_id}/")
-        if resp.ok:
-            return resp.json()
-        raise Http404(f"feed with id: `{feed_id}` not found in h4f")
-    
-    def partial_update(self, request, *args, **kwargs):
-        request_body = request.body
-        s = serializers.PatchFeedSerializer(data=request.data, partial=True)
-        s.is_valid(raise_exception=True)
-        resp = self.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/", request_body=request_body
-        )
-        return resp
+        h4f_job = self.new_create_job(request)
+        job = tasks.new_task(h4f_job, s.validated_data['profile_id'])
+        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
     
     @decorators.action(methods=["PATCH"], detail=True)
     def fetch(self, request, *args, **kwargs):
-        request_body = request.body
         s = serializers.FetchFeedSerializer(data=request.data, partial=True)
         s.is_valid(raise_exception=True)
-        resp = self.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(self.lookup_url_kwarg)}/fetch/", request_body=request_body
-        )
-        if resp.status_code == 201:
-            out = json.loads(resp.content)
-            out['feed_id'] = out['id']
-            job = tasks.new_task(out, s.validated_data['profile_id'])
-            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
-        return resp
+        h4f_job = self.new_fetch_job(request)
+        job = tasks.new_task(h4f_job, s.validated_data['profile_id'])
+        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
 
 
     
@@ -422,101 +295,31 @@ class FeedView(viewsets.ViewSet):
         request=serializers.PatchPostSerializer,
     ),
 )
-class PostOnlyView(viewsets.ViewSet):
+class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
     file_serializer_class = serializers.FileSerializer
     lookup_url_kwarg = 'post_id'
     openapi_tags = ["Posts"]
+    schema = ObstractsAutoSchema()
 
     pagination_class = Pagination("posts")
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
-    ordering_fields = ["pubdate", "title"]
-    ordering = ["-pubdate"]
-    minmax_date_fields = ["pubdate"]
-    h4f_base_path = "/api/v1/posts"
 
-    class filterset_class(FilterSet):
-        feed_id = filters.BaseInFilter(help_text="filter by one or more `feed_id`(s)")
-        title = Filter(
-            help_text="Filter the content by the `title` of the post. Will search for titles that contain the value entered. Search is wildcard so `exploit` will match `exploited` and `exploits`.",
-            lookup_expr="icontains",
-        )
-        description = Filter(
-            help_text="Filter by the content post `description`. Will search for descriptions that contain the value entered. Search is wildcard so `exploit` will match `exploited` and `exploits`.",
-            lookup_expr="icontains",
-        )
-        link = Filter(
-            help_text="Filter the content by a posts `link`. Will search for links that contain the value entered. Search is wildcard so `dogesec` will return any URL that contains the string `dogesec`.",
-            lookup_expr="icontains",
-        )
-        job_id = Filter(help_text="Filter the Post by Job ID the Post was downloaded in.")
+    class filterset_class(h4f_views.PostOnlyView.filterset_class):
+        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
+
+    def get_queryset(self):
+        return super().get_queryset() \
+            .annotate(job_state=Subquery(models.Job.objects.filter(history4feed_job_id=OuterRef('last_job_id')).values('state')[:1]))
 
 
-    def list(self, request, *args, **kwargs):
-        url = self.h4f_base_path + "/"
-        return self.add_obstract_props(FeedView.make_request(
-            request, url
-        ))
-
-    def retrieve(self, request, *args,  post_id=None, **kwargs):
-        url = f"{self.h4f_base_path}/{post_id}/"
-        return self.add_obstract_props(FeedView.make_request(
-            request, url
-        ))
-    
-    def partial_update(self, request, *args, post_id=None, **kwargs):
-        url = f"{self.h4f_base_path}/{post_id}/"
-
-        return self.add_obstract_props(FeedView.make_request(
-            request, url
-        ))
-    
-    def add_obstract_props(self, response: HttpResponse):
-        if response.status_code != 200:
-            return response
-        data = json.loads(response.content)
-
-        def get_providers(ids):
-            data = {}
-            for file in models.File.objects.filter(post_id__in=ids):
-                data[str(file.post_id)] = self.file_serializer_class(file).data
-            return data
-        if post_id := data.get('id'):
-            data.update(get_providers([post_id]).get(post_id, {}))
-        else:
-            id_provider_map = get_providers([d['id'] for d in data['posts']])
-            for d in data['posts']:
-                d.update(id_provider_map.get(d['id'], {}))
-        return Response(data, status=response.status_code)
-    
-    def destroy(self, request, *args, post_id=None, **kwargs):
-        resp = FeedView.make_request(
-            request, f"{self.h4f_base_path}/{post_id}/"
-        )
-        if resp.status_code != 204:
-            return resp
-        try:
-            models.File.objects.get(post_id=post_id).delete()
-        except Exception as e:
-            print(e)
-        return resp
-
-    @decorators.action(detail=True, methods=['PATCH'])
+    @decorators.action(detail=True, methods=['PATCH'], serializer_class=serializers.CreateTaskSerializer)
     def reindex(self, request, *args, **kwargs):
-        request_body = request.body
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        post_id = kwargs.get(self.lookup_url_kwarg)
-        resp = FeedView.make_request(
-            request, f"{self.h4f_base_path}/{post_id}/reindex/", request_body=request_body
-        )
-        if resp.status_code == 201:
-            self.remove_report(post_id)
-            out = json.loads(resp.content)
-            out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
-            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
-        return resp
+        _, h4f_job = self.new_reindex_post_job(request)
+        job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
+        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
     
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
@@ -546,7 +349,7 @@ class PostOnlyView(viewsets.ViewSet):
     def get_post_objects(self, post_id):
         post_file = get_object_or_404(models.File, post_id=post_id)
 
-        helper = ArangoDBHelper(settings.VIEW_NAME, self.request)
+        helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
         types = helper.query.get('types', "")
         bind_vars = {
             "types": list(OBJECT_TYPES.intersection(types.split(","))) if types else None,
@@ -649,7 +452,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
             post: models.File = get_object_or_404(models.File, post_id=post_id)
             collection = post.feed.collection_name
 
-            helper = ArangoDBHelper(settings.VIEW_NAME, self.request)
+            helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
             query = """ 
             FOR doc IN @@collection
             FILTER doc._obstracts_post_id == @post_id
@@ -688,27 +491,27 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
         ),
     ),
 )
-class FeedPostView(PostOnlyView):
-    openapi_tags = [ "Feeds"]
+class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
+    schema = ObstractsAutoSchema()
+
+    openapi_tags = [ "Feeds" ]
+
+    class filterset_class(h4f_views.FeedPostView.filterset_class):
+        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
+        
     @property
     def h4f_base_path(self):
         return f"/api/v1/feeds/{self.kwargs['feed_id']}/posts"
+    
+
 
     def create(self, request, *args, **kwargs):
-        request_body = request.body
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
 
-        resp = FeedView.make_request(
-            request, f"/api/v1/feeds/{kwargs.get(FeedView.lookup_url_kwarg)}/posts/", request_body=request_body
-        )
-        if resp.status_code == 201:
-            out = json.loads(resp.content)
-            out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
-            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
-        return resp
-    
+        h4f_job = self.new_create_post_job(request, self.kwargs['feed_id'])
+        job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
+        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
         summary="Update all Posts in a feed",
@@ -736,19 +539,12 @@ class FeedPostView(PostOnlyView):
     )
     @decorators.action(methods=["PATCH"], detail=False, url_path='reindex')
     def reindex_feed(self, request, *args, feed_id=None, **kwargs):
-        request_body = request.body
         s = serializers.CreateTaskSerializer(data=request.data)
         s.is_valid(raise_exception=True)
 
-        resp = FeedView.make_request(
-            request, f"/api/v1/feeds/{feed_id}/posts/reindex/", request_body=request_body
-        )
-        if resp.status_code == 201:
-            out = json.loads(resp.content)
-            out['job_id'] = out['id']
-            job = tasks.new_post_patch_task(out, s.validated_data["profile_id"])
-            return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
-        return resp
+        h4f_job = self.new_reindex_feed_job(feed_id)
+        job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
+        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
 
 @extend_schema_view(
     list=extend_schema(
@@ -771,6 +567,7 @@ class FeedPostView(PostOnlyView):
     ),
 )
 class JobView(viewsets.ModelViewSet):
+    schema = ObstractsAutoSchema()
     http_method_names = ["get"]
     serializer_class = JobSerializer
     openapi_tags = ["Jobs"]
@@ -789,28 +586,9 @@ class JobView(viewsets.ModelViewSet):
         state = Filter(
             label="Filter by state.",
         )
-        post_id = UUIDFilter(label="Filter by Post ID", method="filter_post_id")
-
-        def filter_post_id(self, qs, field_name, post_id: str):
-            jobs = []
-            job_count = -1
-            page = 1
-            while len(jobs) != job_count:
-                resp = make_h4f_request("api/v1/jobs", params=dict(post_id=post_id, page=page))
-                if not resp.ok:
-                    raise serializers.serializers.ValidationError(f"server does not understand this request: {resp.text}")
-                data = resp.json()
-                jobs.extend((j['id'] for j in data['jobs']))
-                job_count = data['total_results_count']
-                page += 1
-            return qs.filter(id__in=jobs)
+        post_id = UUIDFilter(label="Filter by Post ID", field_name="history4feed_job__fulltext_jobs__post_id")
 
 
     def get_queryset(self):
         return models.Job.objects
 
-
-def make_h4f_request(path, method="GET", params=None, body=None, headers={}):
-    url = urljoin(settings.HISTORY4FEED_URL, path)
-    headers["host"] = "localhost"
-    return requests.request(method, url, params=params, headers=headers, data=body)

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 import copy
+import datetime
 import logging
 import os
 from pathlib import Path
@@ -19,6 +20,7 @@ import sys
 import uuid
 from dotenv import load_dotenv
 import stix2
+from datetime import datetime
 
 load_dotenv()
 
@@ -42,22 +44,31 @@ ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', "localhost 127.0.0.1 [::1]").s
 
 # Application definition
 
-INSTALLED_APPS = [
+
+CORE_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
-    "corsheaders",
     "rest_framework",
-    'dogesec_commons.objects.app.ArangoObjectsViewApp',
-    "drf_spectacular",
-    'django.contrib.postgres',
+]
+OBSTRACTS_APPS = [
+    'dogesec_commons.objects',
+    "history4feed.app",
+    "dogesec_commons.stixifier",
     "obstracts.server",
+]
+
+PROJECT_APPS = [
+    'django.contrib.postgres',
+    "corsheaders",
+    "drf_spectacular",
     'django_cleanup.apps.CleanupConfig',
 ]
+
+INSTALLED_APPS = CORE_APPS + OBSTRACTS_APPS + PROJECT_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -139,8 +150,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-HISTORY4FEED_URL = os.environ.get('HISTORY4FEED_URL', '')
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
@@ -151,6 +160,8 @@ MEDIA_ROOT = "/var/www/mediafiles/"
 MEDIA_URL = "uploads/"
 
 # cache
+
+
 
 CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
 
@@ -229,8 +240,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "Jobs", "description": "Check the status of data retrieval from Feeds"},
     ]
 }
-APP_LABEL = "server"
-STIX_NAMESPACE = uuid.UUID("a1f2e3ed-6241-5f05-ac2e-3394213b8e08")
+
+
 OBSTRACTS_IDENTITY  = stix2.parse({
     "type": "identity",
     "spec_version": "2.1",
@@ -251,7 +262,6 @@ OBSTRACTS_IDENTITY  = stix2.parse({
     ]
 })
 
-TXT2STIX_INCLUDE_URL = "https://github.com/muchdogesec/txt2stix/blob/obstracts/includes/"
 
 ARANGODB_DATABASE   = "obstracts"
 VIEW_NAME = ARANGODB_DATABASE+"_view"
@@ -261,10 +271,20 @@ ARANGODB_HOST_URL   = os.getenv("ARANGODB_HOST_URL")
 
 MAXIMUM_PAGE_SIZE = int(os.getenv("MAX_PAGE_SIZE", 50))
 DEFAULT_PAGE_SIZE = int(os.getenv("DEFAULT_PAGE_SIZE", 50))
+
+
+HISTORY4FEED_SETTINGS = {
+    'WAYBACK_SLEEP_SECONDS': int(os.getenv("HISTORY4FEED_WAYBACK_SLEEP_SECONDS", 20)),
+    'EARLIEST_SEARCH_DATE': datetime.strptime(os.environ.get("HISTORY4FEED_EARLIEST_SEARCH_DATE", "2024-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ"),
+    'REQUEST_RETRY_COUNT': int(os.getenv("HISTORY4FEED_REQUEST_RETRY_COUNT", 3)),
+}
+
+# stixifier settings
+STIXIFIER_NAMESPACE = uuid.UUID("a1f2e3ed-6241-5f05-ac2e-3394213b8e08")
+TXT2STIX_INCLUDE_URL = "https://github.com/muchdogesec/txt2stix/blob/obstracts/includes/"
+ARANGODB_DATABASE_VIEW = VIEW_NAME
 GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY")
 if not GOOGLE_VISION_API_KEY:
     logging.warning("GOOGLE_VISION_API_KEY not set")
-
 INPUT_TOKEN_LIMIT = int(os.environ["INPUT_TOKEN_LIMIT"])
-
 SRO_OBJECTS_ONLY_LATEST = os.getenv('SRO_OBJECTS_ONLY_LATEST', False)

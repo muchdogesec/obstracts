@@ -12,6 +12,7 @@ services:
         environment:
             - DJANGO_SETTINGS_MODULE=obstracts.settings
             - CELERY_BROKER_URL=redis://redis:6379/10
+            - result_backend=redis://redis:6379/1
             - POSTGRES_HOST=pgdb
             - DEBUG=1
         env_file:
