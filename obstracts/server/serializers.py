@@ -70,6 +70,10 @@ class PostCreateSerializer(CreateTaskSerializer):
 
 class FileSerializer(h4fserializers.PostSerializer):
     profile_id = serializers.UUIDField(source='obstracts_post.profile_id', required=True)
+    ai_describes_incident = serializers.BooleanField(source='obstracts_post.ai_describes_incident', required=False, read_only=True)
+    ai_incident_summary = serializers.CharField(source='obstracts_post.ai_incident_summary', required=False, read_only=True)
+    ai_incident_classification = serializers.CharField(source='obstracts_post.ai_incident_classification', required=False, read_only=True)
+    summary = serializers.CharField(source='obstracts_post.summary', read_only=True)
     # class Meta:
     #     exclude = ["profile", "feed", "markdown_file"]
 

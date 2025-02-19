@@ -128,6 +128,11 @@ def process_post(job_id, post_id, *args):
         processor.process()
 
         file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, profile=job.profile))
+        if processor.incident:
+            file.ai_describes_incident = processor.incident.describes_incident
+            file.ai_incident_summary = processor.incident.explanation
+            file.ai_incident_classification = processor.incident.incident_classification
+
         if job.profile.ai_summary_provider:
             logging.info(f"summarizing report {processor.report_id} using `{job.profile.ai_summary_provider}`")
             try:
