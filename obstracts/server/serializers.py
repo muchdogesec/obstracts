@@ -6,7 +6,18 @@ from .models import File, Profile, Job, FileImage
 from drf_spectacular.utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from dogesec_commons.stixifier.summarizer import parse_summarizer_model
+from txt2stix.txt2stix import parse_model
 
+from rest_framework.validators import ValidationError
+
+def validate_model(model):
+    if not model:
+        return None
+    try:
+        extractor = parse_model(model)
+    except BaseException as e:
+        raise ValidationError(f"invalid model: {model}")
+    return model
 
 class JobSerializer(serializers.ModelSerializer):
     feed_id = serializers.PrimaryKeyRelatedField(read_only=True, source='feed')
@@ -34,6 +45,7 @@ class ProfileIDField(serializers.PrimaryKeyRelatedField):
 
 class CreateTaskSerializer(serializers.Serializer):
     profile_id = ProfileIDField(help_text="profile id to use", write_only=True)
+    ai_content_check_variable = serializers.CharField(max_length=256, validators=[validate_model])
 
 class FeedSerializer(CreateTaskSerializer, h4fserializers.FeedXSerializer):
     pass
