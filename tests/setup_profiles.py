@@ -38,6 +38,7 @@ def create_profiles(profiles):
             print(f"Successfully created profile: {profile['name']}")
         else:
             print(f"Failed to create profile: {profile['name']}. Status code: {response.status_code}")
+            print(response.text)
 
 def check_profiles(profiles):
     for profile in profiles:
@@ -108,7 +109,7 @@ if __name__ == "__main__":
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openai:gpt-4o",
+            "ai_summary_provider": "openrouter:openai/gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,
@@ -153,12 +154,12 @@ if __name__ == "__main__":
                 "pattern_phone_number"
             ],
             "relationship_mode": "ai",
-            "ai_settings_relationships": "openai:gpt-4o",
+            "ai_settings_relationships": "openrouter:openai/gpt-4o",
             "extract_text_from_image": True,
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openai:gpt-4o",
+            "ai_summary_provider": "openrouter:openai/gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,
@@ -192,7 +193,7 @@ if __name__ == "__main__":
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openai:gpt-4o",
+            "ai_summary_provider": "openrouter:openai/gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,
@@ -209,17 +210,17 @@ if __name__ == "__main__":
                 "ai_mitre_cwe"
             ],
             "ai_settings_extractions": [
-                "openai:gpt-4o",
+                "openrouter:openai/gpt-4o",
                 "anthropic:claude-3-5-sonnet-latest",
                 "gemini:models/gemini-1.5-pro-latest"
             ],
             "relationship_mode": "ai",
-            "ai_settings_relationships": "openai:gpt-4o",
+            "ai_settings_relationships": "openrouter:openai/gpt-4o",
             "extract_text_from_image": True,
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openai:gpt-4o",
+            "ai_summary_provider": "openrouter:openai/gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,

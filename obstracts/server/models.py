@@ -94,6 +94,11 @@ class File(models.Model):
     summary = models.CharField(max_length=65535, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.PROTECT, default=None, null=True)
 
+    # describe incident
+    ai_describes_incident = models.BooleanField(default=None, null=True)
+    ai_incident_summary = models.CharField(default=None, max_length=65535, null=True)
+    ai_incident_classification = models.CharField(default=None, max_length=256, null=True)
+
     def save(self, *args, **kwargs):
         self.post.save() #update datetime_updated
         return super().save(*args, **kwargs)
