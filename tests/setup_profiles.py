@@ -109,11 +109,13 @@ if __name__ == "__main__":
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openrouter:openai/gpt-4o",
+            "ai_summary_provider": "openai:gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,
-            "ignore_embedded_relationships_smo": False
+            "ignore_embedded_relationships_smo": False,
+            "ai_content_check_provider": "openai:gpt-4o",
+            "ai_create_attack_flow": False
         },
         # bcf09ec5-d124-528a-bb21-480114231795
         {
@@ -154,16 +156,18 @@ if __name__ == "__main__":
                 "pattern_phone_number"
             ],
             "relationship_mode": "ai",
-            "ai_settings_relationships": "openrouter:openai/gpt-4o",
+            "ai_settings_relationships": "openai:gpt-4o",
             "extract_text_from_image": True,
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openrouter:openai/gpt-4o",
+            "ai_summary_provider": "openai:gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,
-            "ignore_embedded_relationships_smo": False
+            "ignore_embedded_relationships_smo": False,
+            "ai_content_check_provider": "openai:gpt-4o",
+            "ai_create_attack_flow": True
         },
         # dba9d4b8-4b04-5794-96b7-56e74d6b08e1
         {
@@ -193,11 +197,13 @@ if __name__ == "__main__":
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openrouter:openai/gpt-4o",
+            "ai_summary_provider": "openai:gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,
-            "ignore_embedded_relationships_smo": False
+            "ignore_embedded_relationships_smo": False,
+            "ai_content_check_provider": "openai:gpt-4o",
+            "ai_create_attack_flow": False
         },
         # a76c5353-a84b-552e-bbc4-ff6d0dc045e4
         {
@@ -210,21 +216,23 @@ if __name__ == "__main__":
                 "ai_mitre_cwe"
             ],
             "ai_settings_extractions": [
-                "openrouter:openai/gpt-4o",
+                "openai:gpt-4o",
                 "anthropic:claude-3-5-sonnet-latest",
                 "gemini:models/gemini-1.5-pro-latest"
             ],
             "relationship_mode": "ai",
-            "ai_settings_relationships": "openrouter:openai/gpt-4o",
+            "ai_settings_relationships": "openai:gpt-4o",
             "extract_text_from_image": True,
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openrouter:openai/gpt-4o",
+            "ai_summary_provider": "openai:gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,
-            "ignore_embedded_relationships_smo": False
+            "ignore_embedded_relationships_smo": False,
+            "ai_content_check_provider": "openai:gpt-4o",
+            "ai_create_attack_flow": True
         }
     ]
 
