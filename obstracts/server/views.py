@@ -21,9 +21,9 @@ from .utils import (
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter, MultipleChoiceFilter, filters
 from .serializers import (
     JobSerializer,
-    FeedSerializer,
+    FeedCreateSerializer,
 )
-from . import h4fserializers
+from .serializers import h4fserializers
 import txt2stix.txt2stix
 import requests
 from django.conf import settings
@@ -76,7 +76,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.
             """
         ),
-        responses={200: h4fserializers.FeedXSerializer, 400: api_schema.DEFAULT_400_ERROR}
+        responses={200: h4fserializers.FeedSerializer, 400: api_schema.DEFAULT_400_ERROR}
     ),
     retrieve=extend_schema(
         summary="Get a Feed",
@@ -85,10 +85,10 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required.
             """
         ),
-        responses={200: h4fserializers.FeedXSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR}
+        responses={200: h4fserializers.FeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR}
     ),
     create=extend_schema(
-        request=FeedSerializer,
+        request=FeedCreateSerializer,
         responses={201:JobSerializer, 400: api_schema.DEFAULT_400_ERROR},
         summary="Create a New Feed",
         description=textwrap.dedent(
@@ -115,7 +115,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
     ),
     create_skeleton=extend_schema(
         request=serializers.SkeletonFeedSerializer,
-        responses={201:FeedSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201:FeedCreateSerializer, 400: api_schema.DEFAULT_400_ERROR},
         summary="Create a New Skeleton Feed",
         description=textwrap.dedent(
             """
@@ -139,11 +139,11 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.
             """
         ),
-        responses={200: {}, 404: api_schema.DEFAULT_404_ERROR}
+        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
     partial_update=extend_schema(
         request=serializers.PatchFeedSerializer,
-        responses={201: serializers.FeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201: serializers.FeedCreateSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Feeds Metadata",
         description=textwrap.dedent(
             """
@@ -192,13 +192,13 @@ class MarkdownImageReplacer(MarkdownRenderer):
 class FeedView(h4f_views.FeedView):
     lookup_url_kwarg = "feed_id"
     openapi_tags = ["Feeds"]
-    serializer_class = serializers.FeedSerializer
+    serializer_class = serializers.FeedCreateSerializer
     pagination_class = Pagination("feeds")
     schema = ObstractsAutoSchema()
 
     def create(self, request, *args, **kwargs):
         request_body = request.body
-        s = serializers.FeedSerializer(data=request.data)
+        s = serializers.FeedCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_create_job(request)
         job = tasks.new_task(h4f_job, s.validated_data['profile_id'])

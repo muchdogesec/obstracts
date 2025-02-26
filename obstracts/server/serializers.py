@@ -37,7 +37,7 @@ class ProfileIDField(serializers.PrimaryKeyRelatedField):
 class CreateTaskSerializer(serializers.Serializer):
     profile_id = ProfileIDField(help_text="profile id to use", write_only=True)
 
-class FeedSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
+class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
     pass
 
 class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
