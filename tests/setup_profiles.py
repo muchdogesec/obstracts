@@ -109,12 +109,10 @@ if __name__ == "__main__":
             "defang": True,
             "ignore_image_refs": True,
             "ignore_link_refs": True,
-            "ai_summary_provider": "openai:gpt-4o",
             "ignore_extraction_boundary": False,
             "ignore_embedded_relationships": False,
             "ignore_embedded_relationships_sro": False,
             "ignore_embedded_relationships_smo": False,
-            "ai_content_check_provider": "openai:gpt-4o",
             "ai_create_attack_flow": False
         },
         # bcf09ec5-d124-528a-bb21-480114231795

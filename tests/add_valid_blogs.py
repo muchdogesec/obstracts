@@ -106,29 +106,65 @@ if __name__ == "__main__":
 
     # Test blogs list
     test_blogs = [
-    # title/desc/pretty url
+    # ==== OUR BLOG -- RESULTS FIXED
+        # all properties
         {
             "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml",
             "include_remote_blogs": False,
             "pretty_url": "https://muchdogesec.github.io/fakeblog123/feeds",
             "title": "custom title",
-            "description": "custom description"
+            "description": "custom description",
+            "use_search_index": False
         },
+        # min properties
         {
             "profile_id": "bcf09ec5-d124-528a-bb21-480114231795",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-decoded.xml",
             "include_remote_blogs": False
         },
+        # more blogs feed linked to same content (but slightly different URLs) to duplicate extractions
         {
-            "profile_id": "a76c5353-a84b-552e-bbc4-ff6d0dc045e4",
+            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded-partial.xml",
             "include_remote_blogs": False
         },
         {
-            "profile_id": "dba9d4b8-4b04-5794-96b7-56e74d6b08e1",
+            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
             "url": "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-decoded-partial.xml",
             "include_remote_blogs": False
+        },
+    # ==== OUR BLOG -- RESULTS UNPREDICATABLE
+        {
+            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
+            "url": "https://blog.eclecticiq.com/",
+            "include_remote_blogs": False,
+            "title": "EclecticIQ Blog",
+            "description": "A threat intel focused blog",
+            "use_search_index": True
+        },
+        {
+            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
+            "url": "https://unit42.paloaltonetworks.com/category/threat-research/feed/",
+            "include_remote_blogs": True,
+            "title": "Unit42",
+            "description": "A another search index blog",
+            "use_search_index": True
+        },
+        # 16341792-226e-5a55-829e-a7cbcd2d54af
+        {
+            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
+            "url": "https://www.crowdstrike.com/en-us/blog/feed",
+            "include_remote_blogs": False
+        },
+        # examples of where include remote blogs needs to be true
+        {
+            "profile_id": "da4dddc2-86bd-52b7-8c09-37fc0f72b679",
+            "url": "http://feeds.feedburner.com/Unit42",
+            "pretty_url": "https://unit42.paloaltonetworks.com/",
+            "include_remote_blogs": True,
+            "title": "PAN Unit42 Blog",
+            "description": "From feedburner"
         }
     ]
 

@@ -55,6 +55,7 @@ jobs:
             CTIBUTLER_API_KEY=${{ secrets.CTIBUTLER_API_KEY }}
             VULMATCH_API_KEY=${{ secrets.VULMATCH_API_KEY }}
             SCRAPFILE_APIKEY=${{ secrets.SCRAPFILE_APIKEY }}
+            SERPER_API_KEY=${{ secrets.SERPER_API_KEY }}
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
