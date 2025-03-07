@@ -95,4 +95,4 @@ jobs:
             pip install -r tests/requirements.txt
             export DELETE_ALL=true
             export SERVICE_BASE_URL="${{ steps.get_ip.outputs.SERVICE_BASE_URL }}"
-            pytest tests/test_99_delete_all_feeds.py
+            pytest tests/test_99_delete_all.py
