@@ -72,6 +72,10 @@ class FeedProfile(models.Model):
     def title(self) -> str:
         return h4f_models.title_as_string(self.feed.title)
     
+@receiver(post_save, sender=h4f_models.Feed)
+def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
+    feed, _ = FeedProfile.objects.update_or_create(feed=instance)
+    
 @receiver(post_save, sender=h4f_models.Job)
 def start_job(sender, instance: h4f_models.Job, **kwargs):
     from ..cjob import tasks
@@ -125,31 +129,6 @@ def delete_collections(sender, instance: FeedProfile, **kwargs):
         graph.delete_vertex_collection(instance.collection_name+'_vertex_collection', purge=True)
     except BaseException as e:
         logging.error(f"cannot delete collection `{instance.collection_name}`: {e}") 
-
-@receiver(post_delete, sender=File)
-def remove_files(sender, instance: File, **kwargs):
-    if not getattr(instance, '_deleted_directly', False):
-        return False
-    
-    q = """
-    LET removed_edges = (
-        FOR de IN @@edge
-        FILTER de._obstracts_post_id == @post_id
-        REMOVE de IN @@edge
-        RETURN de.id
-    )
-
-    LET removed_vertices = (
-        FOR dv IN @@vertex
-        FILTER dv._obstracts_post_id == @post_id
-        REMOVE dv IN @@vertex
-        RETURN dv.id
-    )
-    RETURN {removed_edges, removed_vertices}
-    """
-    out = ArangoDBHelper(None, FakeRequest).execute_query(q, {'@vertex': instance.feed.collection_name+'_vertex_collection', '@edge': instance.feed.collection_name+'_edge_collection', 'post_id': str(instance.post_id)}, paginate=False)
-    logging.debug(f"POST's objects removed {out}")
-    return True
     
 
 class FileImage(models.Model):
