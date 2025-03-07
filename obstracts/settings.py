@@ -154,9 +154,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = "static/"
-STATIC_ROOT = "/var/www/staticfiles/"
+STATIC_ROOT = "./www/staticfiles/"
 
-MEDIA_ROOT = "/var/www/mediafiles/"
+MEDIA_ROOT = "./www/mediafiles/"
 MEDIA_URL = "uploads/"
 
 # cache
@@ -269,8 +269,8 @@ ARANGODB_USERNAME   = os.getenv('ARANGODB_USERNAME')
 ARANGODB_PASSWORD   = os.getenv('ARANGODB_PASSWORD')
 ARANGODB_HOST_URL   = os.getenv("ARANGODB_HOST_URL")
 
-MAXIMUM_PAGE_SIZE = int(os.getenv("MAX_PAGE_SIZE", 50))
 DEFAULT_PAGE_SIZE = int(os.getenv("DEFAULT_PAGE_SIZE", 50))
+MAXIMUM_PAGE_SIZE = int(os.getenv("MAX_PAGE_SIZE", DEFAULT_PAGE_SIZE*2))
 
 
 HISTORY4FEED_SETTINGS = {

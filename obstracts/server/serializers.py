@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from dogesec_commons.stixifier.summarizer import parse_summarizer_model
 
 
-class JobSerializer(serializers.ModelSerializer):
+class ObstractsJobSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField()
     feed_id = serializers.PrimaryKeyRelatedField(read_only=True, source='feed')
     profile_id = serializers.PrimaryKeyRelatedField(read_only=True, source='profile')
@@ -37,7 +37,7 @@ class ProfileIDField(serializers.PrimaryKeyRelatedField):
 class CreateTaskSerializer(serializers.Serializer):
     profile_id = ProfileIDField(help_text="profile id to use", write_only=True)
 
-class FeedSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
+class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
     pass
 
 class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
@@ -70,10 +70,10 @@ class PostCreateSerializer(CreateTaskSerializer):
 
 class FileSerializer(h4fserializers.PostSerializer):
     profile_id = serializers.UUIDField(source='obstracts_post.profile_id', required=True)
-    ai_describes_incident = serializers.BooleanField(source='obstracts_post.ai_describes_incident', required=False, read_only=True)
-    ai_incident_summary = serializers.CharField(source='obstracts_post.ai_incident_summary', required=False, read_only=True)
-    ai_incident_classification = serializers.CharField(source='obstracts_post.ai_incident_classification', required=False, read_only=True)
-    summary = serializers.CharField(source='obstracts_post.summary', read_only=True)
+    ai_describes_incident = serializers.BooleanField(source='obstracts_post.ai_describes_incident', required=False, read_only=True, allow_null=True)
+    ai_incident_summary = serializers.CharField(source='obstracts_post.ai_incident_summary', required=False, read_only=True, allow_null=True)
+    ai_incident_classification = serializers.CharField(source='obstracts_post.ai_incident_classification', required=False, read_only=True, allow_null=True)
+    summary = serializers.CharField(source='obstracts_post.summary', read_only=True, required=False, allow_null=True)
     # class Meta:
     #     exclude = ["profile", "feed", "markdown_file"]
 

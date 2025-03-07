@@ -20,10 +20,10 @@ from .utils import (
 )
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter, MultipleChoiceFilter, filters
 from .serializers import (
-    JobSerializer,
-    FeedSerializer,
+    ObstractsJobSerializer,
+    FeedCreateSerializer,
 )
-from . import h4fserializers
+from .serializers import h4fserializers
 import txt2stix.txt2stix
 import requests
 from django.conf import settings
@@ -76,7 +76,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.
             """
         ),
-        responses={200: h4fserializers.FeedXSerializer, 400: api_schema.DEFAULT_400_ERROR}
+        responses={200: h4fserializers.FeedSerializer, 400: api_schema.DEFAULT_400_ERROR}
     ),
     retrieve=extend_schema(
         summary="Get a Feed",
@@ -85,11 +85,11 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required.
             """
         ),
-        responses={200: h4fserializers.FeedXSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR}
+        responses={200: h4fserializers.FeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR}
     ),
     create=extend_schema(
-        request=FeedSerializer,
-        responses={201:JobSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        request=FeedCreateSerializer,
+        responses={201:ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR},
         summary="Create a New Feed",
         description=textwrap.dedent(
             """
@@ -97,12 +97,13 @@ class MarkdownImageReplacer(MarkdownRenderer):
 
             The following key/values are accepted in the body of the request:
 
-            * `url` (required): should be a valid RSS or ATOM feed URL. If it is not valid, the Feed will not be created and an error returned. If the `url` is already associated with an existing Feed, a request to this endpoint will trigger an update request for the blog (you can also use the PATCH Feed endpoint to achieve the same thing). If you want to add the `url` with new settings, first delete the Feed it is associated with.
             * `profile_id` (required - valid Profile ID): You can view existing Profiles, or generated a new one using the Profiles endpoints. You can update the `profile` used for future posts in a Feed, or reindex Posts using a different `profile_id` later. See the Patch Feed and Patch Post endpoints for more information.
-            * `include_remote_blogs` (required): is a boolean setting and will ask history4feed to ignore any feeds not on the same domain as the URL of the feed. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to false. The one exception is when things like feed aggregators (e.g. Feedburner) URLs are used, where the actual blog posts are not on the `feedburner.com` (or whatever) domain. In this case `include_remote_blogs` should be set to `true`.
+            * `url` (required): a valid RSS or ATOM feed URL (if `use_search_index` = `false`) OR the URL of the blog (if `use_search_index` = `true`).
+            * `include_remote_blogs` (required): is a boolean setting and will ask history4feed to ignore any feeds not on the same domain as the URL of the feed. Some RSS/ATOM feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to `false`. The one exception is when things like feed aggregators (e.g. Feedburner) URLs are used, where the actual blog posts are not on the `feedburner.com` (or whatever) domain. In this case `include_remote_blogs` should be set to `true`.
             * `pretty_url` (optional): you can also include a secondary URL in the database. This is designed to be used to show the link to the blog (not the RSS/ATOM) feed so that a user can navigate to the blog in their browser.
             * `title` (optional): the title of the feed will be used if not passed. You can also manually pass the title of the blog here.
             * `description` (optional): the description of the feed will be used if not passed. You can also manually pass the description of the blog here.
+            * `use_search_index` (optional, default is `false`): If the `url` is not a valid RSS or ATOM feed you must set this mode to `true`. Set to `true` this mode uses search results that contain the base `url` passed vs. the RSS/ATOM feed entries (when this mode is set to `false`). This mode is only be able to index results in Google Search, so can miss some sites entirely where they are not indexed by Google. You must also pass a `title` and `description` when setting this mode to `true`. Note, you can use the skeleton endpoint to create a feed manually from a non RSS/ATOM URL or where search results do not satisfy your use case.
 
             The `id` of a Feed is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used is `<FEED_URL>` (e.g. `https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml` would have the id `d1d96b71-c687-50db-9d2b-d0092d1d163a`). Therefore, you cannot add a URL that already exists, you must first delete it to add it with new settings.
 
@@ -114,11 +115,11 @@ class MarkdownImageReplacer(MarkdownRenderer):
     ),
     create_skeleton=extend_schema(
         request=serializers.SkeletonFeedSerializer,
-        responses={201:FeedSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201:FeedCreateSerializer, 400: api_schema.DEFAULT_400_ERROR},
         summary="Create a New Skeleton Feed",
         description=textwrap.dedent(
             """
-            Sometimes blogs don't have an RSS or ATOM feed. It might also be the case you want to curate a blog manually using various URLs. This is what `skeleton` feeds are designed for, allowing you to create a skeleton feed and then add posts to it manually later on using the add post manually endpoint.
+            Sometimes it might be the case you want to curate a blog manually using various URLs from different blogs. This is what `skeleton` feeds are designed for, allowing you to create a skeleton feed and then add posts to it manually later on using the add post manually endpoint.
 
             The following key/values are accepted in the body of the request:
 
@@ -138,11 +139,11 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.
             """
         ),
-        responses={200: {}, 404: api_schema.DEFAULT_404_ERROR}
+        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
     partial_update=extend_schema(
         request=serializers.PatchFeedSerializer,
-        responses={201: serializers.FeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201: serializers.FeedCreateSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Feeds Metadata",
         description=textwrap.dedent(
             """
@@ -164,15 +165,13 @@ class MarkdownImageReplacer(MarkdownRenderer):
     ),
     fetch=extend_schema(
         request=serializers.FetchFeedSerializer,
-        responses={201: serializers.JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201: serializers.ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Fetch Updates for a Feed",
         description=textwrap.dedent(
             """
             Use this endpoint to check for new posts on this blog since the last post time. An update request will immediately trigger a job to get the posts between `latest_item_pubdate` for feed and time you make a request to this endpoint.
 
-            Note, this endpoint can miss updates that have happened to currently indexed posts (where the RSS or ATOM feed does not report the updated date correctly -- which is actually very common). To solve this issue for currently indexed blog posts, use the Update a Post in a Feed endpoint directly.
-
-            Whilst it is possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed we would recommend using the same `profile_id` and `include_remote_blogs` as set originally because. it can becoming confusing quickly managing different settings on a per post basis. Generally it's better to reindex the whole blog using the new setting unless you have a good reason not to.
+            Whilst it is possible to modify the `profile_id` and `include_remote_blogs` options when updating a Feed we would recommend using the same `profile_id` and `include_remote_blogs` as set originally because it can quickly become confusing managing different settings on a per post basis. Generally it's better to reindex the whole blog using the new setting unless you have a good reason not to.
 
             The following key/values are accepted in the body of the request:
 
@@ -181,7 +180,9 @@ class MarkdownImageReplacer(MarkdownRenderer):
 
             Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
 
-            IMPORTANT: this request will fail if run against a Skeleton type feed. Skeleton feeds can only be updated by adding posts to them manually using the Manually Add a Post to a Feed endpoint.
+            **IMPORTANT:** this request will fail if run against a Skeleton type feed. Skeleton feeds can only be updated by adding posts to them manually using the Manually Add a Post to a Feed endpoint.
+
+            **IMPORTANT:** this endpoint can miss updates that have happened to currently indexed posts (where the RSS or ATOM feed or search results do not report the updated date correctly -- which is actually very common). To solve this issue for currently indexed blog posts, use the Update a Post in a Feed endpoint directly.
 
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
@@ -191,17 +192,17 @@ class MarkdownImageReplacer(MarkdownRenderer):
 class FeedView(h4f_views.FeedView):
     lookup_url_kwarg = "feed_id"
     openapi_tags = ["Feeds"]
-    serializer_class = serializers.FeedSerializer
+    serializer_class = serializers.FeedCreateSerializer
     pagination_class = Pagination("feeds")
     schema = ObstractsAutoSchema()
 
     def create(self, request, *args, **kwargs):
         request_body = request.body
-        s = serializers.FeedSerializer(data=request.data)
+        s = serializers.FeedCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_create_job(request)
         job = tasks.new_task(h4f_job, s.validated_data['profile_id'])
-        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
     
     @decorators.action(methods=["PATCH"], detail=True)
     def fetch(self, request, *args, **kwargs):
@@ -209,7 +210,7 @@ class FeedView(h4f_views.FeedView):
         s.is_valid(raise_exception=True)
         h4f_job = self.new_fetch_job(request)
         job = tasks.new_task(h4f_job, s.validated_data['profile_id'])
-        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
 
 
     
@@ -245,7 +246,7 @@ class FeedView(h4f_views.FeedView):
     reindex=extend_schema(
         request=serializers.FetchPostSerializer,
 
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201:ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Post in a Feed",
         description=textwrap.dedent(
             """
@@ -299,6 +300,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
     file_serializer_class = serializers.FileSerializer
     lookup_url_kwarg = 'post_id'
+    lookup_field = 'id'
     openapi_tags = ["Posts"]
     schema = ObstractsAutoSchema()
 
@@ -307,10 +309,10 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
         job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
-
-    def get_queryset(self):
-        return super().get_queryset() \
-            .annotate(job_state=Subquery(models.Job.objects.filter(history4feed_job_id=OuterRef('last_job_id')).values('state')[:1]))
+    
+    def filter_queryset(self, queryset):
+        queryset = queryset.annotate(job_state=Subquery(models.Job.objects.filter(history4feed_job_id=OuterRef('last_job_id')).values('state')[:1]))
+        return super().filter_queryset(queryset)
 
 
     @decorators.action(detail=True, methods=['PATCH'], serializer_class=serializers.CreateTaskSerializer)
@@ -319,7 +321,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         s.is_valid(raise_exception=True)
         _, h4f_job = self.new_reindex_post_job(request)
         job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
-        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
     
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
@@ -353,38 +355,16 @@ class PostOnlyView(h4f_views.PostOnlyView):
         types = helper.query.get('types', "")
         bind_vars = {
             "types": list(OBJECT_TYPES.intersection(types.split(","))) if types else None,
-            "@vertex_collection":post_file.feed.vertex_collection,
-            "@edge_collection": post_file.feed.edge_collection,
-            "report_id": post_file.report_id,
+            # "@vertex_collection":post_file.feed.vertex_collection,
+            # "@edge_collection": post_file.feed.edge_collection,
+            # "report_id": post_file.report_id,
+            '@view': settings.VIEW_NAME,
+            'post_id': str(post_file.post_id)
         }
         query = """
 
-LET report = FIRST(
-    FOR report IN @@vertex_collection
-    FILTER report.id == @report_id
-    RETURN report
-)
-
-LET original_objects = APPEND([report], (
-    FOR doc IN @@vertex_collection
-    FILTER doc.id IN report.object_refs
-    RETURN doc
-))
-
-
-LET relationship_objects = (
-    FOR doc IN @@edge_collection
-    FILTER doc.source_ref IN original_objects[*].id OR doc.target_ref IN original_objects[*].id
-    RETURN doc
-)
-
-LET report_ref_vertices = (
-    FOR doc IN @@vertex_collection
-    FILTER doc.id IN APPEND(report.object_marking_refs, [report.created_by_ref])
-    RETURN doc
-)
-
-FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_objects)
+FOR doc IN @@view
+    FILTER doc._obstracts_post_id == @post_id
     FILTER NOT @types OR doc.type IN @types
     
     COLLECT id = doc.id  INTO docs
@@ -419,7 +399,7 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
     )
     @decorators.action(detail=True, methods=["GET"])
     def markdown(self, request, post_id=None, **kwargs):
-        obj = get_object_or_404(models.File, post_id=post_id)
+        obj = self.get_object().obstracts_post
         resp_text = MarkdownImageReplacer.get_markdown(request, obj.markdown_file.read().decode(), models.FileImage.objects.filter(report__post_id=post_id))
         return FileResponse(streaming_content=resp_text, content_type='text/markdown', filename='markdown.md')
     
@@ -446,6 +426,34 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
+    def destroy(self, *args, **kwargs):
+        obj = self.get_object()
+        retval = super().destroy(*args, **kwargs)
+        self.remove_files(obj.obstracts_post)
+        return retval
+    
+    def remove_files(self, instance: models.File):
+        q = """
+        LET removed_edges = (
+            FOR de IN @@edge
+            FILTER de._obstracts_post_id == @post_id
+            REMOVE de IN @@edge
+            RETURN de.id
+        )
+
+        LET removed_vertices = (
+            FOR dv IN @@vertex
+            FILTER dv._obstracts_post_id == @post_id
+            REMOVE dv IN @@vertex
+            RETURN dv.id
+        )
+        RETURN {removed_edges, removed_vertices}
+        """
+        out = ArangoDBHelper(None, self.request).execute_query(q, {'@vertex': instance.feed.collection_name+'_vertex_collection', '@edge': instance.feed.collection_name+'_edge_collection', 'post_id': str(instance.post_id)}, paginate=False)
+        logging.debug(f"POST's objects removed {out}")
+        return True
+
 
     def remove_report(self, post_id):
         try:
@@ -467,8 +475,8 @@ FOR doc IN UNION_DISTINCT(report_ref_vertices, original_objects, relationship_ob
 @extend_schema_view(
     create=extend_schema(
         request=serializers.PostCreateSerializer,
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-        summary="Backfill a Post into A Feed",
+        responses={201:ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        summary="Manually add a Post to A Feed",
         description=textwrap.dedent(
             """
             This endpoint allows you to add Posts manually to a Feed. This endpoint is designed to ingest posts that are not identified by the Wayback Machine (used by the POST Feed endpoint during ingestion). If the feed you want to add a post to does not already exist, you should first add it using the POST Feed endpoint.
@@ -511,7 +519,7 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
 
         h4f_job = self.new_create_post_job(request, self.kwargs['feed_id'])
         job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
-        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
         summary="Update all Posts in a feed",
@@ -534,7 +542,7 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
                 The response will return the Job information responsible for getting the requested data you can track using the id returned via the GET Jobs by ID endpoint.
             """
         ),
-        responses={201:JobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201:ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         request=serializers.CreateTaskSerializer,
     )
     @decorators.action(methods=["PATCH"], detail=False, url_path='reindex')
@@ -544,7 +552,7 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
 
         h4f_job = self.new_reindex_feed_job(feed_id)
         job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
-        return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
+        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
 
 @extend_schema_view(
     list=extend_schema(
@@ -554,7 +562,7 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
             Jobs track the status of the request to get posts for Feeds. For every new Feed added and every update to a Feed requested a job will be created. The id of a job is printed in the POST and PATCH responses respectively, but you can use this endpoint to search for the id again, if required.
             """
         ),
-        responses={400: api_schema.DEFAULT_400_ERROR, 200: JobSerializer},
+        responses={400: api_schema.DEFAULT_400_ERROR, 200: ObstractsJobSerializer},
     ),
     retrieve=extend_schema(
         summary="Get a Job",
@@ -563,17 +571,17 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
             Using a Job ID you can retrieve information about its state via this endpoint. This is useful to see if a Job to get data is complete, how many posts were imported in the job, or if an error has occurred.
             """
         ),
-        responses={404: api_schema.DEFAULT_404_ERROR, 200: JobSerializer},
+        responses={404: api_schema.DEFAULT_404_ERROR, 200: ObstractsJobSerializer},
     ),
 )
 class JobView(viewsets.ModelViewSet):
     schema = ObstractsAutoSchema()
     http_method_names = ["get"]
-    serializer_class = JobSerializer
+    serializer_class = ObstractsJobSerializer
     openapi_tags = ["Jobs"]
     lookup_url_kwarg = "job_id"
     filter_backends = [DjangoFilterBackend, Ordering]
-    ordering_fields = ["created", "item_count"]
+    ordering_fields = ["created"]
     ordering = "created_descending"
     pagination_class = Pagination("jobs")
 

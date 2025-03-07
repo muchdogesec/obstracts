@@ -70,7 +70,7 @@ def new_task(h4f_job: h4f_models.Job, profile_id):
     return job
 
 def new_post_patch_task(h4f_job: h4f_models.Job, profile_id):
-    job = Job.objects.create(history4feed_job=h4f_job, feed=h4f_job.feed.obstracts_feed, profile_id=profile_id)
+    job = Job.objects.create(history4feed_job=h4f_job, feed_id=h4f_job.feed_id, profile_id=profile_id)
     # (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
     #     countdown=5, root_id=job.id, task_id=job.id
     # )
@@ -109,7 +109,7 @@ def process_post(job_id, post_id, *args):
     try:
         stream = io.BytesIO(post.description.encode())
         stream.name = f"post-{post_id}.html"
-        processor = StixifyProcessor(stream, job.profile, job_id=job.id, file2txt_mode="html_article", report_id=post_id, base_url=post.link)
+        processor = StixifyProcessor(stream, job.profile, job_id=f"{post.id}+{job.id}", file2txt_mode="html_article", report_id=post_id, base_url=post.link)
         processor.collection_name = job.feed.collection_name
         properties = ReportProperties(
             name=post.title,
