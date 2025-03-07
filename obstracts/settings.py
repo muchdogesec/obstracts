@@ -154,9 +154,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = "static/"
-STATIC_ROOT = "/var/www/staticfiles/"
+STATIC_ROOT = "./www/staticfiles/"
 
-MEDIA_ROOT = "/var/www/mediafiles/"
+MEDIA_ROOT = "./www/mediafiles/"
 MEDIA_URL = "uploads/"
 
 # cache

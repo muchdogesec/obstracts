@@ -36,14 +36,13 @@ def post_objects_test(post_id, subtests):
         report_object_refs
     ), "not a superset of report.object_refs"
 
-    invalid_refs = {obj["id"] for obj in objects_data["objects"] if obj.get('relationship_type', '') in ['object', 'object-marking', 'created-by']} #remove embedded refs
-    invalid_objects = {obj["id"] for obj in objects_data["objects"] if obj['type'] in ['marking-definition', 'identity']}
+    invalid_objects = {obj["id"] for obj in objects_data["objects"] if obj['type'] in ['marking-definition', 'identity', 'relationship']}
     report_id = f"report--{post_id}"
     invalid_objects.add(report_id)
     for obj_ref in random_list(
         [
             id
-            for id in post_object_refs.difference(invalid_refs).difference(invalid_objects)
+            for id in post_object_refs.difference(invalid_objects)
         ],
         k=10,
     ):
