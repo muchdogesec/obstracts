@@ -77,10 +77,10 @@ jobs:
           export TEST_AI_PROFILE_MODEL="${{ secrets.TEST_AI_PROFILE_MODEL }}"
 
           pytest tests/
-        continue-on-error: true
 
       - name: run schemathesis
         uses: schemathesis/action@v1
+        if: always()
         env:
           SCHEMATHESIS_HOOKS: tests.st.hooks
         with:
