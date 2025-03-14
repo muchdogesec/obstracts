@@ -27,6 +27,7 @@ click-plugins==1.1.1
 click-repl==0.3.0
 cssselect==1.2.0
 dataclasses-json==0.6.7
+dateparser==1.2.1
 Deprecated==1.2.18
 dirtyjson==1.0.8
 distro==1.9.0
@@ -53,6 +54,7 @@ googleapis-common-protos==1.67.0
 greenlet==3.1.1
 grpcio==1.70.0
 grpcio-status==1.70.0
+gunicorn==23.0.0
 h11==0.14.0
 httpcore==1.0.7
 httplib2==0.22.0
@@ -143,6 +145,7 @@ transformers==4.49.0
 typing-inspect==0.9.0
 typing_extensions==4.12.2
 tzdata==2025.1
+tzlocal==5.3.1
 uritemplate==4.1.1
 urllib3==2.3.0
 validators==0.34.0
@@ -156,3 +159,4 @@ file2txt @ https://github.com/muchdogesec/file2txt/releases/download/main-2024-1
 txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/main-2025-03-07-14-24-36/txt2stix-0.0.2-py3-none-any.whl
 dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-03-07-15-29-11/dogesec_commons-0.0.7rc0-py3-none-any.whl
 stix2arango @ https://github.com/muchdogesec/stix2arango/releases/download/main-2025-02-04-14-14-39/stix2arango-0.0.4rc0-py3-none-any.whl
+stix2extensions @ https://github.com/muchdogesec/stix2extensions/releases/download/main-2025-02-12-06-23-37/stix2extensions-0.0.3-py3-none-any.whl
