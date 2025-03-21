@@ -1,6 +1,8 @@
+from functools import reduce
 import io
 import json
 import logging
+import operator
 from urllib.parse import urljoin
 from django.http import Http404, HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
@@ -10,7 +12,7 @@ from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
 import hyperlink
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, F, Q
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from .utils import (
     MinMaxDateFilter,
@@ -213,7 +215,6 @@ class FeedView(h4f_views.FeedView):
         return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
 
 
-    
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Posts",
@@ -309,11 +310,22 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
         job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
-    
-    def filter_queryset(self, queryset):
-        queryset = queryset.annotate(job_state=Subquery(models.Job.objects.filter(history4feed_job_id=OuterRef('last_job_id')).values('state')[:1]))
-        return super().filter_queryset(queryset)
+        ai_describes_incident = filters.BooleanFilter('obstracts_post__ai_describes_incident', help_text="boolean, default: show all")
+        ai_incident_classification = filters.BaseCSVFilter(help_text="default: show all", method='ai_incident_classification_filter')
+        
+        def ai_incident_classification_filter(self, queryset, name, value):
+            filter = reduce(operator.or_, [Q(obstracts_post__ai_incident_classification__icontains=s) for s in value])
+            return queryset.filter(filter)
 
+    def filter_queryset(self, queryset):
+        queryset = queryset.annotate(
+            job_state=Subquery(
+                models.Job.objects.filter(
+                    history4feed_job_id=OuterRef("last_job_id")
+                ).values("state")[:1]
+            )
+        )
+        return super().filter_queryset(queryset)
 
     @decorators.action(detail=True, methods=['PATCH'], serializer_class=serializers.CreateTaskSerializer)
     def reindex(self, request, *args, **kwargs):
@@ -322,7 +334,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         _, h4f_job = self.new_reindex_post_job(request)
         job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
         return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
-    
+
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
         parameters=ArangoDBHelper.get_schema_operation_parameters()
@@ -347,7 +359,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, post_id=None, **kwargs):
         return self.get_post_objects(post_id)
-    
+
     def get_post_objects(self, post_id):
         post_file = get_object_or_404(models.File, post_id=post_id)
 
@@ -402,7 +414,7 @@ FOR doc IN @@view
         obj = self.get_object().obstracts_post
         resp_text = MarkdownImageReplacer.get_markdown(request, obj.markdown_file.read().decode(), models.FileImage.objects.filter(report__post_id=post_id))
         return FileResponse(streaming_content=resp_text, content_type='text/markdown', filename='markdown.md')
-    
+
     @extend_schema(
             responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
             filters=False,
@@ -426,13 +438,13 @@ FOR doc IN @@view
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
     def destroy(self, *args, **kwargs):
         obj = self.get_object()
         retval = super().destroy(*args, **kwargs)
         self.remove_files(obj.obstracts_post)
         return retval
-    
+
     def remove_files(self, instance: models.File):
         q = """
         LET removed_edges = (
@@ -453,7 +465,6 @@ FOR doc IN @@view
         out = ArangoDBHelper(None, self.request).execute_query(q, {'@vertex': instance.feed.collection_name+'_vertex_collection', '@edge': instance.feed.collection_name+'_edge_collection', 'post_id': str(instance.post_id)}, paginate=False)
         logging.debug(f"POST's objects removed {out}")
         return True
-
 
     def remove_report(self, post_id):
         try:
@@ -599,4 +610,3 @@ class JobView(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return models.Job.objects
-
