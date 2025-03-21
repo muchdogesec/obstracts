@@ -13,6 +13,7 @@ from dogesec_commons.objects.helpers import ArangoDBHelper
 from history4feed.app import models as h4f_models
 from history4feed.app.models import JobState as H4FState
 from django.db.models.signals import post_save
+from django.contrib.postgres.fields import ArrayField
 # Create your models here.
 
 
@@ -101,7 +102,7 @@ class File(models.Model):
     # describe incident
     ai_describes_incident = models.BooleanField(default=None, null=True)
     ai_incident_summary = models.CharField(default=None, max_length=65535, null=True)
-    ai_incident_classification = models.CharField(default=None, max_length=256, null=True)
+    ai_incident_classification = ArrayField(base_field=models.CharField(default=None, max_length=256, null=True), null=True, blank=True)
 
     def save(self, *args, **kwargs):
         self.post.save() #update datetime_updated
