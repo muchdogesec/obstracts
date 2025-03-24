@@ -509,30 +509,7 @@ FOR doc IN @@view
             """
         ),
     ),
-)
-class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
-    schema = ObstractsAutoSchema()
-
-    openapi_tags = [ "Feeds" ]
-
-    class filterset_class(h4f_views.FeedPostView.filterset_class):
-        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
-        
-    @property
-    def h4f_base_path(self):
-        return f"/api/v1/feeds/{self.kwargs['feed_id']}/posts"
-    
-
-
-    def create(self, request, *args, **kwargs):
-        s = serializers.FetchFeedSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
-
-        h4f_job = self.new_create_post_job(request, self.kwargs['feed_id'])
-        job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
-        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
-
-    @extend_schema(
+    reindex_feed=extend_schema(
         summary="Update all Posts in a feed",
         description=textwrap.dedent(
             """
@@ -555,7 +532,29 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
         ),
         responses={201:ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         request=serializers.CreateTaskSerializer,
-    )
+    ),
+    # partial_update=extend_schema(exclude=True),
+    # retrieve=extend_schema(exclude=True),
+    # destroy=extend_schema(exclude=True),
+    # images=extend_schema(exclude=True),
+)
+class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
+    schema = ObstractsAutoSchema()
+
+    openapi_tags = [ "Feeds2" ]
+
+    class filterset_class(h4f_views.FeedPostView.filterset_class):
+        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
+
+
+    def create(self, request, *args, **kwargs):
+        s = serializers.FetchFeedSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        h4f_job = self.new_create_post_job(request, self.kwargs['feed_id'])
+        job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
+        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
+
     @decorators.action(methods=["PATCH"], detail=False, url_path='reindex')
     def reindex_feed(self, request, *args, feed_id=None, **kwargs):
         s = serializers.CreateTaskSerializer(data=request.data)
