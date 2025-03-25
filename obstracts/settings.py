@@ -233,7 +233,8 @@ SPECTACULAR_SETTINGS = {
     },
     "TAGS": [
         {"name": "Feeds", "description": "Subscribe and retrieve Feeds"},
-        {"name": "Posts", "description": "Retrieve Posts in Feeds"},
+        {"name": "Feeds > Posts", "description": "Retrieve Posts in Feeds"},
+        {"name": "Posts", "description": "Retrieve Posts"},
         {"name": "Objects", "description": "Search through STIX object extracted from Posts"},
         {"name": "Profiles", "description": "Create and search for extraction profile applied to text in Posts"},
         {"name": "Extractors", "description": "Search through extractors that can be used in Profiles"},
