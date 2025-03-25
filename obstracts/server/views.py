@@ -541,10 +541,10 @@ FOR doc IN @@view
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
 
-    openapi_tags = [ "Feeds2" ]
+    openapi_tags = [ "Feeds > Posts" ]
 
-    class filterset_class(h4f_views.FeedPostView.filterset_class):
-        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
+    class filterset_class(PostOnlyView.filterset_class):
+        feed_id = None
 
 
     def create(self, request, *args, **kwargs):
@@ -563,6 +563,10 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
         h4f_job = self.new_reindex_feed_job(feed_id)
         job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
         return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
+    
+class RSSView(h4f_views.RSSView):
+    class filterset_class(PostOnlyView.filterset_class):
+        feed_id = None
 
 @extend_schema_view(
     list=extend_schema(
