@@ -150,9 +150,11 @@ def process_post(job_id, post_id, *args):
         file.save()
         job.processed_items += 1
     except Exception as e:
-        logging.error("failed to process post with id: %s", post_id)
+        msg = f"processing failed for post {post_id}"
+        logging.error(msg)
         logging.exception(e)
         job.failed_processes += 1
+        job.errors.append(msg)
     job.save()
     return job_id
 
