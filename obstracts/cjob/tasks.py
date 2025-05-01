@@ -147,6 +147,8 @@ def process_post(job_id, post_id, *args):
 
         for image in processor.md_images:
             models.FileImage.objects.create(report=file, file=File(image, image.name), name=image.name)
+        
+        file.processed = True
         file.save()
         job.processed_items += 1
     except Exception as e:

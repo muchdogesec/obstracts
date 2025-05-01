@@ -326,6 +326,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
+        show_hidden_posts = filters.BooleanFilter(method='show_hidden_posts_filter', help_text="boolean, default: show only posts that have been processed", initial=False)
         job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
         ai_describes_incident = filters.BooleanFilter('obstracts_post__ai_describes_incident', help_text="boolean, default: show all")
         ai_incident_classification = filters.BaseCSVFilter(help_text="default: show all", method='ai_incident_classification_filter')
@@ -333,6 +334,28 @@ class PostOnlyView(h4f_views.PostOnlyView):
         def ai_incident_classification_filter(self, queryset, name, value):
             filter = reduce(operator.or_, [Q(obstracts_post__ai_incident_classification__icontains=s) for s in value])
             return queryset.filter(filter)
+        
+        def show_hidden_posts_filter(self, queryset, name, show_hidden_posts):
+            for i in range(10):
+                print(name, show_hidden_posts, type(show_hidden_posts))
+            if not show_hidden_posts:
+                return queryset.filter(obstracts_post__processed=True)
+            return queryset
+        
+        def __init__(self, data=None, *args, **kwargs):
+            # if filterset is bound, use initial values as defaults
+            if data is not None:
+                # get a mutable copy of the QueryDict
+                data = data.copy()
+
+                for name, f in self.base_filters.items():
+                    initial = f.extra.get('initial')
+
+                    # filter param is either missing or empty, use initial as default
+                    if not data.get(name) and initial != None:
+                        data[name] = initial
+            super().__init__(data, *args, **kwargs)
+        
 
     def filter_queryset(self, queryset):
         queryset = queryset.annotate(
