@@ -151,8 +151,7 @@ def process_post(job_id, post_id, *args):
         job.processed_items += 1
     except Exception as e:
         msg = f"processing failed for post {post_id}"
-        logging.error(msg)
-        logging.exception(e)
+        logging.error(msg, exc_info=True)
         job.failed_processes += 1
         job.errors.append(msg)
     job.save()
