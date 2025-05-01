@@ -326,13 +326,36 @@ class PostOnlyView(h4f_views.PostOnlyView):
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
-        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status. Useful to filter out posts that have not finished the extraction process.")
+        show_hidden_posts = filters.BooleanFilter(method='show_hidden_posts_filter', help_text="Show only posts that have been processed. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.", initial=False)
+        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by Obstracts job status. Use `show_hidden_posts` filter to apply at post level.")
         ai_describes_incident = filters.BooleanFilter('obstracts_post__ai_describes_incident', help_text="If `ai_content_check_provider` set in Profile, the post will be analysed to see if it describes an incident. You can filter the results to only include post that the AI believes describes a security incident.")
         ai_incident_classification = filters.BaseCSVFilter(help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also try an assign a classification of the incident. You can filter the results to only include the desired classification.", method='ai_incident_classification_filter')
         
         def ai_incident_classification_filter(self, queryset, name, value):
             filter = reduce(operator.or_, [Q(obstracts_post__ai_incident_classification__icontains=s) for s in value])
             return queryset.filter(filter)
+        
+        def show_hidden_posts_filter(self, queryset, name, show_hidden_posts):
+            for i in range(10):
+                print(name, show_hidden_posts, type(show_hidden_posts))
+            if not show_hidden_posts:
+                return queryset.filter(obstracts_post__processed=True)
+            return queryset
+        
+        def __init__(self, data=None, *args, **kwargs):
+            # if filterset is bound, use initial values as defaults
+            if data is not None:
+                # get a mutable copy of the QueryDict
+                data = data.copy()
+
+                for name, f in self.base_filters.items():
+                    initial = f.extra.get('initial')
+
+                    # filter param is either missing or empty, use initial as default
+                    if not data.get(name) and initial != None:
+                        data[name] = initial
+            super().__init__(data, *args, **kwargs)
+        
 
     def filter_queryset(self, queryset):
         queryset = queryset.annotate(

@@ -94,6 +94,7 @@ def start_job(sender, instance: h4f_models.Job, **kwargs):
 class File(models.Model):
     feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, default=None, null=True)
     post = models.OneToOneField(h4f_models.Post, on_delete=models.CASCADE, primary_key=True, related_name="obstracts_post")
+    processed = models.BooleanField(default=False)
 
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
     summary = models.CharField(max_length=65535, null=True)
@@ -150,6 +151,7 @@ class Job(models.Model):
     failed_processes = models.IntegerField(default=0)
     feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
+    errors = ArrayField(base_field=models.CharField(max_length=1024), default=list)
     
     @property
     def feed_id(self):

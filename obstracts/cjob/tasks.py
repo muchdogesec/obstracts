@@ -46,7 +46,7 @@ class ShouldRetry(Exception):
 @shared_task
 def job_completed_with_error(job_id):
     job = Job.objects.get(pk=job_id)
-    if job.failed_processes > 0:
+    if job.processed_items == 0 and job.failed_processes > 0:
         job.state = models.JobState.PROCESS_FAILED
     else:
         job.state = models.JobState.PROCESSED
@@ -147,12 +147,15 @@ def process_post(job_id, post_id, *args):
 
         for image in processor.md_images:
             models.FileImage.objects.create(report=file, file=File(image, image.name), name=image.name)
+        
+        file.processed = True
         file.save()
         job.processed_items += 1
     except Exception as e:
-        logging.error("failed to process post with id: %s", post_id)
-        logging.exception(e)
+        msg = f"processing failed for post {post_id}"
+        logging.error(msg, exc_info=True)
         job.failed_processes += 1
+        job.errors.append(msg)
     job.save()
     return job_id
 
