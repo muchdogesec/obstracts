@@ -326,8 +326,8 @@ class PostOnlyView(h4f_views.PostOnlyView):
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
-        show_hidden_posts = filters.BooleanFilter(method='show_hidden_posts_filter', help_text="boolean, default: show only posts that have been processed", initial=False)
-        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
+        show_hidden_posts = filters.BooleanFilter(method='show_hidden_posts_filter', help_text="Show only posts that have been processed. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.", initial=False)
+        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by Obstracts job status. Use `show_hidden_posts` filter to apply at post level.")
         ai_describes_incident = filters.BooleanFilter('obstracts_post__ai_describes_incident', help_text="boolean, default: show all")
         ai_incident_classification = filters.BaseCSVFilter(help_text="default: show all", method='ai_incident_classification_filter')
         
