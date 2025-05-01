@@ -326,9 +326,9 @@ class PostOnlyView(h4f_views.PostOnlyView):
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
-        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status")
-        ai_describes_incident = filters.BooleanFilter('obstracts_post__ai_describes_incident', help_text="boolean, default: show all")
-        ai_incident_classification = filters.BaseCSVFilter(help_text="default: show all", method='ai_incident_classification_filter')
+        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by obstracts job status. Useful to filter out posts that have not finished the extraction process.")
+        ai_describes_incident = filters.BooleanFilter('obstracts_post__ai_describes_incident', help_text="If `ai_content_check_provider` set in Profile, the post will be analysed to see if it describes an incident. You can filter the results to only include post that the AI believes describes a security incident.")
+        ai_incident_classification = filters.BaseCSVFilter(help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also try an assign a classification of the incident. You can filter the results to only include the desired classification.", method='ai_incident_classification_filter')
         
         def ai_incident_classification_filter(self, queryset, name, value):
             filter = reduce(operator.or_, [Q(obstracts_post__ai_incident_classification__icontains=s) for s in value])
