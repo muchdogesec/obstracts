@@ -46,7 +46,7 @@ class ShouldRetry(Exception):
 @shared_task
 def job_completed_with_error(job_id):
     job = Job.objects.get(pk=job_id)
-    if job.failed_processes > 0:
+    if job.processed_items == 0 and job.failed_processes > 0:
         job.state = models.JobState.PROCESS_FAILED
     else:
         job.state = models.JobState.PROCESSED
