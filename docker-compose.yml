@@ -21,6 +21,7 @@ services:
         extends: env_django
         command: >
                 bash -c "
+                    pip install --no-deps --force-reinstall ./history4feed-0.0.1rc0-py3-none-any.whl &&
                     python manage.py makemigrations &&
                             python manage.py migrate &&
                             python manage.py runserver 0.0.0.0:8001
@@ -34,6 +35,7 @@ services:
         extends: env_django
         command: >
                 bash -c "
+                    pip install --no-deps --force-reinstall ./history4feed-0.0.1rc0-py3-none-any.whl &&
                   celery -A obstracts.cjob worker -l INFO
                   "
         depends_on:
