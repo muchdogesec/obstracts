@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, decorators, exceptions, status, renderers, mixins
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, PolymorphicProxySerializer
 from drf_spectacular.types import OpenApiTypes
+import txt2stix.common
 from .import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
 import hyperlink
@@ -326,11 +327,29 @@ class PostOnlyView(h4f_views.PostOnlyView):
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
+        incident_classification_types = [
+            "Other",  # the report does not fit into any of the following categories
+            "APT Group",
+            "Vulnerability",
+            "Data Leak",
+            "Malware",
+            "Ransomware",
+            "Infostealer",
+            "Threat Actor",
+            "Campaign",
+            "Exploit",
+            "Cyber Crime",
+            "Indicators of Compromise",
+            "TTPs"
+        ]
         show_hidden_posts = filters.BooleanFilter(method='show_hidden_posts_filter', help_text="Show only posts that have been processed. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.", initial=False)
         job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by Obstracts job status. Use `show_hidden_posts` filter to apply at post level.")
         ai_describes_incident = filters.BooleanFilter('obstracts_post__ai_describes_incident', help_text="If `ai_content_check_provider` set in Profile, the post will be analysed to see if it describes an incident. You can filter the results to only include post that the AI believes describes a security incident.")
-        ai_incident_classification = filters.BaseCSVFilter(help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also try an assign a classification of the incident. You can filter the results to only include the desired classification.", method='ai_incident_classification_filter')
-        
+        ai_incident_classification = filters.MultipleChoiceFilter(
+            help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also try an assign a classification of the incident. You can filter the results to only include the desired classification.",
+            method='ai_incident_classification_filter',
+            choices=[(c, c) for c in incident_classification_types],
+        )
         def ai_incident_classification_filter(self, queryset, name, value):
             filter = reduce(operator.or_, [Q(obstracts_post__ai_incident_classification__icontains=s) for s in value])
             return queryset.filter(filter)
