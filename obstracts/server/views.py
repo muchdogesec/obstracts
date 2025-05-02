@@ -6,7 +6,7 @@ import operator
 from urllib.parse import urljoin
 from django.http import Http404, HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, decorators, exceptions, status, renderers
+from rest_framework import viewsets, decorators, exceptions, status, renderers, mixins
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, PolymorphicProxySerializer
 from drf_spectacular.types import OpenApiTypes
 from .import autoschema as api_schema
@@ -627,10 +627,25 @@ class RSSView(h4f_views.RSSView):
         ),
         responses={404: api_schema.DEFAULT_404_ERROR, 200: ObstractsJobSerializer},
     ),
+    cancel_job=extend_schema(
+        summary="Kill a running Job",
+        description=textwrap.dedent(
+            """
+            Using a Job ID you can kill it.
+            """
+        ),
+        responses={
+            204: {},
+            404: api_schema.DEFAULT_404_ERROR,
+        },
+    )
 )
-class JobView(viewsets.ModelViewSet):
+class JobView(
+    mixins.RetrieveModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+    ):
     schema = ObstractsAutoSchema()
-    http_method_names = ["get"]
     serializer_class = ObstractsJobSerializer
     openapi_tags = ["Jobs"]
     lookup_url_kwarg = "job_id"
@@ -650,6 +665,12 @@ class JobView(viewsets.ModelViewSet):
         )
         post_id = UUIDFilter(label="Filter by Post ID", field_name="history4feed_job__fulltext_jobs__post_id")
 
-
     def get_queryset(self):
         return models.Job.objects
+
+    @decorators.action(methods=['DELETE'], detail=True, url_path="kill")
+    def cancel_job(self, request, *args, **kwargs):
+        obj: models.Job = self.get_object()
+        obj.cancel()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    

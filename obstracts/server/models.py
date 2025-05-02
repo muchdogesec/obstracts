@@ -36,7 +36,8 @@ class JobState(models.TextChoices):
     RETRIEVING = "retrieving"
     QUEUED     = "in-queue"
     PROCESSING = "processing"
-    PROCESSED = "processed"
+    PROCESSED  = "processed"
+    CANCELLED  = "cancelled"
     PROCESS_FAILED = "processing_failed"
     RETRIEVE_FAILED = "retrieve_failed"
 
@@ -83,12 +84,16 @@ def start_job(sender, instance: h4f_models.Job, **kwargs):
     if instance.state not in [H4FState.SUCCESS, H4FState.FAILED]:
         return
     job: Job = instance.obstracts_job
+    if job.state != JobState.RETRIEVING:
+        return
+    
     if instance.state == H4FState.SUCCESS:
         tasks.start_processing.delay(instance.id)
     if instance.state == H4FState.FAILED:
         job.state = JobState.RETRIEVE_FAILED
-        job.save()
-        
+    if instance.is_cancelled():
+        job.cancel()
+    job.save()
 
 
 class File(models.Model):
@@ -152,6 +157,18 @@ class Job(models.Model):
     feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
     errors = ArrayField(base_field=models.CharField(max_length=1024), default=list)
+
+    def is_cancelled(self):
+        if self.history4feed_job.is_cancelled():
+            self.cancel()
+        return self.state == JobState.CANCELLED
+    
+    def cancel(self):
+        self.history4feed_job.cancel()
+        if self.state in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
+            self.state = JobState.CANCELLED
+        self.save()
+
     
     @property
     def feed_id(self):

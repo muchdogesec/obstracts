@@ -1,5 +1,6 @@
 import io
 import logging
+import time
 from urllib.parse import urljoin
 from celery import shared_task, chain, current_task, Task as CeleryTask
 from django.conf import settings
@@ -35,10 +36,10 @@ def queue_lock(job: Job):
     status = cache.add(get_lock_id(job), lock_value, timeout=LOCK_EXPIRE)
     return status
 
-import requests
-
-
 class ShouldRetry(Exception):
+    pass
+
+class CancelledJob(Exception):
     pass
 
 
@@ -46,7 +47,9 @@ class ShouldRetry(Exception):
 @shared_task
 def job_completed_with_error(job_id):
     job = Job.objects.get(pk=job_id)
-    if job.processed_items == 0 and job.failed_processes > 0:
+    if job.state == models.JobState.CANCELLED:
+        pass
+    elif job.processed_items == 0 and job.failed_processes > 0:
         job.state = models.JobState.PROCESS_FAILED
     else:
         job.state = models.JobState.PROCESSED
@@ -95,6 +98,10 @@ def start_processing(job_id):
 def wait_in_queue(self: CeleryTask, job_id):
     logging.info("job with id %s completed processing", job_id)
     job = Job.objects.get(pk=job_id)
+    if job.is_cancelled():
+        job.errors.append("job cancelled while in queue")
+        job.save()
+        return False
     if not queue_lock(job):
         return self.retry(max_retries=300)
     job.state = models.JobState.PROCESSING
@@ -107,6 +114,10 @@ def process_post(job_id, post_id, *args):
     job = Job.objects.get(pk=job_id)
     post = h4f_models.Post.objects.get(pk=post_id)
     try:
+        if job.is_cancelled():
+            raise CancelledJob()
+        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, profile=job.profile, processed=False))
+
         stream = io.BytesIO(post.description.encode())
         stream.name = f"post-{post_id}.html"
         processor = StixifyProcessor(stream, job.profile, job_id=f"{post.id}+{job.id}", file2txt_mode="html_article", report_id=post_id, base_url=post.link)
@@ -127,7 +138,6 @@ def process_post(job_id, post_id, *args):
         processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
         processor.process()
 
-        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, profile=job.profile))
         if processor.incident:
             file.ai_describes_incident = processor.incident.describes_incident
             file.ai_incident_summary = processor.incident.explanation
@@ -151,6 +161,10 @@ def process_post(job_id, post_id, *args):
         file.processed = True
         file.save()
         job.processed_items += 1
+    except CancelledJob:
+        msg = f"job cancelled by user for post {post_id}"
+        logging.error(msg, exc_info=True)
+        job.errors.append(msg)
     except Exception as e:
         msg = f"processing failed for post {post_id}"
         logging.error(msg, exc_info=True)
@@ -166,4 +180,4 @@ from celery import signals
 @signals.worker_ready.connect
 def mark_old_jobs_as_failed(**kwargs):
     models.Job.objects.filter(state=models.JobState.RETRIEVING).update(state=models.JobState.RETRIEVE_FAILED)
-    models.Job.objects.filter(state__in=[models.JobState.RETRIEVING, models.JobState.QUEUED, models.JobState.PROCESSING]).update(state=models.JobState.PROCESS_FAILED)
+    models.Job.objects.filter(state__in=[models.JobState.RETRIEVING, models.JobState.QUEUED, models.JobState.PROCESSING]).update(state=models.JobState.CANCELLED)
