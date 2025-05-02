@@ -1,11 +1,14 @@
 import logging
 import os
 from types import SimpleNamespace
+import typing
+from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
 import txt2stix, txt2stix.extractions
 from django.core.exceptions import ValidationError
 from dogesec_commons.stixifier.models import Profile
+import stix2
 
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
@@ -15,6 +18,8 @@ from history4feed.app.models import JobState as H4FState
 from django.db.models.signals import post_save
 from django.contrib.postgres.fields import ArrayField
 # Create your models here.
+if typing.TYPE_CHECKING:
+    from .. import settings
 
 
 def validate_extractor(types, name):
@@ -73,6 +78,20 @@ class FeedProfile(models.Model):
     @property
     def title(self) -> str:
         return h4f_models.title_as_string(self.feed.title)
+    
+    @property
+    def identity(self):
+        return stix2.Identity(
+            type="identity",
+            spec_version="2.1",
+            id=f"identity--{self.id}",
+            created_by_ref=f"identity--{settings.STIXIFIER_NAMESPACE}",
+            created=self.feed.datetime_added,
+            modified=self.feed.datetime_modified or self.feed.datetime_added,
+            name=h4f_models.title_as_string(self.feed.title),
+            description=h4f_models.title_as_string(self.feed.description),
+            contact_information=self.feed.url,
+        )
     
 @receiver(post_save, sender=h4f_models.Feed)
 def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
