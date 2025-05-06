@@ -56,8 +56,8 @@ def test_feed_identity(feed_id):
     assert len(data['objects']) == 1, "no identity for feed"
     identity = data['objects'][0]
 
-    assert identity['modified'] == feed_metadata['datetime_modified']
-    assert identity['created'] == feed_metadata['datetime_added']
+    assert parse_date(identity['modified']) == parse_date(feed_metadata['datetime_modified'])
+    assert parse_date(identity['created']) == parse_date(feed_metadata['datetime_added'])
     assert identity['name'] == feed_metadata['title']
     assert identity['description'] == feed_metadata['description']
     assert identity['contact_information'] == feed_metadata['url']
