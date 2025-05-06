@@ -90,8 +90,8 @@ class FeedProfile(models.Model):
             created_by_ref=f"identity--{settings.STIXIFIER_NAMESPACE}",
             created=self.feed.datetime_added,
             modified=self.feed.datetime_modified or self.feed.datetime_added,
-            name=h4f_models.title_as_string(self.feed.title),
-            description=h4f_models.title_as_string(self.feed.description),
+            name=h4f_models.title_as_string(self.feed.title or ""),
+            description=h4f_models.title_as_string(self.feed.description or ""),
             contact_information=self.feed.url,
         )
     
