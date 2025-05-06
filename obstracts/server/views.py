@@ -156,7 +156,11 @@ class MarkdownImageReplacer(MarkdownRenderer):
         summary="Delete a Feed",
         description=textwrap.dedent(
             """
-            Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.
+            Use this endpoint to delete a Feed using its ID.
+
+            This will delete all posts (items) that belong to the feed in the database and all STIX objects created for extractions belonging to this feed (this also includes the STIX Identity object representing this Feed).
+
+            BEWARE: this action cannot be reversed.
             """
         ),
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
@@ -572,11 +576,11 @@ FOR doc IN @@view
         summary="Update all Posts in a feed",
         description=textwrap.dedent(
             """
-                This endpoint will reindex the Post content (`description`) for all Post IDs currently listed in the Feed.
+                This endpoint will re-index the Post content (`description`) for all Post IDs currently listed in the Feed.
 
                 The following key/values are accepted in the body of the request:
 
-                * profile_id (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on reindex.
+                * profile_id (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on re-index.
 
                 This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
 
@@ -584,7 +588,7 @@ FOR doc IN @@view
 
                 **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
 
-                Note, if you only want to update the content of a single post, it is much more effecient to use the Update a Post in a Feed endpoint.
+                Note, if you only want to update the content of a single post, it is much more efficient to use the Update a Post in a Feed endpoint.
 
                 The response will return the Job information responsible for getting the requested data you can track using the id returned via the GET Jobs by ID endpoint.
             """
@@ -629,7 +633,7 @@ class RSSView(h4f_views.RSSView):
 
 @extend_schema_view(
     list=extend_schema(
-        summary="Search Jobs",
+        summary="Search Extraction Jobs",
         description=textwrap.dedent(
             """
             Jobs track the status of the request to get posts for Feeds. For every new Feed added and every update to a Feed requested a job will be created. The id of a job is printed in the POST and PATCH responses respectively, but you can use this endpoint to search for the id again, if required.
@@ -638,7 +642,7 @@ class RSSView(h4f_views.RSSView):
         responses={400: api_schema.DEFAULT_400_ERROR, 200: ObstractsJobSerializer},
     ),
     retrieve=extend_schema(
-        summary="Get a Job",
+        summary="Get an Extraction Job",
         description=textwrap.dedent(
             """
             Using a Job ID you can retrieve information about its state via this endpoint. This is useful to see if a Job to get data is complete, how many posts were imported in the job, or if an error has occurred.
@@ -657,6 +661,8 @@ class RSSView(h4f_views.RSSView):
             If posts in the job have already had extractions completed before the entire job is complete, they will still remain and you will need to delete them using the delete endpoints manually.
 
             The job will enter `cancelled` state when cancelled.
+
+            This endpoint is especially useful when errors are detected on first backfill where errors are detected. By killing the job, it ensures no more requests to external services are made (e.g. AI providers), thus saving potential costs involved in completing what has been identified as an erroneous job.
             """
         ),
         responses={

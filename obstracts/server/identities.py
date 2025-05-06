@@ -31,7 +31,11 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
         summary="Search identity objects",
         description=textwrap.dedent(
             """
-            This endpoint will allow you to search for all identities that exist.
+            When a new feed is added, a STIX Identity object is created to represent it.
+
+            That Identity ID is then used for all objects `created_by_ref` property for all STIX Objects belonging to that Feed.
+
+            This endpoint will allow you to search for all the Identities that exist.
             """
         ),
     ),
@@ -39,7 +43,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
         summary="GET identity object by STIX ID",
         description=textwrap.dedent(
             """
-            This endpoint will allow you to GET an identity object by its STIX ID.
+            This endpoint will allow you to GET an Identity object by its STIX ID.
             """
         ),
     ),
