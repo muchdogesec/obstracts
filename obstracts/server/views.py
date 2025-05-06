@@ -329,6 +329,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
     pagination_class = Pagination("posts")
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
+    ordering = "pubdate_descending"
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
         incident_classification_types = [
@@ -359,8 +360,6 @@ class PostOnlyView(h4f_views.PostOnlyView):
             return queryset.filter(filter)
         
         def show_hidden_posts_filter(self, queryset, name, show_hidden_posts):
-            for i in range(10):
-                print(name, show_hidden_posts, type(show_hidden_posts))
             if not show_hidden_posts:
                 return queryset.filter(obstracts_post__processed=True)
             return queryset
