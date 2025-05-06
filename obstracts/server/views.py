@@ -320,7 +320,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
     file_serializer_class = serializers.FileSerializer
     lookup_url_kwarg = 'post_id'
     lookup_field = 'id'
-    openapi_tags = ["Posts"]
+    openapi_tags = ["Posts (by ID)"]
     schema = ObstractsAutoSchema()
 
     pagination_class = Pagination("posts")
@@ -600,7 +600,7 @@ FOR doc IN @@view
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
 
-    openapi_tags = [ "Feeds > Posts" ]
+    openapi_tags = [ "Posts (by Feed)" ]
 
     class filterset_class(PostOnlyView.filterset_class):
         feed_id = None
@@ -647,10 +647,16 @@ class RSSView(h4f_views.RSSView):
         responses={404: api_schema.DEFAULT_404_ERROR, 200: ObstractsJobSerializer},
     ),
     cancel_job=extend_schema(
-        summary="Kill a running Job",
+        summary="Kill a running Job that is performing extractions on Posts",
         description=textwrap.dedent(
             """
-            Using a Job ID you can kill it.
+            Using a Job ID you can kill it whilst it is still in `running` or `pending` state.
+
+            After the history4feed job (`h4f_jobs`) has completed indexing all Post content, the extraction job is triggered. This is what this endpoint covers.
+
+            If posts in the job have already had extractions completed before the entire job is complete, they will still remain and you will need to delete them using the delete endpoints manually.
+
+            The job will enter `cancelled` state when cancelled.
             """
         ),
         responses={
