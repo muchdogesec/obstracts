@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from types import SimpleNamespace
@@ -9,6 +10,7 @@ import txt2stix, txt2stix.extractions
 from django.core.exceptions import ValidationError
 from dogesec_commons.stixifier.models import Profile
 import stix2
+from django.utils import timezone
 
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
@@ -96,6 +98,33 @@ class FeedProfile(models.Model):
 @receiver(post_save, sender=h4f_models.Feed)
 def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
     feed, _ = FeedProfile.objects.update_or_create(feed=instance)
+
+@receiver(post_save, sender=FeedProfile)
+def auto_update_identity(sender, instance: FeedProfile, **kwargs):
+    logging.info(f"updating identities for feed {instance.id}")
+    identity = json.loads(instance.identity.serialize())
+    identity['_record_modified'] = timezone.now().isoformat().replace('+00:00', 'Z')
+    query = """
+    FOR doc IN @@vertex_collection
+    FILTER doc.id == @identity.id
+    FILTER doc.modified != @identity.modified
+    UPDATE doc WITH @identity IN @@vertex_collection
+    RETURN doc._key
+    """
+    binds = {
+        '@vertex_collection': instance.vertex_collection,
+        'identity': identity,
+    }
+
+    from django.http.request import HttpRequest
+    from rest_framework.request import Request
+    helper = ArangoDBHelper(settings.VIEW_NAME, Request(HttpRequest()))
+    try:
+        updated_keys = helper.execute_query(query, bind_vars=binds, paginate=False)
+        logging.info(f"updated {len(updated_keys)} identities for {instance.id}")
+    except Exception as e:
+        logging.exception("could not update identities")
+
     
 @receiver(post_save, sender=h4f_models.Job)
 def start_job(sender, instance: h4f_models.Job, **kwargs):
