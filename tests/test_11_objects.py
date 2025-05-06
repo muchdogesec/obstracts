@@ -32,3 +32,32 @@ def test_paths_no_dup(endpoint):
     for d in object_refs:
         dd.remove(d)
     assert len(object_refs) == data['page_results_count'], f"data contains duplicate ids: {set(dd)}"
+
+@pytest.mark.parametrize(
+    "feed_id",
+    [
+        "cb0ba709-b841-521a-a3f2-5e1429f4d366",
+        "d1d96b71-c687-50db-9d2b-d0092d1d163a",
+    ]
+)
+def test_feed_identity(feed_id):
+    feed_url = urljoin(base_url, f'api/v1/feeds/{feed_id}/')
+    identity_url = urljoin(base_url, f'api/v1/objects/identity--{feed_id}/')
+
+    resp = requests.get(feed_url)
+    assert resp.status_code == 200, "bad feed"
+
+    feed_metadata = resp.json()
+    print(identity_url)
+
+    resp = requests.get(identity_url)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data['objects']) == 1, "no identity for feed"
+    identity = data['objects'][0]
+
+    assert parse_date(identity['modified']) == parse_date(feed_metadata['datetime_modified'])
+    assert parse_date(identity['created']) == parse_date(feed_metadata['datetime_added'])
+    assert identity['name'] == feed_metadata['title']
+    assert identity['description'] == feed_metadata['description']
+    assert identity['contact_information'] == feed_metadata['url']

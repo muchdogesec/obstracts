@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, decorators, exceptions, status, renderers, mixins
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, PolymorphicProxySerializer
 from drf_spectacular.types import OpenApiTypes
+import txt2stix.common
 from .import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
 import hyperlink
@@ -155,13 +156,16 @@ class MarkdownImageReplacer(MarkdownRenderer):
         summary="Delete a Feed",
         description=textwrap.dedent(
             """
-            Use this endpoint to delete a feed using its ID. This will delete all posts (items) that belong to the feed in the database and therefore cannot be reversed.
+            Use this endpoint to delete a Feed using its ID.
+
+            This will delete all posts (items) that belong to the feed in the database and all STIX objects created for extractions belonging to this feed (this also includes the STIX Identity object representing this Feed).
+
+            BEWARE: this action cannot be reversed.
             """
         ),
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
     partial_update=extend_schema(
-        request=serializers.PatchFeedSerializer,
         responses={201: serializers.FeedCreateSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Feeds Metadata",
         description=textwrap.dedent(
@@ -319,25 +323,42 @@ class PostOnlyView(h4f_views.PostOnlyView):
     file_serializer_class = serializers.FileSerializer
     lookup_url_kwarg = 'post_id'
     lookup_field = 'id'
-    openapi_tags = ["Posts"]
+    openapi_tags = ["Posts (by ID)"]
     schema = ObstractsAutoSchema()
 
     pagination_class = Pagination("posts")
     filter_backends = [DjangoFilterBackend, Ordering, MinMaxDateFilter]
+    ordering = "pubdate_descending"
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
-        show_hidden_posts = filters.BooleanFilter(method='show_hidden_posts_filter', help_text="Show only posts that have been processed. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.", initial=False)
+        incident_classification_types = [
+            "Other",  # the report does not fit into any of the following categories
+            "APT Group",
+            "Vulnerability",
+            "Data Leak",
+            "Malware",
+            "Ransomware",
+            "Infostealer",
+            "Threat Actor",
+            "Campaign",
+            "Exploit",
+            "Cyber Crime",
+            "Indicators of Compromise",
+            "TTPs"
+        ]
+        show_hidden_posts = filters.BooleanFilter(method='show_hidden_posts_filter', help_text="Show only posts that have been processed (where `visible` property is `true`. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.", initial=False)
         job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by Obstracts job status. Use `show_hidden_posts` filter to apply at post level.")
         ai_describes_incident = filters.BooleanFilter('obstracts_post__ai_describes_incident', help_text="If `ai_content_check_provider` set in Profile, the post will be analysed to see if it describes an incident. You can filter the results to only include post that the AI believes describes a security incident.")
-        ai_incident_classification = filters.BaseCSVFilter(help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also try an assign a classification of the incident. You can filter the results to only include the desired classification.", method='ai_incident_classification_filter')
-        
+        ai_incident_classification = filters.MultipleChoiceFilter(
+            help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also try an assign a classification of the incident. You can filter the results to only include the desired classification.",
+            method='ai_incident_classification_filter',
+            choices=[(c, c) for c in incident_classification_types],
+        )
         def ai_incident_classification_filter(self, queryset, name, value):
             filter = reduce(operator.or_, [Q(obstracts_post__ai_incident_classification__icontains=s) for s in value])
             return queryset.filter(filter)
         
         def show_hidden_posts_filter(self, queryset, name, show_hidden_posts):
-            for i in range(10):
-                print(name, show_hidden_posts, type(show_hidden_posts))
             if not show_hidden_posts:
                 return queryset.filter(obstracts_post__processed=True)
             return queryset
@@ -553,11 +574,11 @@ FOR doc IN @@view
         summary="Update all Posts in a feed",
         description=textwrap.dedent(
             """
-                This endpoint will reindex the Post content (`description`) for all Post IDs currently listed in the Feed.
+                This endpoint will re-index the Post content (`description`) for all Post IDs currently listed in the Feed.
 
                 The following key/values are accepted in the body of the request:
 
-                * profile_id (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on reindex.
+                * profile_id (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on re-index.
 
                 This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
 
@@ -565,7 +586,7 @@ FOR doc IN @@view
 
                 **IMPORTANT**: This action will delete the original post as well as all the STIX SDO and SRO objects created during the processing of the original text. Mostly this is not an issue, however, if the post has been removed at source you will end up with an empty entry for this Post.
 
-                Note, if you only want to update the content of a single post, it is much more effecient to use the Update a Post in a Feed endpoint.
+                Note, if you only want to update the content of a single post, it is much more efficient to use the Update a Post in a Feed endpoint.
 
                 The response will return the Job information responsible for getting the requested data you can track using the id returned via the GET Jobs by ID endpoint.
             """
@@ -581,7 +602,7 @@ FOR doc IN @@view
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
 
-    openapi_tags = [ "Feeds > Posts" ]
+    openapi_tags = [ "Posts (by Feed)" ]
 
     class filterset_class(PostOnlyView.filterset_class):
         feed_id = None
@@ -610,7 +631,7 @@ class RSSView(h4f_views.RSSView):
 
 @extend_schema_view(
     list=extend_schema(
-        summary="Search Jobs",
+        summary="Search Extraction Jobs",
         description=textwrap.dedent(
             """
             Jobs track the status of the request to get posts for Feeds. For every new Feed added and every update to a Feed requested a job will be created. The id of a job is printed in the POST and PATCH responses respectively, but you can use this endpoint to search for the id again, if required.
@@ -619,7 +640,7 @@ class RSSView(h4f_views.RSSView):
         responses={400: api_schema.DEFAULT_400_ERROR, 200: ObstractsJobSerializer},
     ),
     retrieve=extend_schema(
-        summary="Get a Job",
+        summary="Get an Extraction Job",
         description=textwrap.dedent(
             """
             Using a Job ID you can retrieve information about its state via this endpoint. This is useful to see if a Job to get data is complete, how many posts were imported in the job, or if an error has occurred.
@@ -628,10 +649,18 @@ class RSSView(h4f_views.RSSView):
         responses={404: api_schema.DEFAULT_404_ERROR, 200: ObstractsJobSerializer},
     ),
     cancel_job=extend_schema(
-        summary="Kill a running Job",
+        summary="Kill a running Job that is performing extractions on Posts",
         description=textwrap.dedent(
             """
-            Using a Job ID you can kill it.
+            Using a Job ID you can kill it whilst it is still in `running` or `pending` state.
+
+            After the history4feed job (`h4f_jobs`) has completed indexing all Post content, the extraction job is triggered. This is what this endpoint covers.
+
+            If posts in the job have already had extractions completed before the entire job is complete, they will still remain and you will need to delete them using the delete endpoints manually.
+
+            The job will enter `cancelled` state when cancelled.
+
+            This endpoint is especially useful when errors are detected on first backfill where errors are detected. By killing the job, it ensures no more requests to external services are made (e.g. AI providers), thus saving potential costs involved in completing what has been identified as an erroneous job.
             """
         ),
         responses={

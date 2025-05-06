@@ -124,11 +124,11 @@ def process_post(job_id, post_id, *args):
         processor.collection_name = job.feed.collection_name
         properties = ReportProperties(
             name=post.title,
-            identity=settings.OBSTRACTS_IDENTITY,
+            identity=file.feed.identity,
             tlp_level="clear",
             confidence=0,
             labels=[],
-            created=job.created,
+            created=file.post.pubdate,
             kwargs=dict(external_references=[
                 dict(source_name='post_link', url=post.link),
                 dict(source_name='obstracts_feed_id', external_id=str(job.feed.id)),

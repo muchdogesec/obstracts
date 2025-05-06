@@ -1,11 +1,16 @@
+import json
 import logging
 import os
 from types import SimpleNamespace
+import typing
+from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
 import txt2stix, txt2stix.extractions
 from django.core.exceptions import ValidationError
 from dogesec_commons.stixifier.models import Profile
+import stix2
+from django.utils import timezone
 
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
@@ -15,6 +20,8 @@ from history4feed.app.models import JobState as H4FState
 from django.db.models.signals import post_save
 from django.contrib.postgres.fields import ArrayField
 # Create your models here.
+if typing.TYPE_CHECKING:
+    from .. import settings
 
 
 def validate_extractor(types, name):
@@ -74,9 +81,50 @@ class FeedProfile(models.Model):
     def title(self) -> str:
         return h4f_models.title_as_string(self.feed.title)
     
+    @property
+    def identity(self):
+        return stix2.Identity(
+            type="identity",
+            spec_version="2.1",
+            id=f"identity--{self.id}",
+            created_by_ref=f"identity--{settings.STIXIFIER_NAMESPACE}",
+            created=self.feed.datetime_added,
+            modified=self.feed.datetime_modified or self.feed.datetime_added,
+            name=h4f_models.title_as_string(self.feed.title or ""),
+            description=h4f_models.title_as_string(self.feed.description or ""),
+            contact_information=self.feed.url,
+        )
+    
 @receiver(post_save, sender=h4f_models.Feed)
 def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
     feed, _ = FeedProfile.objects.update_or_create(feed=instance)
+
+@receiver(post_save, sender=FeedProfile)
+def auto_update_identity(sender, instance: FeedProfile, **kwargs):
+    logging.info(f"updating identities for feed {instance.id}")
+    identity = json.loads(instance.identity.serialize())
+    identity['_record_modified'] = timezone.now().isoformat().replace('+00:00', 'Z')
+    query = """
+    FOR doc IN @@vertex_collection
+    FILTER doc.id == @identity.id
+    FILTER doc.modified != @identity.modified
+    UPDATE doc WITH @identity IN @@vertex_collection
+    RETURN doc._key
+    """
+    binds = {
+        '@vertex_collection': instance.vertex_collection,
+        'identity': identity,
+    }
+
+    from django.http.request import HttpRequest
+    from rest_framework.request import Request
+    helper = ArangoDBHelper(settings.VIEW_NAME, Request(HttpRequest()))
+    try:
+        updated_keys = helper.execute_query(query, bind_vars=binds, paginate=False)
+        logging.info(f"updated {len(updated_keys)} identities for {instance.id}")
+    except Exception as e:
+        logging.exception("could not update identities")
+
     
 @receiver(post_save, sender=h4f_models.Job)
 def start_job(sender, instance: h4f_models.Job, **kwargs):

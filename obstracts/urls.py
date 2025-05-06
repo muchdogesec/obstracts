@@ -17,6 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.conf.urls.static import static
+
+from obstracts.server.identities import IdentityView
 from .server import views
 from rest_framework import routers
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
@@ -49,12 +51,13 @@ router.register('jobs', views.JobView, "job-view")
 router.register('h4f_jobs', views.h4f_views.JobView, "h4f-job-view")
 
 ## objects
-obj_router = routers.SimpleRouter(use_regex_path=True)
-obj_router.register("objects", arango_views.ObjectsWithReportsView, "object-view-orig")
-obj_router.register('objects/smos', arango_views.SMOView, "object-view-smo")
-obj_router.register('objects/scos', arango_views.SCOView, "object-view-sco")
-obj_router.register('objects/sros', arango_views.SROView, "object-view-sro")
-obj_router.register('objects/sdos', arango_views.SDOView, "object-view-sdo")
+regex_router = routers.SimpleRouter(use_regex_path=True)
+regex_router.register('identities', IdentityView, "identity-view")
+regex_router.register("objects", arango_views.ObjectsWithReportsView, "object-view-orig")
+regex_router.register('objects/smos', arango_views.SMOView, "object-view-smo")
+regex_router.register('objects/scos', arango_views.SCOView, "object-view-sco")
+regex_router.register('objects/sros', arango_views.SROView, "object-view-sro")
+regex_router.register('objects/sdos', arango_views.SDOView, "object-view-sdo")
 
 # txt2stix views
 router.register('extractors', ExtractorsView, "extractors-view")
@@ -62,7 +65,7 @@ router.register('extractors', ExtractorsView, "extractors-view")
 
 urlpatterns = [
     path(f'api/{API_VERSION}/', include(router.urls)),
-    path(f'api/{API_VERSION}/', include(obj_router.urls)),
+    path(f'api/{API_VERSION}/', include(regex_router.urls)),
     path('admin/', admin.site.urls),
     # YOUR PATTERNS
     path('api/schema/', views.SchemaViewCached.as_view(), name='schema'),

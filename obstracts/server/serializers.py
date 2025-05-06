@@ -74,10 +74,7 @@ class FileSerializer(h4fserializers.PostSerializer):
     ai_incident_summary = serializers.CharField(source='obstracts_post.ai_incident_summary', required=False, read_only=True, allow_null=True)
     ai_incident_classification = serializers.ListField(source='obstracts_post.ai_incident_classification', required=False, read_only=True, allow_null=True)
     summary = serializers.CharField(source='obstracts_post.summary', read_only=True, required=False, allow_null=True)
-    # class Meta:
-    #     exclude = ["profile", "feed", "markdown_file"]
-
-
+    visible = serializers.CharField(source='obstracts_post.processed', read_only=True, required=False, allow_null=True)
 
 
 class PostWithFeedIDSerializer(FileSerializer):
