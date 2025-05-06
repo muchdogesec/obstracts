@@ -166,7 +166,6 @@ class MarkdownImageReplacer(MarkdownRenderer):
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
     ),
     partial_update=extend_schema(
-        request=serializers.PatchFeedSerializer,
         responses={201: serializers.FeedCreateSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
         summary="Update a Feeds Metadata",
         description=textwrap.dedent(
