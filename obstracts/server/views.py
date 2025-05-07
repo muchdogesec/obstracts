@@ -320,7 +320,6 @@ class FeedView(h4f_views.FeedView):
 )
 class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
-    file_serializer_class = serializers.FileSerializer
     lookup_url_kwarg = 'post_id'
     lookup_field = 'id'
     openapi_tags = ["Posts (by ID)"]
@@ -601,6 +600,7 @@ FOR doc IN @@view
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
+    serializer_class = serializers.ObstractsPostSerializer
 
     openapi_tags = [ "Posts (by Feed)" ]
 

@@ -38,7 +38,7 @@ class CreateTaskSerializer(serializers.Serializer):
     profile_id = ProfileIDField(help_text="profile id to use", write_only=True)
 
 class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
-    pass
+    count_of_posts = serializers.IntegerField(source='obstracts_feed.visible_posts_count', read_only=True, help_text="Number of posts in feed")
 
 class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
     pass
@@ -68,7 +68,7 @@ class PostCreateSerializer(CreateTaskSerializer):
     posts = serializers.ListSerializer(child=H4fPostCreateSerializer(), allow_empty=False)
 
 
-class FileSerializer(h4fserializers.PostSerializer):
+class ObstractsPostSerializer(h4fserializers.PostSerializer):
     profile_id = serializers.UUIDField(source='obstracts_post.profile_id', required=True)
     ai_describes_incident = serializers.BooleanField(source='obstracts_post.ai_describes_incident', required=False, read_only=True, allow_null=True)
     ai_incident_summary = serializers.CharField(source='obstracts_post.ai_incident_summary', required=False, read_only=True, allow_null=True)
@@ -77,7 +77,7 @@ class FileSerializer(h4fserializers.PostSerializer):
     visible = serializers.BooleanField(source='obstracts_post.processed', read_only=True, required=False, allow_null=True)
 
 
-class PostWithFeedIDSerializer(FileSerializer):
+class PostWithFeedIDSerializer(ObstractsPostSerializer):
     feed_id = serializers.UUIDField(help_text="containing feed's id")
 
 class ImageSerializer(serializers.ModelSerializer):
