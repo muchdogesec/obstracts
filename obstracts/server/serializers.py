@@ -68,7 +68,7 @@ class PostCreateSerializer(CreateTaskSerializer):
     posts = serializers.ListSerializer(child=H4fPostCreateSerializer(), allow_empty=False)
 
 
-class FileSerializer(h4fserializers.PostSerializer):
+class ObstractsPostSerializer(h4fserializers.PostSerializer):
     profile_id = serializers.UUIDField(source='obstracts_post.profile_id', required=True)
     ai_describes_incident = serializers.BooleanField(source='obstracts_post.ai_describes_incident', required=False, read_only=True, allow_null=True)
     ai_incident_summary = serializers.CharField(source='obstracts_post.ai_incident_summary', required=False, read_only=True, allow_null=True)
@@ -77,7 +77,7 @@ class FileSerializer(h4fserializers.PostSerializer):
     visible = serializers.BooleanField(source='obstracts_post.processed', read_only=True, required=False, allow_null=True)
 
 
-class PostWithFeedIDSerializer(FileSerializer):
+class PostWithFeedIDSerializer(ObstractsPostSerializer):
     feed_id = serializers.UUIDField(help_text="containing feed's id")
 
 class ImageSerializer(serializers.ModelSerializer):
