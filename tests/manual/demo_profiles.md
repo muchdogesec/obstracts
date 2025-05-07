@@ -51,3 +51,35 @@ ID = `becfca33-a5bf-5eb8-a601-433d47c7ba71`
         "ai_create_attack_flow": false
     }
 ```
+
+
+
+
+
+ID = `555c01e1-bbeb-5b05-bfed-9f6f9156fdb3`
+
+```json
+    {
+        "name": "AI 1",
+        "extractions": [
+            "ai_ipv4_address_only",
+            "ai_domain_name_only",
+            "ai_url",
+            "ai_mitre_attack_enterprise"
+        ],
+        "ai_settings_extractions": ["openai:gpt-4o"],
+        "relationship_mode": "ai",
+        "ai_settings_relationships": "openai:gpt-4o",
+        "extract_text_from_image": false,
+        "defang": true,
+        "ignore_image_refs": true,
+        "ignore_link_refs": true,
+        "ignore_extraction_boundary": false,
+        "ignore_embedded_relationships": false,
+        "ignore_embedded_relationships_sro": true,
+        "ignore_embedded_relationships_smo": true,
+        "ai_create_attack_flow": false,
+        "ai_summary_provider": "openai:gpt-4o",
+        "ai_content_check_provider": "openai:gpt-4o"
+    }
+```
