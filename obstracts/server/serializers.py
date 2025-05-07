@@ -38,7 +38,7 @@ class CreateTaskSerializer(serializers.Serializer):
     profile_id = ProfileIDField(help_text="profile id to use", write_only=True)
 
 class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
-    pass
+    count_of_posts = serializers.IntegerField(source='obstracts_feed.visible_posts_count', read_only=True, help_text="Number of posts in feed")
 
 class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
     pass

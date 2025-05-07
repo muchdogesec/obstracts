@@ -58,6 +58,9 @@ class FeedProfile(models.Model):
         self.collection_name = self.generate_collection_name()
         return super().save(*args, **kwargs)
     
+    def visible_posts_count(self):
+        return self.feed.posts.filter(deleted_manually=False, obstracts_post__processed=True).count()
+    
     def generate_collection_name(self):
         if self.collection_name:
             return self.collection_name
