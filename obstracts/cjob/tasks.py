@@ -143,6 +143,7 @@ def process_post(job_id, post_id, *args):
             file.ai_incident_summary = processor.incident.explanation
             file.ai_incident_classification = processor.incident.incident_classification
 
+        file.txt2stix_data = processor.txt2stix_data.model_dump(mode="json", exclude_defaults=True, exclude_unset=True, exclude_none=True)
         file.summary = processor.summary
 
 

@@ -419,6 +419,16 @@ class PostOnlyView(h4f_views.PostOnlyView):
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, post_id=None, **kwargs):
         return self.get_post_objects(post_id)
+    
+    @extend_schema(
+        summary="show the data .json produced by txt2stix",
+        description="show the data .json produced by txt2stix",
+        responses={200: dict},
+    )
+    @decorators.action(detail=True, methods=["GET"])
+    def extractions(self, request, post_id=None, **kwargs):
+        obj: models.File = self.get_object().obstracts_post
+        return Response(obj.txt2stix_data or {})
 
     def get_post_objects(self, post_id):
         post_file = get_object_or_404(models.File, post_id=post_id)
