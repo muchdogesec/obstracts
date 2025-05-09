@@ -161,6 +161,8 @@ class File(models.Model):
     ai_incident_summary = models.CharField(default=None, max_length=65535, null=True)
     ai_incident_classification = ArrayField(base_field=models.CharField(default=None, max_length=256, null=True), null=True, blank=True)
 
+    txt2stix_data = models.JSONField(default=None, null=True)
+
     def save(self, *args, **kwargs):
         self.post.save() #update datetime_updated
         return super().save(*args, **kwargs)

@@ -421,6 +421,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
                 description="Filter the results by one or more STIX Object types",
                 enum=OBJECT_TYPES,
             ),
+            OpenApiParameter('ignore_embedded_sro', type=bool, description="If set to `true` all embedded SROs are removed from the response."),
         ],
         summary="Get STIX Objects for a specific Post",
         description=textwrap.dedent(
@@ -434,6 +435,16 @@ class PostOnlyView(h4f_views.PostOnlyView):
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, post_id=None, **kwargs):
         return self.get_post_objects(post_id)
+    
+    @extend_schema(
+        summary="show the data .json produced by txt2stix",
+        description="show the data .json produced by txt2stix",
+        responses={200: dict},
+    )
+    @decorators.action(detail=True, methods=["GET"])
+    def extractions(self, request, post_id=None, **kwargs):
+        obj: models.File = self.get_object().obstracts_post
+        return Response(obj.txt2stix_data or {})
 
     def get_post_objects(self, post_id):
         post_file = get_object_or_404(models.File, post_id=post_id)
@@ -448,11 +459,17 @@ class PostOnlyView(h4f_views.PostOnlyView):
             '@view': settings.VIEW_NAME,
             'post_id': str(post_file.post_id)
         }
+        filters = []
+
+        if q := helper.query_as_bool('ignore_embedded_sro', default=False):
+            filters.append('FILTER doc._is_ref != TRUE')
+
         query = """
 
 FOR doc IN @@view
     FILTER doc._obstracts_post_id == @post_id
     FILTER NOT @types OR doc.type IN @types
+    #more_filters
     
     COLLECT id = doc.id  INTO docs
     LET dd = FIRST(FOR doc IN docs[*].doc RETURN doc)
@@ -460,7 +477,7 @@ FOR doc IN @@view
     LIMIT @offset, @count
     RETURN KEEP(dd, KEYS(dd, TRUE))
 
-        """
+        """.replace('#more_filters', '\n'.join(filters))
 
         return helper.execute_query(query, bind_vars=bind_vars)
 
