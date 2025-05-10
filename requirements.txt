@@ -157,5 +157,5 @@ zipp==3.21.0
 history4feed @ https://github.com/muchdogesec/history4feed/releases/download/main-2025-05-06-06-06-23/history4feed-0.0.1rc0-py3-none-any.whl
 file2txt @ https://github.com/muchdogesec/file2txt/releases/download/main-2024-11-29-15-39-43/file2txt-0.0.1b2-py3-none-any.whl
 txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/main-2025-05-08-17-07-25/txt2stix-0.0.2-py3-none-any.whl
-dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-05-07-05-37-24/dogesec_commons-0.0.7rc1-py3-none-any.whl
+dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-05-10-06-23-53/dogesec_commons-0.0.7rc1-py3-none-any.whl
 stix2arango @ https://github.com/muchdogesec/stix2arango/releases/download/main-2025-04-26-07-41-35/stix2arango-0.0.4rc0-py3-none-any.whl

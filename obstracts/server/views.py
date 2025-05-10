@@ -422,8 +422,12 @@ class PostOnlyView(h4f_views.PostOnlyView):
         return self.get_post_objects(post_id)
     
     @extend_schema(
-        summary="show the data .json produced by txt2stix",
-        description="show the data .json produced by txt2stix",
+        summary="Get the extractions performed on this post",
+        description=textwrap.dedent(
+            """
+            When extractions are performed, txt2stix creates an extraction file to show the values and types of extractions detected. Use this endpoint to return them. Useful to understand the extraction logic.
+            """
+        ),
         responses={200: dict},
     )
     @decorators.action(detail=True, methods=["GET"])
