@@ -224,6 +224,7 @@ SPECTACULAR_SETTINGS = {
         """
         Obstracts is a feed reader for security teams.\n\n
         Subscribe to a blog and Obstracts will download the posts and convert them into structured threat intelligence ready for you to integrate with your security tooling.\n\n
+        You are using the open-source version of Obstracts available at [github.com/muchdogesec/obstracts](https://github.com/muchdogesec/obstracts)\n\n
         A fully hosted version of Obstracts, with many more advanced features can be found at [obstracts.com](https://www.obstracts.com/)
         """
     ),
