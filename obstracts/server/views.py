@@ -440,7 +440,9 @@ class PostOnlyView(h4f_views.PostOnlyView):
         summary="Get the extractions performed on this post",
         description=textwrap.dedent(
             """
-            When extractions are performed, txt2stix creates an extraction file to show the values and types of extractions detected. Use this endpoint to return them. Useful to understand the extraction logic.
+            When extractions are performed, txt2stix creates an extraction file to show the values extracted, what extractor was used, how relationships between extractions were made (if AI relationship mode used), the AI summary produced (if AI summary enabled), and details about the Attack Flow order detected (if enabled).
+
+            Use this endpoint to view this file which can be useful to understanding how the output for the post was produced.
             """
         ),
     )
