@@ -220,10 +220,11 @@ class Job(models.Model):
     def cancel(self):
         self.history4feed_job.cancel()
         self.update_state(JobState.CANCELLED)
+        
 
     @transaction.atomic
     def update_state(self, state):
-        obj = self.objects.select_for_update().get(pk=self.pk)
+        obj = self.__class__.objects.select_for_update().get(pk=self.pk)
         if obj.state not in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
             return obj.state
         obj.state = state
