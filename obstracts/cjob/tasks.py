@@ -50,9 +50,9 @@ def job_completed_with_error(job_id):
     if job.state == models.JobState.CANCELLED:
         pass
     elif job.processed_items == 0 and job.failed_processes > 0:
-        job.state = models.JobState.PROCESS_FAILED
+        job.update_state(models.JobState.PROCESS_FAILED)
     else:
-        job.state = models.JobState.PROCESSED
+        job.update_state(models.JobState.PROCESSED)
 
     logging.info("removing queue lock for feed `%s`", str(job.feed.id))
     if cache.delete(get_lock_id(job)):
@@ -104,7 +104,7 @@ def wait_in_queue(self: CeleryTask, job_id):
         return False
     if not queue_lock(job):
         return self.retry(max_retries=300)
-    job.state = models.JobState.PROCESSING
+    job.update_state(models.JobState.PROCESSING)
     job.save()
     return True
 
