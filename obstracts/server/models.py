@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from dogesec_commons.stixifier.models import Profile
 import stix2
 from django.utils import timezone
+from django.db import transaction
 
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
@@ -141,7 +142,7 @@ def start_job(sender, instance: h4f_models.Job, **kwargs):
     if instance.state == H4FState.SUCCESS:
         tasks.start_processing.delay(instance.id)
     if instance.state == H4FState.FAILED:
-        job.state = JobState.RETRIEVE_FAILED
+        job.update_state(JobState.RETRIEVE_FAILED)
     if instance.is_cancelled():
         job.cancel()
     job.save()
@@ -218,10 +219,18 @@ class Job(models.Model):
     
     def cancel(self):
         self.history4feed_job.cancel()
-        if self.state in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
-            self.state = JobState.CANCELLED
-        self.save()
+        self.update_state(JobState.CANCELLED)
+        
 
+    @transaction.atomic
+    def update_state(self, state):
+        obj = self.__class__.objects.select_for_update().get(pk=self.pk)
+        if obj.state not in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
+            return obj.state
+        obj.state = state
+        obj.save()
+        self.refresh_from_db()
+        return obj.state
     
     @property
     def feed_id(self):
