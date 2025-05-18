@@ -448,11 +448,15 @@ class PostOnlyView(h4f_views.PostOnlyView):
     )
     @decorators.action(detail=True, methods=["GET"])
     def extractions(self, request, post_id=None, **kwargs):
-        obj: models.File = self.get_object().obstracts_post
-        return Response(obj.txt2stix_data or {})
+        post_file: models.File = self.get_object().obstracts_post
+        if not post_file.processed:
+            raise exceptions.NotFound({"error":"This post is in failed extraction state, please reindex to access"})
+        return Response(post_file.txt2stix_data or {})
 
     def get_post_objects(self, post_id):
         post_file = get_object_or_404(models.File, post_id=post_id)
+        if not post_file.processed:
+            raise exceptions.NotFound({"error":"This post is in failed extraction state, please reindex to access"})
 
         helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
         types = helper.query.get('types', "")
