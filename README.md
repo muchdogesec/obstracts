@@ -1,5 +1,7 @@
 # Obstracts
 
+[![codecov](https://codecov.io/gh/muchdogesec/obstracts/graph/badge.svg?token=OKH9UBUJMZ)](https://codecov.io/gh/muchdogesec/obstracts)
+
 ## Before you begin...
 
 We offer a fully hosted web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://www.obstracts.com/).
