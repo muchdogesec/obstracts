@@ -6,6 +6,7 @@ import operator
 from urllib.parse import urljoin
 from django.http import Http404, HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
+from django.urls import resolve
 from rest_framework import viewsets, decorators, exceptions, status, renderers, mixins
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, PolymorphicProxySerializer
 from drf_spectacular.types import OpenApiTypes
@@ -373,6 +374,8 @@ class PostOnlyView(h4f_views.PostOnlyView):
             return queryset.filter(filter)
         
         def show_hidden_posts_filter(self, queryset, name, show_hidden_posts):
+            if not resolve(self.request.path).view_name.endswith('post-view-list'):
+                return queryset
             if not show_hidden_posts:
                 return queryset.filter(obstracts_post__processed=True)
             return queryset
