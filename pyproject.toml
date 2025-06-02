@@ -25,6 +25,7 @@ dependencies = [
     "history4feed",
     "dogesec_commons[stixifier]",
     "hyperlink",
+    "django>=5.2.1",
     "django-filter>=24.2",
     "django-cors-headers",
     "django-storages[s3]",
