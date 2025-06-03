@@ -13,3 +13,7 @@ llama-index-llms-openai
 llama-index-llms-openrouter
 llama-index-llms-gemini
 llama-index-llms-deepseek
+
+## production
+gunicorn==23.0.0
+

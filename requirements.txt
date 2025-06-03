@@ -195,6 +195,8 @@ grpcio-status==1.71.0
     # via
     #   file2txt
     #   google-api-core
+gunicorn==23.0.0
+    # via -r requirements.in
 h11==0.16.0
     # via httpcore
 hf-xet==1.1.2
@@ -323,6 +325,7 @@ openai==1.82.1
     # via llama-index-llms-openai
 packaging==25.0
     # via
+    #   gunicorn
     #   huggingface-hub
     #   kombu
     #   marshmallow
