@@ -123,7 +123,7 @@ djangorestframework==3.16.0
     #   drf-spectacular
     #   history4feed
     #   obstracts (pyproject.toml)
-dogesec-commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-05-26-13-08-23/dogesec_commons-0.0.7rc1-py3-none-any.whl
+dogesec-commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-06-03-11-55-47/dogesec_commons-0.0.7rc1-py3-none-any.whl
     # via
     #   -r requirements.in
     #   dogesec-commons
