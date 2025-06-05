@@ -76,11 +76,27 @@ jobs:
       - name: test all endpoints 1
         id: test-endpoints
         run: |
-          pip install -r tests/requirements.txt
-          export SERVICE_BASE_URL="${{ steps.get_ip.outputs.SERVICE_BASE_URL }}"
-          export TEST_AI_PROFILE_MODEL="${{ secrets.TEST_AI_PROFILE_MODEL }}"
+          pip install -e '.[test]' -r requirements.txt 
+          set -a; source .env; source tests/tests.env; set +a
+          export DJANGO_WWW_PATH=$PWD/django_www_path/
 
-          pytest tests/
+          export POSTGRES_HOST="${{ steps.get_ip.outputs.IP_ADDRESS }}"
+          export PYTHONPATH=.
+
+          pytest --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy tests/src
+
+      - name: Upload coverage reports to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
 
       - name: run schemathesis
         uses: schemathesis/action@v1

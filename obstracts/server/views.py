@@ -8,10 +8,14 @@ from django.http import Http404, HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import resolve
 from rest_framework import viewsets, decorators, exceptions, status, renderers, mixins
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, PolymorphicProxySerializer
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    PolymorphicProxySerializer,
+)
 from drf_spectacular.types import OpenApiTypes
 import txt2stix.common
-from .import autoschema as api_schema
+from . import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
 import hyperlink
 from django.db.models import OuterRef, Subquery, F, Q
@@ -22,7 +26,16 @@ from .utils import (
     Pagination,
     Response,
 )
-from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Filter, BaseCSVFilter, UUIDFilter, CharFilter, MultipleChoiceFilter, filters
+from django_filters.rest_framework import (
+    DjangoFilterBackend,
+    FilterSet,
+    Filter,
+    BaseCSVFilter,
+    UUIDFilter,
+    CharFilter,
+    MultipleChoiceFilter,
+    filters,
+)
 from .serializers import (
     ObstractsJobSerializer,
     FeedCreateSerializer,
@@ -49,45 +62,64 @@ from mistune.util import unescape
 from drf_spectacular.views import SpectacularAPIView
 from rest_framework.response import Response
 
+
 class SchemaViewCached(SpectacularAPIView):
     _schema = None
-    
+
     def _get_schema_response(self, request):
-        version = self.api_version or request.version or self._get_version_parameter(request)
+        version = (
+            self.api_version or request.version or self._get_version_parameter(request)
+        )
         if not self.__class__._schema:
-            generator = self.generator_class(urlconf=self.urlconf, api_version=version, patterns=self.patterns)
-            self.__class__._schema = generator.get_schema(request=request, public=self.serve_public)
+            generator = self.generator_class(
+                urlconf=self.urlconf, api_version=version, patterns=self.patterns
+            )
+            self.__class__._schema = generator.get_schema(
+                request=request, public=self.serve_public
+            )
         return Response(
             data=self.__class__._schema,
-            headers={"Content-Disposition": f'inline; filename="{self._get_filename(request, version)}"'}
+            headers={
+                "Content-Disposition": f'inline; filename="{self._get_filename(request, version)}"'
+            },
         )
+
 
 class PlainMarkdownRenderer(renderers.BaseRenderer):
     media_type = "text/markdown"
     format = "text/markdown"
+
 
 class MarkdownImageReplacer(MarkdownRenderer):
     def __init__(self, request, queryset):
         self.request = request
         self.queryset = queryset
         super().__init__()
+
     def image(self, token: dict[str, dict], state: mistune.BlockState) -> str:
-        src = token['attrs']['url']
+        src = token["attrs"]["url"]
         if not hyperlink.parse(src).absolute:
             try:
-                token['attrs']['url'] = self.request.build_absolute_uri(self.queryset.get(name=src).file.url)
+                token["attrs"]["url"] = self.request.build_absolute_uri(
+                    self.queryset.get(name=src).file.url
+                )
             except Exception as e:
                 pass
         return super().image(token, state)
-    
+
     def codespan(self, token: dict[str, dict], state: mistune.BlockState) -> str:
-        token['raw'] = unescape(token['raw'])
+        token["raw"] = unescape(token["raw"])
         return super().codespan(token, state)
 
     @classmethod
-    def get_markdown(cls, request, md_text, images_qs: 'models.models.BaseManager[models.FileImage]'):
-        modify_links = mistune.create_markdown(escape=False, renderer=cls(request, images_qs))
+    def get_markdown(
+        cls, request, md_text, images_qs: "models.models.BaseManager[models.FileImage]"
+    ):
+        modify_links = mistune.create_markdown(
+            escape=False, renderer=cls(request, images_qs)
+        )
         return modify_links(md_text)
+
 
 @extend_schema_view(
     list=extend_schema(
@@ -97,7 +129,10 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get a list of all the feeds you are currently subscribed to. This endpoint is usually used to get the id of feed you want to get blog post data for in a follow up request to the GET Feed Posts endpoints or to get the status of a job related to the Feed in a follow up request to the GET Job endpoint. If you already know the id of the Feed already, you can use the GET Feeds by ID endpoint.
             """
         ),
-        responses={200: h4fserializers.FeedSerializer, 400: api_schema.DEFAULT_400_ERROR}
+        responses={
+            200: h4fserializers.FeedSerializer,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
     ),
     retrieve=extend_schema(
         summary="Get a Feed",
@@ -106,11 +141,15 @@ class MarkdownImageReplacer(MarkdownRenderer):
             Use this endpoint to get information about a specific feed using its ID. You can search for a Feed ID using the GET Feeds endpoint, if required.
             """
         ),
-        responses={200: h4fserializers.FeedSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR}
+        responses={
+            200: h4fserializers.FeedSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
     ),
     create=extend_schema(
         request=FeedCreateSerializer,
-        responses={201:ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201: ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR},
         summary="Create a New Feed",
         description=textwrap.dedent(
             """
@@ -136,7 +175,7 @@ class MarkdownImageReplacer(MarkdownRenderer):
     ),
     create_skeleton=extend_schema(
         request=serializers.SkeletonFeedSerializer,
-        responses={201:FeedCreateSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201: FeedCreateSerializer, 400: api_schema.DEFAULT_400_ERROR},
         summary="Create a New Skeleton Feed",
         description=textwrap.dedent(
             """
@@ -164,10 +203,14 @@ class MarkdownImageReplacer(MarkdownRenderer):
             BEWARE: this action cannot be reversed.
             """
         ),
-        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
+        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR},
     ),
     partial_update=extend_schema(
-        responses={201: serializers.FeedCreateSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={
+            201: serializers.FeedCreateSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
         summary="Update a Feeds Metadata",
         description=textwrap.dedent(
             """
@@ -189,7 +232,11 @@ class MarkdownImageReplacer(MarkdownRenderer):
     ),
     fetch=extend_schema(
         request=serializers.FetchFeedSerializer,
-        responses={201: serializers.ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={
+            201: serializers.ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
         summary="Fetch Updates for a Feed",
         description=textwrap.dedent(
             """
@@ -225,16 +272,20 @@ class FeedView(h4f_views.FeedView):
         s = serializers.FeedCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_create_job(request)
-        job = tasks.new_task(h4f_job, s.validated_data['profile_id'])
-        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
-    
+        job = tasks.new_task(h4f_job, s.validated_data["profile_id"])
+        return Response(
+            ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+        )
+
     @decorators.action(methods=["PATCH"], detail=True)
     def fetch(self, request, *args, **kwargs):
         s = serializers.FetchFeedSerializer(data=request.data, partial=True)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_fetch_job(request)
-        job = tasks.new_task(h4f_job, s.validated_data['profile_id'])
-        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
+        job = tasks.new_task(h4f_job, s.validated_data["profile_id"])
+        return Response(
+            ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+        )
 
 
 @extend_schema_view(
@@ -245,7 +296,10 @@ class FeedView(h4f_views.FeedView):
             Search through Posts from all Blogs. Filter by the ones you're interested in.
             """
         ),
-        responses={200:serializers.PostWithFeedIDSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        responses={
+            200: serializers.PostWithFeedIDSerializer,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
     ),
     retrieve=extend_schema(
         summary="Get a Post",
@@ -264,12 +318,15 @@ class FeedView(h4f_views.FeedView):
             IMPORTANT: this WILL delete the content of the post and any STIX objects directly linked to it. Any objects linked to other reports WILL NOT be deleted.
             """
         ),
-        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR}
+        responses={204: {}, 404: api_schema.DEFAULT_404_ERROR},
     ),
     reindex=extend_schema(
         request=serializers.FetchPostSerializer,
-
-        responses={201:ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
         summary="Update a Post in a Feed",
         description=textwrap.dedent(
             """
@@ -310,7 +367,6 @@ class FeedView(h4f_views.FeedView):
             It is not possible to manually modify any other values for the Post object. You can update the post content using the Update a Post in A Feed endpoint.
             """
         ),
-
         responses={
             201: serializers.PostWithFeedIDSerializer,
             404: api_schema.DEFAULT_404_ERROR,
@@ -321,8 +377,8 @@ class FeedView(h4f_views.FeedView):
 )
 class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
-    lookup_url_kwarg = 'post_id'
-    lookup_field = 'id'
+    lookup_url_kwarg = "post_id"
+    lookup_field = "id"
     openapi_tags = ["Posts (by ID)"]
     schema = ObstractsAutoSchema()
 
@@ -344,20 +400,28 @@ class PostOnlyView(h4f_views.PostOnlyView):
             "Exploit",
             "Cyber Crime",
             "Indicators of Compromise",
-            "TTPs"
+            "TTPs",
         ]
-        show_hidden_posts = filters.BooleanFilter(method='show_hidden_posts_filter', help_text="Show only posts that have been processed (where `visible` property is `true`. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.", initial=False)
-        job_state = filters.ChoiceFilter(choices=models.JobState.choices, help_text="Filter by Obstracts job status. Use `show_hidden_posts` filter to apply at post level.")
+        show_hidden_posts = filters.BooleanFilter(
+            method="show_hidden_posts_filter",
+            help_text="Show only posts that have been processed (where `visible` property is `true`. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.",
+            initial=False,
+        )
+        job_state = filters.ChoiceFilter(
+            choices=models.JobState.choices,
+            help_text="Filter by Obstracts job status. Use `show_hidden_posts` filter to apply at post level.",
+        )
         ai_describes_incident = filters.ChoiceFilter(
-            method='ai_describes_incident_filter',
+            method="ai_describes_incident_filter",
             choices=[("true", "True"), ("false", "False"), ("null", "Unset")],
-            help_text="If `ai_content_check_provider` set in Profile, the post will be analysed to see if it describes an incident. You can filter the results to only include post that the AI believes describes a security incident."
+            help_text="If `ai_content_check_provider` set in Profile, the post will be analysed to see if it describes an incident. You can filter the results to only include post that the AI believes describes a security incident.",
         )
         ai_incident_classification = filters.MultipleChoiceFilter(
             help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also try an assign a classification of the incident. You can filter the results to only include the desired classification.",
-            method='ai_incident_classification_filter',
+            method="ai_incident_classification_filter",
             choices=[(c, c) for c in incident_classification_types],
         )
+
         def ai_describes_incident_filter(self, queryset, name, value):
             fv = None
             match value:
@@ -368,18 +432,24 @@ class PostOnlyView(h4f_views.PostOnlyView):
                 case _:
                     fv = None
             return queryset.filter(obstracts_post__ai_describes_incident=fv)
-        
+
         def ai_incident_classification_filter(self, queryset, name, value):
-            filter = reduce(operator.or_, [Q(obstracts_post__ai_incident_classification__icontains=s) for s in value])
+            filter = reduce(
+                operator.or_,
+                [
+                    Q(obstracts_post__ai_incident_classification__icontains=s)
+                    for s in value
+                ],
+            )
             return queryset.filter(filter)
-        
+
         def show_hidden_posts_filter(self, queryset, name, show_hidden_posts):
-            if not resolve(self.request.path).view_name.endswith('post-view-list'):
+            if not resolve(self.request.path).view_name.endswith("post-view-list"):
                 return queryset
             if not show_hidden_posts:
                 return queryset.filter(obstracts_post__processed=True)
             return queryset
-        
+
         def __init__(self, data=None, *args, **kwargs):
             # if filterset is bound, use initial values as defaults
             if data is not None:
@@ -387,13 +457,12 @@ class PostOnlyView(h4f_views.PostOnlyView):
                 data = data.copy()
 
                 for name, f in self.base_filters.items():
-                    initial = f.extra.get('initial')
+                    initial = f.extra.get("initial")
 
                     # filter param is either missing or empty, use initial as default
                     if not data.get(name) and initial != None:
                         data[name] = initial
             super().__init__(data, *args, **kwargs)
-        
 
     def filter_queryset(self, queryset):
         queryset = queryset.annotate(
@@ -405,13 +474,19 @@ class PostOnlyView(h4f_views.PostOnlyView):
         )
         return super().filter_queryset(queryset)
 
-    @decorators.action(detail=True, methods=['PATCH'], serializer_class=serializers.CreateTaskSerializer)
+    @decorators.action(
+        detail=True,
+        methods=["PATCH"],
+        serializer_class=serializers.CreateTaskSerializer,
+    )
     def reindex(self, request, *args, **kwargs):
-        s = serializers.FetchFeedSerializer(data=request.data)
+        s = self.get_serializer(data=request.data)
         s.is_valid(raise_exception=True)
         _, h4f_job = self.new_reindex_post_job(request)
-        job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
-        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
+        job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
+        return Response(
+            ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+        )
 
     @extend_schema(
         responses=ArangoDBHelper.get_paginated_response_schema(),
@@ -424,7 +499,11 @@ class PostOnlyView(h4f_views.PostOnlyView):
                 description="Filter the results by one or more STIX Object types",
                 enum=OBJECT_TYPES,
             ),
-            OpenApiParameter('ignore_embedded_sro', type=bool, description="If set to `true` all embedded SROs are removed from the response."),
+            OpenApiParameter(
+                "ignore_embedded_sro",
+                type=bool,
+                description="If set to `true` all embedded SROs are removed from the response.",
+            ),
         ],
         summary="Get STIX Objects for a specific Post",
         description=textwrap.dedent(
@@ -438,7 +517,17 @@ class PostOnlyView(h4f_views.PostOnlyView):
     @decorators.action(detail=True, methods=["GET"])
     def objects(self, request, post_id=None, **kwargs):
         return self.get_post_objects(post_id)
-    
+
+    def get_obstracts_file(self, fail_if_no_extraction=True) -> models.File:
+        post_file: models.File = self.get_object().obstracts_post
+        if fail_if_no_extraction and not post_file.processed:
+            raise exceptions.NotFound(
+                {
+                    "error": "This post is in failed extraction state, please reindex to access"
+                }
+            )
+        return post_file
+
     @extend_schema(
         summary="Get the extractions performed on this post",
         description=textwrap.dedent(
@@ -451,47 +540,8 @@ class PostOnlyView(h4f_views.PostOnlyView):
     )
     @decorators.action(detail=True, methods=["GET"])
     def extractions(self, request, post_id=None, **kwargs):
-        post_file: models.File = self.get_object().obstracts_post
-        if not post_file.processed:
-            raise exceptions.NotFound({"error":"This post is in failed extraction state, please reindex to access"})
+        post_file: models.File = self.get_obstracts_file()
         return Response(post_file.txt2stix_data or {})
-
-    def get_post_objects(self, post_id):
-        post_file = get_object_or_404(models.File, post_id=post_id)
-        if not post_file.processed:
-            raise exceptions.NotFound({"error":"This post is in failed extraction state, please reindex to access"})
-
-        helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
-        types = helper.query.get('types', "")
-        bind_vars = {
-            "types": list(OBJECT_TYPES.intersection(types.split(","))) if types else None,
-            # "@vertex_collection":post_file.feed.vertex_collection,
-            # "@edge_collection": post_file.feed.edge_collection,
-            # "report_id": post_file.report_id,
-            '@view': settings.VIEW_NAME,
-            'post_id': str(post_file.post_id)
-        }
-        filters = []
-
-        if q := helper.query_as_bool('ignore_embedded_sro', default=False):
-            filters.append('FILTER doc._is_ref != TRUE')
-
-        query = """
-
-FOR doc IN @@view
-    FILTER doc._obstracts_post_id == @post_id
-    FILTER NOT @types OR doc.type IN @types
-    #more_filters
-    
-    COLLECT id = doc.id  INTO docs
-    LET dd = FIRST(FOR doc IN docs[*].doc RETURN doc)
-    
-    LIMIT @offset, @count
-    RETURN KEEP(dd, KEYS(dd, TRUE))
-
-        """.replace('#more_filters', '\n'.join(filters))
-
-        return helper.execute_query(query, bind_vars=bind_vars)
 
     @extend_schema(
         responses=None,
@@ -515,15 +565,27 @@ FOR doc IN @@view
     )
     @decorators.action(detail=True, methods=["GET"])
     def markdown(self, request, post_id=None, **kwargs):
-        obj = self.get_object().obstracts_post
-        resp_text = MarkdownImageReplacer.get_markdown(request, obj.markdown_file.read().decode(), models.FileImage.objects.filter(report__post_id=post_id))
-        return FileResponse(streaming_content=resp_text, content_type='text/markdown', filename='markdown.md')
+        obj = self.get_obstracts_file(fail_if_no_extraction=True)
+        resp_text = MarkdownImageReplacer.get_markdown(
+            request,
+            obj.markdown_file.read().decode(),
+            models.FileImage.objects.filter(report__post_id=post_id),
+        )
+        return FileResponse(
+            streaming_content=resp_text,
+            content_type="text/markdown",
+            filename="markdown.md",
+        )
 
     @extend_schema(
-            responses={200: serializers.ImageSerializer(many=True), 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
-            filters=False,
-            summary="Get Local URLs for Images in a Post",
-            description=textwrap.dedent(
+        responses={
+            200: serializers.ImageSerializer(many=True),
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+        filters=False,
+        summary="Get Local URLs for Images in a Post",
+        description=textwrap.dedent(
             """
             When [file2txt](https://github.com/muchdogesec/file2txt/) processes a file it will extract all images from the file and store them locally. You can see these images referenced in the markdown produced (see Post markdown endpoint). This endpoint lists the image files found in the Post selected.
             """
@@ -531,13 +593,17 @@ FOR doc IN @@view
     )
     @decorators.action(detail=True, pagination_class=Pagination("images"))
     def images(self, request, post_id=None, image=None, **kwargs):
-        queryset = models.FileImage.objects.filter(report__post_id=post_id).order_by('name')
-        paginator = Pagination('images')
+        queryset = models.FileImage.objects.filter(report__post_id=post_id).order_by(
+            "name"
+        )
+        paginator = Pagination("images")
 
         page = paginator.paginate_queryset(queryset, request, self)
 
         if page is not None:
-            serializer = serializers.ImageSerializer(page, many=True, context=dict(request=request))
+            serializer = serializers.ImageSerializer(
+                page, many=True, context=dict(request=request)
+            )
             return paginator.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(queryset, many=True)
@@ -566,31 +632,62 @@ FOR doc IN @@view
         )
         RETURN {removed_edges, removed_vertices}
         """
-        out = ArangoDBHelper(None, self.request).execute_query(q, {'@vertex': instance.feed.collection_name+'_vertex_collection', '@edge': instance.feed.collection_name+'_edge_collection', 'post_id': str(instance.post_id)}, paginate=False)
+        out = ArangoDBHelper(None, self.request).execute_query(
+            q,
+            {
+                "@vertex": instance.feed.collection_name + "_vertex_collection",
+                "@edge": instance.feed.collection_name + "_edge_collection",
+                "post_id": str(instance.post_id),
+            },
+            paginate=False,
+        )
         logging.debug(f"POST's objects removed {out}")
         return True
 
-    def remove_report(self, post_id):
-        try:
-            post: models.File = get_object_or_404(models.File, post_id=post_id)
-            collection = post.feed.collection_name
+    def get_post_objects(self, post_id):
+        post_file: models.File = self.get_obstracts_file()
+        helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
+        types = helper.query.get("types", "")
+        bind_vars = {
+            "types": (
+                list(OBJECT_TYPES.intersection(types.split(","))) if types else None
+            ),
+            "@view": settings.VIEW_NAME,
+            "post_id": str(post_file.post_id),
+        }
+        filters = []
 
-            helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
-            query = """ 
-            FOR doc IN @@collection
-            FILTER doc._obstracts_post_id == @post_id
-            REMOVE doc IN @@collection
-            RETURN NULL
-            """
-            for c in ["edge_collection", "vertex_collection"]:
-                helper.execute_query(query, bind_vars={"@collection": f"{collection}_{c}", 'post_id': post_id}, paginate=False)
-        except Exception as e:
-            logging.exception("remove_report failed")
+        if q := helper.query_as_bool("ignore_embedded_sro", default=False):
+            filters.append("FILTER doc._is_ref != TRUE")
+
+        query = """
+
+FOR doc IN @@view
+    FILTER doc._obstracts_post_id == @post_id
+    FILTER NOT @types OR doc.type IN @types
+    #more_filters
+    
+    COLLECT id = doc.id  INTO docs
+    LET dd = FIRST(FOR doc IN docs[*].doc RETURN doc)
+    
+    LIMIT @offset, @count
+    RETURN KEEP(dd, KEYS(dd, TRUE))
+
+        """.replace(
+            "#more_filters", "\n".join(filters)
+        )
+
+        return helper.execute_query(query, bind_vars=bind_vars)
+
 
 @extend_schema_view(
     create=extend_schema(
         request=serializers.PostCreateSerializer,
-        responses={201:ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
         summary="Manually add a Post to A Feed",
         description=textwrap.dedent(
             """
@@ -634,44 +731,49 @@ FOR doc IN @@view
                 The response will return the Job information responsible for getting the requested data you can track using the id returned via the GET Jobs by ID endpoint.
             """
         ),
-        responses={201:ObstractsJobSerializer, 404: api_schema.DEFAULT_404_ERROR, 400: api_schema.DEFAULT_400_ERROR},
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
         request=serializers.CreateTaskSerializer,
     ),
-    # partial_update=extend_schema(exclude=True),
-    # retrieve=extend_schema(exclude=True),
-    # destroy=extend_schema(exclude=True),
-    # images=extend_schema(exclude=True),
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
     serializer_class = serializers.ObstractsPostSerializer
 
-    openapi_tags = [ "Posts (by Feed)" ]
+    openapi_tags = ["Posts (by Feed)"]
 
     class filterset_class(PostOnlyView.filterset_class):
         feed_id = None
-
 
     def create(self, request, *args, **kwargs):
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
 
-        h4f_job = self.new_create_post_job(request, self.kwargs['feed_id'])
-        job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
-        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
+        h4f_job = self.new_create_post_job(request, self.kwargs["feed_id"])
+        job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
+        return Response(
+            ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+        )
 
-    @decorators.action(methods=["PATCH"], detail=False, url_path='reindex')
+    @decorators.action(methods=["PATCH"], detail=False, url_path="reindex")
     def reindex_feed(self, request, *args, feed_id=None, **kwargs):
         s = serializers.CreateTaskSerializer(data=request.data)
         s.is_valid(raise_exception=True)
 
         h4f_job = self.new_reindex_feed_job(feed_id)
-        job = tasks.new_post_patch_task(h4f_job, s.validated_data["profile_id"])
-        return Response(ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED)
-    
+        job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
+        return Response(
+            ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+        )
+
+
 class RSSView(h4f_views.RSSView):
     class filterset_class(PostOnlyView.filterset_class):
         feed_id = None
+
 
 @extend_schema_view(
     list=extend_schema(
@@ -711,13 +813,13 @@ class RSSView(h4f_views.RSSView):
             204: {},
             404: api_schema.DEFAULT_404_ERROR,
         },
-    )
+    ),
 )
 class JobView(
     mixins.RetrieveModelMixin,
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
-    ):
+):
     schema = ObstractsAutoSchema()
     serializer_class = ObstractsJobSerializer
     openapi_tags = ["Jobs"]
@@ -727,23 +829,24 @@ class JobView(
     ordering = "created_descending"
     pagination_class = Pagination("jobs")
 
-
     class filterset_class(FilterSet):
         feed_id = BaseCSVFilter(
             label="Filter by Feed ID (e.g. `6c6e6448-04d4-42a3-9214-4f0f7d02694e`.",
-            lookup_expr='in'
+            lookup_expr="in",
         )
         state = Filter(
             label="Filter by state.",
         )
-        post_id = UUIDFilter(label="Filter by Post ID", field_name="history4feed_job__fulltext_jobs__post_id")
+        post_id = UUIDFilter(
+            label="Filter by Post ID",
+            field_name="history4feed_job__fulltext_jobs__post_id",
+        )
 
     def get_queryset(self):
         return models.Job.objects
 
-    @decorators.action(methods=['DELETE'], detail=True, url_path="kill")
+    @decorators.action(methods=["DELETE"], detail=True, url_path="kill")
     def cancel_job(self, request, *args, **kwargs):
         obj: models.Job = self.get_object()
         obj.cancel()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    

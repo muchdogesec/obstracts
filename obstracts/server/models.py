@@ -105,13 +105,11 @@ def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
 
 @receiver(post_save, sender=FeedProfile)
 def auto_update_identity(sender, instance: FeedProfile, **kwargs):
-    logging.info(f"updating identities for feed {instance.id}")
     identity = json.loads(instance.identity.serialize())
     identity['_record_modified'] = timezone.now().isoformat().replace('+00:00', 'Z')
     query = """
     FOR doc IN @@vertex_collection
     FILTER doc.id == @identity.id
-    FILTER doc.modified != @identity.modified
     UPDATE doc WITH @identity IN @@vertex_collection
     RETURN doc._key
     """
