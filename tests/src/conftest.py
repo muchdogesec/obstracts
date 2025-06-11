@@ -17,7 +17,7 @@ from dogesec_commons.utils.filters import MinMaxDateFilter
 from obstracts.server.serializers import PostWithFeedIDSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from history4feed.app import models as h4f_models
-from datetime import datetime as dt
+from django.utils import timezone
 
 
 def pytest_sessionstart():
@@ -27,7 +27,7 @@ def pytest_sessionstart():
         username=settings.ARANGODB_USERNAME,
         password=settings.ARANGODB_PASSWORD,
     )
-    db_name = settings.ARANGODB_DATABASE + "_test_database"
+    db_name = settings.ARANGODB_DATABASE + "_database"
     if not sys_db.has_database(db_name):
         sys_db.create_database(db_name)
 
@@ -38,7 +38,6 @@ def session_settings():
     skip_if_no_django()
 
     django_settings = SettingsWrapper()
-    django_settings.ARANGODB_DATABASE = settings.ARANGODB_DATABASE + "_test"
     yield django_settings
     django_settings.finalize()
 
@@ -63,7 +62,9 @@ def stixifier_profile():
 
 @pytest.fixture
 def obstracts_job(feed_with_posts, stixifier_profile):
-    h4f_job = h4f_models.Job.objects.create(feed_id=feed_with_posts.id, id="164716d9-85af-4a81-8f71-9168db3fadf0")
+    h4f_job = h4f_models.Job.objects.create(
+        feed_id=feed_with_posts.id, id="164716d9-85af-4a81-8f71-9168db3fadf0"
+    )
     job = create_job_entry(h4f_job, stixifier_profile.id)
     yield job
 
@@ -80,21 +81,21 @@ def feed_with_posts():
     post1 = h4f_models.Post.objects.create(
         feed=h4f_feed,
         title="Post 1",
-        pubdate=dt.now(),
+        pubdate=timezone.now(),
         id="561ed102-7584-4b7d-a302-43d4bca5605b",
         link="https://example.blog/1",
     )
     post2 = h4f_models.Post.objects.create(
         feed=h4f_feed,
         title="Post 2",
-        pubdate=dt.now(),
+        pubdate=timezone.now(),
         id="345c8d0b-c6ca-4419-b1f7-0daeb4e9278b",
         link="https://example.blog/2",
     )
     post3 = h4f_models.Post.objects.create(
         feed=h4f_feed,
         title="Post 3",
-        pubdate=dt.now(),
+        pubdate=timezone.now(),
         id="72e1ad04-8ce9-413d-b620-fe7c75dc0a39",
         link="https://example.blog/3",
         description="blah Post 3 description blah",
@@ -102,10 +103,11 @@ def feed_with_posts():
     post4 = h4f_models.Post.objects.create(
         feed=h4f_feed,
         title="Post 4",
-        pubdate=dt.now(),
+        pubdate=timezone.now(),
         id="42a5d042-26fa-41f3-8850-307be3f330cf",
         link="https://example.blog/4",
     )
     for post in [post1, post2, post3, post4]:
         models.File.objects.create(feed=feed, processed=True, post=post)
+
     yield feed

@@ -15,6 +15,8 @@ from drf_spectacular.utils import (
 )
 from drf_spectacular.types import OpenApiTypes
 import txt2stix.common
+
+from obstracts.server.md_helper import MarkdownImageReplacer
 from . import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
 import hyperlink
@@ -88,37 +90,6 @@ class SchemaViewCached(SpectacularAPIView):
 class PlainMarkdownRenderer(renderers.BaseRenderer):
     media_type = "text/markdown"
     format = "text/markdown"
-
-
-class MarkdownImageReplacer(MarkdownRenderer):
-    def __init__(self, request, queryset):
-        self.request = request
-        self.queryset = queryset
-        super().__init__()
-
-    def image(self, token: dict[str, dict], state: mistune.BlockState) -> str:
-        src = token["attrs"]["url"]
-        if not hyperlink.parse(src).absolute:
-            try:
-                token["attrs"]["url"] = self.request.build_absolute_uri(
-                    self.queryset.get(name=src).file.url
-                )
-            except Exception as e:
-                pass
-        return super().image(token, state)
-
-    def codespan(self, token: dict[str, dict], state: mistune.BlockState) -> str:
-        token["raw"] = unescape(token["raw"])
-        return super().codespan(token, state)
-
-    @classmethod
-    def get_markdown(
-        cls, request, md_text, images_qs: "models.models.BaseManager[models.FileImage]"
-    ):
-        modify_links = mistune.create_markdown(
-            escape=False, renderer=cls(request, images_qs)
-        )
-        return modify_links(md_text)
 
 
 @extend_schema_view(
@@ -388,19 +359,19 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
     class filterset_class(h4f_views.PostOnlyView.filterset_class):
         incident_classification_types = [
-            "Other",  # the report does not fit into any of the following categories
-            "APT Group",
-            "Vulnerability",
-            "Data Leak",
-            "Malware",
-            "Ransomware",
-            "Infostealer",
-            "Threat Actor",
-            "Campaign",
-            "Exploit",
-            "Cyber Crime",
-            "Indicators of Compromise",
-            "TTPs",
+            "other",
+            "apt_group",
+            "vulnerability",
+            "data_leak",
+            "malware",
+            "ransomware",
+            "infostealer",
+            "threat_actor",
+            "campaign",
+            "exploit",
+            "cyber_crime",
+            "indicator_of_compromise",
+            "ttp",
         ]
         show_hidden_posts = filters.BooleanFilter(
             method="show_hidden_posts_filter",
@@ -566,10 +537,14 @@ class PostOnlyView(h4f_views.PostOnlyView):
     @decorators.action(detail=True, methods=["GET"])
     def markdown(self, request, post_id=None, **kwargs):
         obj = self.get_obstracts_file(fail_if_no_extraction=True)
+        images = {
+            img.name: img.file.url
+            for img in models.FileImage.objects.filter(report__post_id=post_id)
+        }
         resp_text = MarkdownImageReplacer.get_markdown(
-            request,
+            request.build_absolute_uri(),
             obj.markdown_file.read().decode(),
-            models.FileImage.objects.filter(report__post_id=post_id),
+            images,
         )
         return FileResponse(
             streaming_content=resp_text,
