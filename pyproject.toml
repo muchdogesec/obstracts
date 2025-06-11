@@ -45,4 +45,5 @@ test = [
   "pytest-subtests",
   "pytest-cov",
   "pytest-django",
+  "schemathesis",
 ]
