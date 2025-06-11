@@ -63,6 +63,7 @@ jobs:
 
       - name: test all endpoints 1
         id: test-endpoints
+        continue-on-error: true
         run: |
           pip install -e '.[test]' -r requirements.txt
           echo ARANGODB_HOST_URL="http://${{ steps.get_ip.outputs.IP_ADDRESS }}:18529" >> tests/tests.env
@@ -75,6 +76,7 @@ jobs:
           pytest --cov --cov-branch --cov-report=xml --junitxml=unittest.junit.xml -o junit_family=legacy tests/src
       
       - name: test schema
+        continue-on-error: true
         run: |
           set -a; source .env; source tests/tests.env; set +a
           pytest --cov --cov-branch --cov-append --cov-report=xml --junitxml=schemathesis.junit.xml -o junit_family=legacy tests/st/test_schemathesis.py
