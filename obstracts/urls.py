@@ -20,14 +20,13 @@ from django.conf.urls.static import static
 
 from obstracts.server.identities import IdentityView
 from .server import views
-from rest_framework import routers
+from rest_framework import routers, response
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from django.conf import settings
 import dogesec_commons.objects.views as arango_views
 from dogesec_commons.stixifier.views import ProfileView, ExtractorsView
-
-
 from django.http import JsonResponse
+
 def handler404(*args, **kwargs):
     return JsonResponse(dict(code=404, message='non-existent page'), status=404)
 

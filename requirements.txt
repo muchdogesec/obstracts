@@ -123,7 +123,7 @@ djangorestframework==3.16.0
     #   drf-spectacular
     #   history4feed
     #   obstracts (pyproject.toml)
-dogesec-commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-06-03-11-55-47/dogesec_commons-0.0.7rc1-py3-none-any.whl
+dogesec-commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-06-05-08-47-25/dogesec_commons-0.0.7rc1-py3-none-any.whl
     # via
     #   -r requirements.in
     #   dogesec-commons
@@ -493,7 +493,7 @@ stix2==3.0.1
     #   stix2extensions
 stix2-patterns==2.0.0
     # via stix2
-stix2arango @ https://github.com/muchdogesec/stix2arango/releases/download/main-2025-04-26-07-41-35/stix2arango-0.0.4rc0-py3-none-any.whl
+stix2arango @ https://github.com/muchdogesec/stix2arango/releases/download/main-2025-06-12-05-09-47/stix2arango-0.0.4rc0-py3-none-any.whl
     # via
     #   -r requirements.in
     #   dogesec-commons

@@ -20,6 +20,8 @@ from history4feed.app import models as h4f_models
 from history4feed.app.models import JobState as H4FState
 from django.db.models.signals import post_save
 from django.contrib.postgres.fields import ArrayField
+from stix2arango.stix2arango import Stix2Arango
+from dogesec_commons.objects.db_view_creator import link_one_collection
 # Create your models here.
 if typing.TYPE_CHECKING:
     from .. import settings
@@ -103,15 +105,21 @@ class FeedProfile(models.Model):
 def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
     feed, _ = FeedProfile.objects.update_or_create(feed=instance)
 
+def auto_create_collection(feed: FeedProfile, identity):
+    s2a = Stix2Arango(database=settings.ARANGODB_DATABASE, collection=feed.collection_name, file='', host_url=settings.ARANGODB_HOST_URL, create_collection=True)
+    s2a.run(data=dict(type="bundle", id="bundle--"+str(feed.id), objects=[identity]))
+    link_one_collection(s2a.arango.db, settings.ARANGODB_DATABASE_VIEW, feed.vertex_collection)
+    link_one_collection(s2a.arango.db, settings.ARANGODB_DATABASE_VIEW, feed.edge_collection)
+
 @receiver(post_save, sender=FeedProfile)
-def auto_update_identity(sender, instance: FeedProfile, **kwargs):
-    logging.info(f"updating identities for feed {instance.id}")
+def auto_update_identity(sender, instance: FeedProfile, created, **kwargs):
     identity = json.loads(instance.identity.serialize())
+    if created:
+        auto_create_collection(instance, identity)
     identity['_record_modified'] = timezone.now().isoformat().replace('+00:00', 'Z')
     query = """
     FOR doc IN @@vertex_collection
     FILTER doc.id == @identity.id
-    FILTER doc.modified != @identity.modified
     UPDATE doc WITH @identity IN @@vertex_collection
     RETURN doc._key
     """
