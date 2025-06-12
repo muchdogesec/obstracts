@@ -50,20 +50,19 @@ jobs:
       - name: test all endpoints 1
         id: test-endpoints
         run: |
-          exit 9
           pip install -e '.[test]' -r requirements.txt
           echo ARANGODB_HOST_URL="http://${{ steps.get_ip.outputs.IP_ADDRESS }}:18529" >> tests/tests.env
           echo POSTGRES_HOST="${{ steps.get_ip.outputs.IP_ADDRESS }}" >> tests/tests.env
           echo DJANGO_WWW_PATH=$PWD/django_www_path/ >> tests/tests.env
           echo PYTHONPATH=. >> tests/tests.env
 
-          set -a; source .env; source tests/tests.env; set +a
+          set -a; source tests/tests.env; set +a
           pytest --cov --cov-branch --cov-report=xml --junitxml=unittest.junit.xml -o junit_family=legacy tests/src
       
       - name: test schema
         if: ${{ failure() || success() }}
         run: |
-          set -a; source .env; source tests/tests.env; set +a
+          set -a; source tests/tests.env; set +a
           pytest --cov --cov-branch --cov-append --cov-report=xml --junitxml=schemathesis.junit.xml -o junit_family=legacy tests/st/test_schemathesis.py
 
       - name: Upload coverage reports to Codecov
