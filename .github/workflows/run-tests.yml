@@ -24,30 +24,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-    
-          
-      - name: Set .env for docker-compose
-        run: |
-            echo "HISTORY4FEED_EARLIEST_SEARCH_DATE=$(date -u -d yesterday +'%Y-%m-%dT%H:%M:%SZ')" >> .env
-            echo "SCRAPFLY_APIKEY=${{secrets.SCRAPFLY_APIKEY}}" >> .env
-
-
-            cat tests/st/.env.schemathesis >> .env
-            cp tests/st/docker-compose.yml arango-compose.yml
-
-            echo ==== env file start =====
-            cat .env
-            echo
-            echo ==== env file end   =====
 
          
       - name: Start docker-compose
         uses: hoverkraft-tech/compose-action@v2.0.2
+        id: start_container
         with:
           compose-file: |
-            arango-compose.yml
+            tests/st/docker-compose.yml
           compose-flags:
-            --env-file .env
+            --env-file tests/tests.env
             -p obstracts-action
 
       - name: Get IP addresses
@@ -64,23 +50,21 @@ jobs:
       - name: test all endpoints 1
         id: test-endpoints
         run: |
+          exit 9
           pip install -e '.[test]' -r requirements.txt
           echo ARANGODB_HOST_URL="http://${{ steps.get_ip.outputs.IP_ADDRESS }}:18529" >> tests/tests.env
           echo POSTGRES_HOST="${{ steps.get_ip.outputs.IP_ADDRESS }}" >> tests/tests.env
+          echo DJANGO_WWW_PATH=$PWD/django_www_path/ >> tests/tests.env
           echo PYTHONPATH=. >> tests/tests.env
+
           set -a; source .env; source tests/tests.env; set +a
-          export DJANGO_WWW_PATH=$PWD/django_www_path/
-
-
           pytest --cov --cov-branch --cov-report=xml --junitxml=unittest.junit.xml -o junit_family=legacy tests/src
       
       - name: test schema
-        if: ${{ steps.get_ip.conclusion == 'success' }}
+        if: ${{ failure() || success() }}
         run: |
           set -a; source .env; source tests/tests.env; set +a
           pytest --cov --cov-branch --cov-append --cov-report=xml --junitxml=schemathesis.junit.xml -o junit_family=legacy tests/st/test_schemathesis.py
-
-            
 
       - name: Upload coverage reports to Codecov
         if: ${{ !cancelled() }}

@@ -651,7 +651,7 @@ FOR doc IN @@view
         """.replace(
             "#more_filters", "\n".join(filters)
         )
-
+        print(query, bind_vars, helper.query)
         return helper.execute_query(query, bind_vars=bind_vars)
 
 

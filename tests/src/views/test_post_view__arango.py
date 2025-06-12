@@ -227,8 +227,8 @@ def test_get_post_objects_filters(
     assert resp.status_code == 200, resp.content
     objects = resp.data["objects"]
     assert len(objects) == resp.data["page_results_count"]
-    assert len(objects) == len(expected_ids)
     assert {obj["id"] for obj in objects} == set(expected_ids)
+    assert len(objects) == len(expected_ids)
 
 
 @pytest.mark.parametrize(

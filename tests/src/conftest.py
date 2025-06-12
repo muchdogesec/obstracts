@@ -27,9 +27,18 @@ def pytest_sessionstart():
         username=settings.ARANGODB_USERNAME,
         password=settings.ARANGODB_PASSWORD,
     )
-    db_name = settings.ARANGODB_DATABASE + "_database"
+    db_name: str = settings.ARANGODB_DATABASE + "_database"
     if not sys_db.has_database(db_name):
         sys_db.create_database(db_name)
+    db = client.db(
+        db_name,
+        username=settings.ARANGODB_USERNAME,
+        password=settings.ARANGODB_PASSWORD,
+    )
+    for c in db.collections():
+        c_name = c['name']
+        if c_name.endswith('_collection'):
+            db.collection(c_name).truncate()
 
 
 @pytest.fixture(autouse=True, scope="session")
