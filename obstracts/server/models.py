@@ -37,9 +37,12 @@ def validate_extractor(types, name):
     raise ValidationError(f"{name} does not exist", 400)
 
 
-def upload_to_func(instance: 'File|FileImage', filename):
+def upload_to_func(instance: 'File|FileImage', filename: str):
     if isinstance(instance, FileImage):
         instance = instance.report
+    name_part, _, ext_part = filename.rpartition('.')
+    if ext_part and name_part:
+        filename = f"{slugify(name_part)}.{ext_part}"
     return os.path.join(str(instance.feed.id), 'posts', str(instance.post_id), filename)
 
 class JobState(models.TextChoices):
@@ -162,6 +165,7 @@ class File(models.Model):
     processed = models.BooleanField(default=False)
 
     markdown_file = models.FileField(upload_to=upload_to_func, null=True)
+    pdf_file = models.FileField(upload_to=upload_to_func, null=True)
     summary = models.CharField(max_length=65535, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.PROTECT, default=None, null=True)
 
