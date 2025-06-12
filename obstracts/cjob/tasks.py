@@ -43,7 +43,6 @@ class CancelledJob(Exception):
     pass
 
 
-
 @shared_task
 def job_completed_with_error(job_id):
     job = Job.objects.get(pk=job_id)
@@ -63,20 +62,11 @@ def job_completed_with_error(job_id):
     job.save()
 
 
-
 def new_task(h4f_job: h4f_models.Job, profile_id):
-    feed, _ = FeedProfile.objects.update_or_create(feed=h4f_job.feed)
-    job = Job.objects.create(history4feed_job=h4f_job, feed=feed, profile_id=profile_id)
-    # (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
-    #     countdown=5, root_id=job.id, task_id=job.id
-    # )
-    return job
+    return create_job_entry(h4f_job, profile_id)
 
-def new_post_patch_task(h4f_job: h4f_models.Job, profile_id):
+def create_job_entry(h4f_job: h4f_models.Job, profile_id):
     job = Job.objects.create(history4feed_job=h4f_job, feed_id=h4f_job.feed_id, profile_id=profile_id)
-    # (poll_job.s(job.id) | start_processing.s(job.id)).apply_async(
-    #     countdown=5, root_id=job.id, task_id=job.id
-    # )
     return job
 
 
@@ -116,11 +106,26 @@ def process_post(job_id, post_id, *args):
     try:
         if job.is_cancelled():
             raise CancelledJob()
-        file, _ = models.File.objects.update_or_create(post_id=post_id, defaults=dict(feed_id=job.feed.id, profile_id=job.profile.id, profile=job.profile, processed=False))
+        file, _ = models.File.objects.update_or_create(
+            post_id=post_id,
+            defaults=dict(
+                feed_id=job.feed.id,
+                profile_id=job.profile.id,
+                profile=job.profile,
+                processed=False,
+            ),
+        )
 
         stream = io.BytesIO(post.description.encode())
         stream.name = f"post-{post_id}.html"
-        processor = StixifyProcessor(stream, job.profile, job_id=f"{post.id}+{job.id}", file2txt_mode="html_article", report_id=post_id, base_url=post.link)
+        processor = StixifyProcessor(
+            stream,
+            job.profile,
+            job_id=f"{post.id}+{job.id}",
+            file2txt_mode="html_article",
+            report_id=post_id,
+            base_url=post.link,
+        )
         processor.collection_name = job.feed.collection_name
         properties = ReportProperties(
             name=post.title,
@@ -129,13 +134,21 @@ def process_post(job_id, post_id, *args):
             confidence=0,
             labels=[],
             created=file.post.pubdate,
-            kwargs=dict(external_references=[
-                dict(source_name='post_link', url=post.link),
-                dict(source_name='obstracts_feed_id', external_id=str(job.feed.id)),
-                dict(source_name='obstracts_profile_id', external_id=str(job.profile.id)),
-            ])
+            kwargs=dict(
+                external_references=[
+                    dict(source_name="post_link", url=post.link),
+                    dict(source_name="obstracts_feed_id", external_id=str(job.feed.id)),
+                    dict(
+                        source_name="obstracts_profile_id",
+                        external_id=str(job.profile.id),
+                    ),
+                ]
+            ),
         )
-        processor.setup(properties, dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id))
+        processor.setup(
+            properties,
+            dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id),
+        )
         processor.process()
 
         if processor.incident:
@@ -143,16 +156,19 @@ def process_post(job_id, post_id, *args):
             file.ai_incident_summary = processor.incident.explanation
             file.ai_incident_classification = processor.incident.incident_classification
 
-        file.txt2stix_data = processor.txt2stix_data.model_dump(mode="json", exclude_defaults=True, exclude_unset=True, exclude_none=True)
+        file.txt2stix_data = processor.txt2stix_data.model_dump(
+            mode="json", exclude_defaults=True, exclude_unset=True, exclude_none=True
+        )
         file.summary = processor.summary
 
-
-        file.markdown_file.save('markdown.md', processor.md_file.open(), save=True)
-        models.FileImage.objects.filter(report=file).delete() # remove old references
+        file.markdown_file.save("markdown.md", processor.md_file.open(), save=True)
+        models.FileImage.objects.filter(report=file).delete()  # remove old references
 
         for image in processor.md_images:
-            models.FileImage.objects.create(report=file, file=File(image, image.name), name=image.name)
-        
+            models.FileImage.objects.create(
+                report=file, file=File(image, image.name), name=image.name
+            )
+
         file.processed = True
         file.save()
         job.processed_items += 1
@@ -167,8 +183,6 @@ def process_post(job_id, post_id, *args):
         job.errors.append(msg)
     job.save()
     return job_id
-
-
 
 
 from celery import signals

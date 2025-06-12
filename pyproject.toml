@@ -34,3 +34,16 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/muchdogesec/obstracts"
 Issues = "https://github.com/muchdogesec/obstracts/issues"
+
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-subtests",
+  "pytest-cov",
+  "pytest-django",
+  "schemathesis",
+]

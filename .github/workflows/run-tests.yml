@@ -24,31 +24,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-    
-          
-      - name: Set .env for docker-compose
-        run: |
-            echo "HISTORY4FEED_EARLIEST_SEARCH_DATE=$(date -u -d yesterday +'%Y-%m-%dT%H:%M:%SZ')" >> .env
-            echo "SCRAPFLY_APIKEY=${{secrets.SCRAPFLY_APIKEY}}" >> .env
-
-
-            cat tests/st/.env.schemathesis >> .env
-            cp tests/st/docker-compose.yml arango-compose.yml
-
-            echo ==== env file start =====
-            cat .env
-            echo
-            echo ==== env file end   =====
 
          
       - name: Start docker-compose
         uses: hoverkraft-tech/compose-action@v2.0.2
+        id: start_container
         with:
           compose-file: |
-            arango-compose.yml
-            docker-compose.yml
+            tests/st/docker-compose.yml
           compose-flags:
-            --env-file .env
+            --env-file tests/tests.env
             -p obstracts-action
 
       - name: Get IP addresses
@@ -57,46 +42,48 @@ jobs:
               IP_ADDRESS=$(docker network inspect -f '{{range.IPAM.Config}}{{.Gateway}}{{end}}' obstracts-action_default)
               echo "ip_address=$IP_ADDRESS" >> "$GITHUB_OUTPUT"
               echo "IP_ADDRESS=$IP_ADDRESS" >> "$GITHUB_OUTPUT"
-              echo "SERVICE_BASE_URL=http://$IP_ADDRESS:8001/" >> "$GITHUB_OUTPUT"
+              echo "SERVICE_BASE_URL=http://$IP_ADDRESS:18529/" >> "$GITHUB_OUTPUT"
               cat "$GITHUB_OUTPUT"
-
-      - name: Wait for server to start
-        run: |
-              RETRY_DELAY=3
-              RETRY_COUNT=10
-              echo "Waiting for server to start"
-              curl --retry-delay $RETRY_DELAY --retry $RETRY_COUNT --retry-connrefused ${{ steps.get_ip.outputs.SERVICE_BASE_URL }} > /dev/null
-              if [ $? -ne 0 ]; then
-                echo "exiting after waiting $(( $RETRY_DELAY * $RETRY_COUNT )) seconds for server to start"
-                exit 1
-              fi
 
     
 
       - name: test all endpoints 1
         id: test-endpoints
         run: |
-          pip install -r tests/requirements.txt
-          export SERVICE_BASE_URL="${{ steps.get_ip.outputs.SERVICE_BASE_URL }}"
-          export TEST_AI_PROFILE_MODEL="${{ secrets.TEST_AI_PROFILE_MODEL }}"
+          pip install -e '.[test]' -r requirements.txt
+          echo ARANGODB_HOST_URL="http://${{ steps.get_ip.outputs.IP_ADDRESS }}:18529" >> tests/tests.env
+          echo POSTGRES_HOST="${{ steps.get_ip.outputs.IP_ADDRESS }}" >> tests/tests.env
+          echo DJANGO_WWW_PATH=$PWD/django_www_path/ >> tests/tests.env
+          echo PYTHONPATH=. >> tests/tests.env
 
-          pytest tests/
-
-      - name: run schemathesis
-        uses: schemathesis/action@v1
-        if: always()
-        env:
-          SCHEMATHESIS_HOOKS: tests.st.hooks
-        with:
-          schema: ${{ steps.get_ip.outputs.SERVICE_BASE_URL }}/api/schema/
-          checks: all
-          wait-for-schema: '30'
-          args: '--generation-allow-x00 false'
-
-      - name: test delete all
-        id: test-endpoints-2
+          set -a; source tests/tests.env; set +a
+          pytest --cov --cov-branch --cov-report=xml --junitxml=unittest.junit.xml -o junit_family=legacy tests/src
+      
+      - name: test schema
+        if: ${{ failure() || success() }}
         run: |
-            pip install -r tests/requirements.txt
-            export DELETE_ALL=true
-            export SERVICE_BASE_URL="${{ steps.get_ip.outputs.SERVICE_BASE_URL }}"
-            pytest tests/test_99_delete_all.py
+          set -a; source tests/tests.env; set +a
+          pytest --cov --cov-branch --cov-append --cov-report=xml --junitxml=schemathesis.junit.xml -o junit_family=legacy tests/st/test_schemathesis.py
+
+      - name: Upload coverage reports to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: unittest.junit.xml
+          flags: unittest
+
+      
+      - name: Upload schemathesis test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: schemathesis.junit.xml
+          flags: schemathesis
