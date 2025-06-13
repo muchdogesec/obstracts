@@ -618,7 +618,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         )
         logging.debug(f"POST's objects removed {out}")
         return True
-
+    
     def get_post_objects(self, post_id):
         post_file: models.File = self.get_obstracts_file()
         helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)

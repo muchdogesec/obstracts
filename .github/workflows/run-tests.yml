@@ -47,15 +47,17 @@ jobs:
 
     
 
-      - name: test all endpoints 1
-        id: test-endpoints
+      - id: set-env
         run: |
           pip install -e '.[test]' -r requirements.txt
+          bash setup_playwright.sh
           echo ARANGODB_HOST_URL="http://${{ steps.get_ip.outputs.IP_ADDRESS }}:18529" >> tests/tests.env
           echo POSTGRES_HOST="${{ steps.get_ip.outputs.IP_ADDRESS }}" >> tests/tests.env
           echo DJANGO_WWW_PATH=$PWD/django_www_path/ >> tests/tests.env
           echo PYTHONPATH=. >> tests/tests.env
 
+      - name: test all endpoints 1
+        run: |
           set -a; source tests/tests.env; set +a
           pytest --cov --cov-branch --cov-report=xml --junitxml=unittest.junit.xml -o junit_family=legacy tests/src
       

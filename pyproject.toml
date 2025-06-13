@@ -30,6 +30,7 @@ dependencies = [
     "django-cors-headers",
     "django-storages[s3]",
     "django-cleanup",
+    "playwright",
   ]
 [project.urls]
 Homepage = "https://github.com/muchdogesec/obstracts"
