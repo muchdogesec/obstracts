@@ -9,6 +9,7 @@ from stix2arango.stix2arango import Stix2Arango
 import contextlib
 from arango.client import ArangoClient
 from obstracts.server.models import File
+from obstracts.server.views import PostOnlyView
 
 
 def as_arango2stix_db(db_name):
@@ -239,10 +240,10 @@ def test_get_post_objects_filters(
     ],
 )
 @pytest.mark.django_db
-def test_delete_post_deletes_objects_filters(client, feed_with_posts, post_id):
+def test_remove_report_objects(client, feed_with_posts, post_id):
     upload_arango_objects(str(feed_with_posts.id))
-    resp = client.delete(f"/api/v1/posts/{post_id}/")
-    assert resp.status_code == 204, resp.content
+    post = File.objects.get(pk=post_id)
+    PostOnlyView.remove_report_objects(post)
     for collection_name in [
         feed_with_posts.edge_collection,
         feed_with_posts.vertex_collection,

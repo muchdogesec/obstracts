@@ -134,6 +134,7 @@ def add_pdf_to_post(job_id, post_id):
 
 @shared_task
 def process_post(job_id, post_id, *args):
+    from obstracts.server.views import PostOnlyView
     job = Job.objects.get(pk=job_id)
     post = h4f_models.Post.objects.get(pk=post_id)
     try:
@@ -149,6 +150,7 @@ def process_post(job_id, post_id, *args):
             ),
         )
         add_pdf_to_post(job_id, post_id)
+        PostOnlyView.remove_report_objects(file)
 
         stream = io.BytesIO(post.description.encode())
         stream.name = f"post-{post_id}.html"

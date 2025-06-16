@@ -8,6 +8,8 @@ from obstracts.server import models
 from history4feed.app import models as h4f_models
 from dogesec_commons.stixifier.stixifier import StixifyProcessor
 
+from obstracts.server.views import PostOnlyView
+
 @pytest.fixture(autouse=True, scope="module")
 def celery_eager():
     from history4feed.h4fscripts.celery import app
@@ -109,12 +111,14 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
         patch("obstracts.cjob.tasks.add_pdf_to_post") as mock_add_pdf_to_post,
+        patch.object(PostOnlyView, "remove_report_objects") as mock_remove_report_objects,
     ):
         mock_stixify_processor_cls.return_value = fake_stixifier_processor
         process_post.si(obstracts_job.id, post_id).delay()
         obstracts_job.refresh_from_db()
         file = models.File.objects.get(pk=post_id)
         mock_add_pdf_to_post.assert_called_once_with(str(obstracts_job.id), post_id)
+        mock_remove_report_objects.assert_called_once_with(file) #assert report/post objects removed
         assert file.profile == obstracts_job.profile
         assert file.feed == obstracts_job.feed
         mock_stixify_processor_cls.assert_called_once()
