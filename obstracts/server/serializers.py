@@ -75,6 +75,7 @@ class ObstractsPostSerializer(h4fserializers.PostSerializer):
     ai_incident_classification = serializers.ListField(source='obstracts_post.ai_incident_classification', required=False, read_only=True, allow_null=True)
     summary = serializers.CharField(source='obstracts_post.summary', read_only=True, required=False, allow_null=True)
     visible = serializers.BooleanField(source='obstracts_post.processed', read_only=True, required=False, allow_null=True)
+    archived_pdf = serializers.FileField(source='obstracts_post.pdf_file', read_only=True, required=False, allow_null=True)
 
 
 class PostWithFeedIDSerializer(ObstractsPostSerializer):

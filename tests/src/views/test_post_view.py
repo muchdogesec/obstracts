@@ -243,14 +243,13 @@ def test_post_images_no_images(client, feed_with_posts):
 def test_post_destroy(client, feed_with_posts):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
     with (
-        patch.object(PostOnlyView, "remove_files", autospec=True) as mock_remove_files,
+        patch.object(PostOnlyView, "remove_report_objects", autospec=True) as mock_remove_report_objects,
     ):
         resp = client.delete("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 204, resp.content
         resp = client.get("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 404
-        view = mock_remove_files.call_args[0][0]
-        mock_remove_files.assert_called_once_with(view, post)
+        mock_remove_report_objects.assert_called_once_with(post)
 
 
 @pytest.mark.django_db

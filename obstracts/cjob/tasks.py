@@ -4,6 +4,7 @@ import time
 from urllib.parse import urljoin
 from celery import shared_task, chain, current_task, Task as CeleryTask
 from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 import typing
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
@@ -76,7 +77,7 @@ def start_processing(job_id):
     logging.info(
         f"processing {job_id=}, {job.feed_id=}, {current_task.request.root_id=}"
     )
-    posts = [f.post.id for f in h4f_models.FulltextJob.objects.filter(job=job.history4feed_job).all()]
+    posts = [f.post.id for f in h4f_models.FulltextJob.objects.filter(job=job.history4feed_job, status=h4f_models.FullTextState.RETRIEVED).all()]
     
     logging.info("processing %d posts for job %s", len(posts), job_id)
     tasks = [wait_in_queue.si(job_id)] + [process_post.si(job_id, str(post_id)) for post_id in posts]
@@ -98,9 +99,42 @@ def wait_in_queue(self: CeleryTask, job_id):
     job.save()
     return True
 
+def download_pdf(url):
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(url, wait_until='networkidle')
+        dimensions = page.evaluate(
+            """
+        function(){
+            const rect = document.body.getBoundingClientRect();
+            return {
+                "width": rect.width.toString(),
+                "height": rect.height.toString(), 
+            }
+        }
+        """
+        )
+        pdf_bytes = page.pdf(**dimensions)
+        browser.close()
+        return bytes(pdf_bytes)
+    
+
+def add_pdf_to_post(job_id, post_id):
+    job = models.Job.objects.get(pk=job_id)
+    post_file = models.File.objects.get(pk=post_id)
+    try:
+        pdf_bytes = download_pdf(post_file.post.link)
+        post_file.pdf_file.save(f"{post_file.post.title}.pdf", io.BytesIO(pdf_bytes))
+        post_file.save()
+    except Exception as  e:
+        job.errors.append(f"process file to pdf failed for {post_file.pk}")
+        job.save()
 
 @shared_task
 def process_post(job_id, post_id, *args):
+    from obstracts.server.views import PostOnlyView
     job = Job.objects.get(pk=job_id)
     post = h4f_models.Post.objects.get(pk=post_id)
     try:
@@ -115,6 +149,8 @@ def process_post(job_id, post_id, *args):
                 processed=False,
             ),
         )
+        add_pdf_to_post(job_id, post_id)
+        PostOnlyView.remove_report_objects(file)
 
         stream = io.BytesIO(post.description.encode())
         stream.name = f"post-{post_id}.html"

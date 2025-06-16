@@ -3,10 +3,12 @@
 import io
 from unittest.mock import MagicMock, patch, call
 import pytest
-from obstracts.cjob.tasks import job_completed_with_error, process_post, start_processing, wait_in_queue
+from obstracts.cjob.tasks import add_pdf_to_post, download_pdf, job_completed_with_error, process_post, start_processing, wait_in_queue
 from obstracts.server import models
 from history4feed.app import models as h4f_models
 from dogesec_commons.stixifier.stixifier import StixifyProcessor
+
+from obstracts.server.views import PostOnlyView
 
 @pytest.fixture(autouse=True, scope="module")
 def celery_eager():
@@ -52,7 +54,7 @@ def test_start_processing(obstracts_job):
     obstracts_job.update_state(models.JobState.PROCESSING)
     post_ids = []
     for post in obstracts_job.feed.feed.posts.all():
-        h4f_models.FulltextJob.objects.create(post_id=post.id, job_id=obstracts_job.id)
+        h4f_models.FulltextJob.objects.create(post_id=post.id, job_id=obstracts_job.id, status=h4f_models.FullTextState.RETRIEVED)
         post_ids.append(str(post.id))
     
     with (
@@ -108,11 +110,15 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch("obstracts.cjob.tasks.add_pdf_to_post") as mock_add_pdf_to_post,
+        patch.object(PostOnlyView, "remove_report_objects") as mock_remove_report_objects,
     ):
         mock_stixify_processor_cls.return_value = fake_stixifier_processor
         process_post.si(obstracts_job.id, post_id).delay()
         obstracts_job.refresh_from_db()
         file = models.File.objects.get(pk=post_id)
+        mock_add_pdf_to_post.assert_called_once_with(str(obstracts_job.id), post_id)
+        mock_remove_report_objects.assert_called_once_with(file) #assert report/post objects removed
         assert file.profile == obstracts_job.profile
         assert file.feed == obstracts_job.feed
         mock_stixify_processor_cls.assert_called_once()
@@ -155,3 +161,34 @@ def test_process_post_with_incident(obstracts_job, fake_stixifier_processor):
         assert file.ai_describes_incident == incident.describes_incident
         assert file.ai_incident_summary == incident.explanation
         assert file.ai_incident_classification == incident.incident_classification
+
+
+@pytest.mark.django_db
+def test_add_pdf_to_post(obstracts_job):
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    with (
+        patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf,
+    ):
+        mock_download_pdf.return_value = b"assume this is a pdf"
+        add_pdf_to_post(obstracts_job.id, post_id)
+        mock_download_pdf.assert_called_once_with("https://example.blog/3")
+        post_file = models.File.objects.get(pk=post_id)
+        assert post_file.pdf_file.read() == mock_download_pdf.return_value
+
+
+@pytest.mark.django_db
+def test_add_pdf_to_post__failure(obstracts_job):
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    with (
+        patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf,
+    ):
+        mock_download_pdf.side_effect = Exception
+        add_pdf_to_post(obstracts_job.id, post_id)
+        mock_download_pdf.assert_called_once_with("https://example.blog/3")
+        obstracts_job.refresh_from_db()
+        assert len(obstracts_job.errors) == 1
+
+@pytest.mark.django_db
+def test_download_pdf():
+    result = download_pdf("https://example.com/")
+    assert tuple(result[:4]) == (0x25,0x50,0x44,0x46)

@@ -15,6 +15,7 @@ from drf_spectacular.utils import (
 )
 from drf_spectacular.types import OpenApiTypes
 import txt2stix.common
+from stix2arango.services import ArangoDBService
 
 from obstracts.server.md_helper import MarkdownImageReplacer
 from . import autoschema as api_schema
@@ -587,38 +588,47 @@ class PostOnlyView(h4f_views.PostOnlyView):
     def destroy(self, *args, **kwargs):
         obj = self.get_object()
         retval = super().destroy(*args, **kwargs)
-        self.remove_files(obj.obstracts_post)
+        self.remove_report_objects(obj.obstracts_post)
         return retval
-
-    def remove_files(self, instance: models.File):
-        q = """
+    
+    @staticmethod
+    def remove_report_objects(instance: models.File):
+        instance = models.File.objects.get(pk=instance.post_id)
+        db_service = ArangoDBService(
+            settings.ARANGODB_DATABASE,
+            [],
+            [],
+            create=False,
+            username=settings.ARANGODB_USERNAME,
+            password=settings.ARANGODB_PASSWORD,
+            host_url=settings.ARANGODB_HOST_URL,
+        )
+        helper = ArangoDBHelper(settings.VIEW_NAME, None)
+        bind_vars = {
+                'post_id': str(instance.post_id),
+                "@vertex": instance.feed.vertex_collection,
+                "@edge": instance.feed.edge_collection,
+        }
+        query = """
         LET removed_edges = (
             FOR de IN @@edge
             FILTER de._obstracts_post_id == @post_id
-            REMOVE de IN @@edge
-            RETURN de.id
+            RETURN [de._key, de.id]
         )
 
         LET removed_vertices = (
             FOR dv IN @@vertex
             FILTER dv._obstracts_post_id == @post_id
-            REMOVE dv IN @@vertex
-            RETURN dv.id
+            RETURN [dv._key, dv.id]
         )
-        RETURN {removed_edges, removed_vertices}
+        RETURN [removed_vertices, removed_edges]
         """
-        out = ArangoDBHelper(None, self.request).execute_query(
-            q,
-            {
-                "@vertex": instance.feed.collection_name + "_vertex_collection",
-                "@edge": instance.feed.collection_name + "_edge_collection",
-                "post_id": str(instance.post_id),
-            },
-            paginate=False,
-        )
-        logging.debug(f"POST's objects removed {out}")
-        return True
-
+        removed_vertices, removed_edges = helper.execute_query(query, bind_vars=bind_vars, paginate=False)[0]
+        
+        for collection, objects in [(instance.feed.vertex_collection, removed_vertices), (instance.feed.edge_collection, removed_edges)]:
+            helper.db.collection(collection).delete_many([dict(_key=x[0]) for x in objects], silent=True)
+            db_service.update_is_latest_several_chunked([x[1] for x in objects], collection, collection.removesuffix('_vertex_collection').removesuffix('_edge_collection')+'_edge_collection')
+    
     def get_post_objects(self, post_id):
         post_file: models.File = self.get_obstracts_file()
         helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
@@ -651,7 +661,6 @@ FOR doc IN @@view
         """.replace(
             "#more_filters", "\n".join(filters)
         )
-        print(query, bind_vars, helper.query)
         return helper.execute_query(query, bind_vars=bind_vars)
 
 
