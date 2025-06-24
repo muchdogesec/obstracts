@@ -4,7 +4,7 @@
 ## dogesec
 history4feed @ https://github.com/muchdogesec/history4feed/releases/download/main-2025-06-24-06-16-36/history4feed-0.0.1rc0-py3-none-any.whl
 file2txt @ https://github.com/muchdogesec/file2txt/releases/download/main-2025-06-23-07-12-53/file2txt-0.0.1b2-py3-none-any.whl
-txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/main-2025-06-23-08-13-00/txt2stix-0.0.3rc0-py3-none-any.whl
+txt2stix @ https://github.com/muchdogesec/txt2stix/releases/download/main-2025-06-24-08-53-19/txt2stix-0.0.3rc0-py3-none-any.whl
 dogesec_commons[stixifier] @ https://github.com/muchdogesec/dogesec_commons/releases/download/main-2025-06-05-08-47-25/dogesec_commons-0.0.7rc1-py3-none-any.whl
 stix2arango @ https://github.com/muchdogesec/stix2arango/releases/download/main-2025-06-23-05-40-08/stix2arango-0.0.4rc0-py3-none-any.whl
 
