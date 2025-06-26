@@ -31,4 +31,4 @@ jobs:
                     exit 0
                 fi
                 git commit -m 'update requirements [bot]'
-                git push
+                git push origin ${{ github.head_ref }}
