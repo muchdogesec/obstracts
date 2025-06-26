@@ -10,9 +10,13 @@ on:
   pull_request:
 
 jobs:
+  update-requirements:
+    uses: ./.github/workflows/update-dependencies.yml
+    
   test-schema-thesis:
     runs-on: ubuntu-latest
     environment: test_pipeline
+    needs: [update-requirements]
 
     steps:
       - name: Checkout repository
