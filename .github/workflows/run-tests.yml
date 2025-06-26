@@ -1,7 +1,6 @@
 name: Run Tests
-
 permissions:
-  contents: read
+  contents: write
   
 on:
   push:
@@ -10,9 +9,15 @@ on:
   pull_request:
 
 jobs:
+  update-requirements:
+    uses: ./.github/workflows/update-dependencies.yml
+    
   test-schema-thesis:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     environment: test_pipeline
+    needs: [update-requirements]
 
     steps:
       - name: Checkout repository
