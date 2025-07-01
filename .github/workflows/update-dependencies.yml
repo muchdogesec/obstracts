@@ -19,7 +19,7 @@ jobs:
             - name: Update requirements
               run: |
                 pip install pip-tools
-                pip-compile -o requirements.txt requirements.in pyproject.toml --upgrade
+                pip-compile -o requirements.txt pyproject.toml --upgrade
             
             - name: Push if update exists
               run: |
