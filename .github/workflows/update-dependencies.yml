@@ -19,13 +19,13 @@ jobs:
             - name: Update requirements
               run: |
                 pip install pip-tools
-                pip-compile -o requirements.txt requirements.in pyproject.toml --upgrade
+                pip-compile -o requirements.txt pyproject.toml --upgrade
             
             - name: Push if update exists
               run: |
                 git config --local user.name "github-actions[bot]"
                 git config --local user.email "github-actions[bot]@users.noreply.github.com"
-                git add requirements.txt requirements.in
+                git add requirements.txt
                 if [ -z "$(git status --porcelain)" ]; then
                     echo "No changes to commit"
                     exit 0
