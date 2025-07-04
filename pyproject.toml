@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "obstracts"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name = "dogesec" }
 ]
 maintainers = [
   { name = "dogesec" }
 ]
-description = "Obstracts"
+description = "Turn any blog into structured threat intelligence."
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
