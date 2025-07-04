@@ -1,1 +1,1 @@
-python -m playwright install --with-deps chromium  --only-shell --dry-run
+python -m playwright install --with-deps chromium  --only-shell
