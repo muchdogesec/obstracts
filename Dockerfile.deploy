@@ -53,8 +53,10 @@ ENV HISTORY4FEED_WAYBACK_SLEEP_SECONDS=20
 ENV HISTORY4FEED_REQUEST_RETRY_COUNT=5
 
 WORKDIR /usr/src/app
-COPY requirements.txt ./
+COPY requirements.txt .
+COPY setup_playwright.sh .
 RUN --mount=type=cache,target=/root/.cache \
     pip install -r requirements.txt
+RUN bash setup_playwright.sh
 
 COPY . /usr/src/app

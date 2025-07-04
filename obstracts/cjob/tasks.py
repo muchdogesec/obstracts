@@ -104,7 +104,7 @@ def download_pdf(url):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(url, wait_until='networkidle')
+        page.goto(url, wait_until='domcontentloaded')
         dimensions = page.evaluate(
             """
         function(){
@@ -126,9 +126,10 @@ def add_pdf_to_post(job_id, post_id):
     post_file = models.File.objects.get(pk=post_id)
     try:
         pdf_bytes = download_pdf(post_file.post.link)
-        post_file.pdf_file.save(f"{post_file.post.title}.pdf", io.BytesIO(pdf_bytes))
+        post_file.pdf_file.save(f"{post_file.post.title}.pdf", io.BytesIO(pdf_bytes), save=True)
         post_file.save()
     except Exception as  e:
+        logging.exception(f"process file to pdf failed for {post_file.pk}")
         job.errors.append(f"process file to pdf failed for {post_file.pk}")
         job.save()
 
