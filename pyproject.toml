@@ -4,9 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "obstracts"
-version = "0.0.1-pre"
+version = "1.0.0"
 authors = [
-  { name="DOGESEC", email="support@dogesec.com" },
+  { name = "dogesec" }
+]
+maintainers = [
+  { name = "dogesec" }
 ]
 description = "Obstracts"
 readme = "README.md"
@@ -36,7 +39,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/muchdogesec/obstracts"
 Issues = "https://github.com/muchdogesec/obstracts/issues"
-
+"dogesec HQ" = "https://dogesec.com"
 
 [tool.hatch.metadata]
 allow-direct-references = true
