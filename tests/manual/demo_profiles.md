@@ -1,3 +1,19 @@
+## Minimum required body (pattern)
+
+```json
+    {
+        "name": "Minimum required body (pattern)",
+        "extractions": [
+            "pattern_ipv4_address_only"
+        ],
+        "relationship_mode": "standard",
+        "extract_text_from_image": false,
+        "defang": true
+    }
+```
+
+## Pattern
+
 ID = `becfca33-a5bf-5eb8-a601-433d47c7ba71`
 
 ```json
@@ -48,13 +64,12 @@ ID = `becfca33-a5bf-5eb8-a601-433d47c7ba71`
         "ignore_embedded_relationships": false,
         "ignore_embedded_relationships_sro": false,
         "ignore_embedded_relationships_smo": false,
-        "ai_create_attack_flow": false
+        "ai_create_attack_flow": false,
+        "generate_pdf": true
     }
 ```
 
-
-
-
+## AI
 
 ID = `555c01e1-bbeb-5b05-bfed-9f6f9156fdb3`
 
@@ -80,6 +95,7 @@ ID = `555c01e1-bbeb-5b05-bfed-9f6f9156fdb3`
         "ignore_embedded_relationships_smo": true,
         "ai_create_attack_flow": false,
         "ai_summary_provider": "openai:gpt-4o",
-        "ai_content_check_provider": "openai:gpt-4o"
+        "ai_content_check_provider": "openai:gpt-4o",
+        "generate_pdf": true
     }
 ```
