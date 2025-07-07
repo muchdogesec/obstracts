@@ -104,21 +104,32 @@ class FeedProfile(models.Model):
             contact_information=self.feed.url,
         )
     
+    @property
+    def identity_dict(self):
+        return json.loads(self.identity.serialize())
+    
 @receiver(post_save, sender=h4f_models.Feed)
 def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
-    feed, _ = FeedProfile.objects.update_or_create(feed=instance)
+    feed, created = FeedProfile.objects.update_or_create(feed=instance)
+    if created:
+        create_collection(feed)
 
-def auto_create_collection(feed: FeedProfile, identity):
+
+@receiver(post_save, sender=h4f_models.Feed)
+def auto_update_identity(sender, instance: h4f_models.Feed, created, **kwargs):
+    if not created:
+        feed: FeedProfile = instance.obstracts_feed
+        update_identities(feed)
+
+def create_collection(feed: FeedProfile):
     s2a = Stix2Arango(database=settings.ARANGODB_DATABASE, collection=feed.collection_name, file='', host_url=settings.ARANGODB_HOST_URL, create_collection=True)
-    s2a.run(data=dict(type="bundle", id="bundle--"+str(feed.id), objects=[identity]))
+    s2a.run(data=dict(type="bundle", id="bundle--"+str(feed.id), objects=[feed.identity_dict]))
     link_one_collection(s2a.arango.db, settings.ARANGODB_DATABASE_VIEW, feed.vertex_collection)
     link_one_collection(s2a.arango.db, settings.ARANGODB_DATABASE_VIEW, feed.edge_collection)
 
-@receiver(post_save, sender=FeedProfile)
-def auto_update_identity(sender, instance: FeedProfile, created, **kwargs):
-    identity = json.loads(instance.identity.serialize())
-    if created:
-        auto_create_collection(instance, identity)
+
+def update_identities(feed: FeedProfile):
+    identity = feed.identity_dict
     identity['_record_modified'] = timezone.now().isoformat().replace('+00:00', 'Z')
     query = """
     FOR doc IN @@vertex_collection
@@ -127,7 +138,7 @@ def auto_update_identity(sender, instance: FeedProfile, created, **kwargs):
     RETURN doc._key
     """
     binds = {
-        '@vertex_collection': instance.vertex_collection,
+        '@vertex_collection': feed.vertex_collection,
         'identity': identity,
     }
 
@@ -136,7 +147,7 @@ def auto_update_identity(sender, instance: FeedProfile, created, **kwargs):
     helper = ArangoDBHelper(settings.VIEW_NAME, Request(HttpRequest()))
     try:
         updated_keys = helper.execute_query(query, bind_vars=binds, paginate=False)
-        logging.info(f"updated {len(updated_keys)} identities for {instance.id}")
+        logging.info(f"updated {len(updated_keys)} identities for {feed.id}")
     except Exception as e:
         logging.exception("could not update identities")
 

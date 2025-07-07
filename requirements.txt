@@ -207,7 +207,9 @@ grpcio-status==1.71.2
     #   file2txt
     #   google-api-core
 gunicorn==23.0.0
-    # via history4feed
+    # via
+    #   history4feed
+    #   obstracts (pyproject.toml)
 h11==0.16.0
     # via httpcore
 hf-xet==1.1.5
@@ -267,7 +269,7 @@ jsonschema-specifications==2025.4.1
     # via jsonschema
 kombu==5.5.4
     # via celery
-llama-index-core==0.12.46
+llama-index-core==0.12.47
     # via
     #   llama-index-llms-anthropic
     #   llama-index-llms-gemini
