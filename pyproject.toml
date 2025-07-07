@@ -34,6 +34,7 @@ dependencies = [
     "django-storages[s3]",
     "django-cleanup",
     "playwright",
+    "gunicorn",
 
   ]
 [project.urls]
