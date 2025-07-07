@@ -74,13 +74,17 @@ def test_create_collection():
         id="79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
     )
     feed: models.FeedProfile = h4f_feed.obstracts_feed
+    id_dict = {
+        "name": "original name",
+        "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
+        "type": "identity",
+        "spec_version": "2.1",
+    }
+
     with patch.object(
         models.FeedProfile,
         "identity_dict",
-        {
-            "name": "original name",
-            "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
-        },
+        id_dict.copy(),
     ) as mock_identity:
         models.create_collection(feed)
 
@@ -89,10 +93,9 @@ def test_create_collection():
     assert helper.db.has_collection(feed.edge_collection)
     for doc in helper.db.collection(feed.vertex_collection).all():
         if doc["id"] == feed.identity["id"]:
-            assert {k: v for k, v in doc.items() if not k.startswith("_")} == {
-                "name": "original name",
-                "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
-            }, "values must match"
+            assert {
+                k: v for k, v in doc.items() if not k.startswith("_")
+            } == id_dict, "values must match"
             break
     else:
         raise AssertionError("identity not uploaded")
