@@ -834,3 +834,18 @@ class JobView(
         obj: models.Job = self.get_object()
         obj.cancel()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(
+    responses={204:{}},
+    tags=["Server Status"],
+    summary="Check if service is running",
+    description=textwrap.dedent(
+        """
+        If this endpoint returns a 204, the service is running as expected.
+        """
+        ),
+    )
+@decorators.api_view(["GET"])
+def health_check(request):
+   return Response(status=status.HTTP_204_NO_CONTENT)
