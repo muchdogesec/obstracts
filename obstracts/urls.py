@@ -63,6 +63,7 @@ router.register('extractors', ExtractorsView, "extractors-view")
 
 
 urlpatterns = [
+    path(f'api/healthcheck/', views.health_check),
     path(f'api/{API_VERSION}/', include(router.urls)),
     path(f'api/{API_VERSION}/', include(regex_router.urls)),
     path('admin/', admin.site.urls),
