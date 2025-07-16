@@ -839,7 +839,7 @@ class JobView(
 @extend_schema(
     responses={204:{}},
     tags=["Server Status"],
-    summary="Check if service is running",
+    summary="Check if the service is running",
     description=textwrap.dedent(
         """
         If this endpoint returns a 204, the service is running as expected.
