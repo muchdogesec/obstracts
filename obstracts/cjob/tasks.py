@@ -8,7 +8,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 import typing
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
-from dogesec_commons.stixifier.summarizer import parse_summarizer_model
 from ..server.models import Job, FeedProfile
 from ..server import models
 from django.core.cache import cache

@@ -42,9 +42,9 @@ beautifulsoup4==4.13.4
     #   txt2stix
 billiard==4.2.1
     # via celery
-boto3==1.39.4
+boto3==1.39.7
     # via django-storages
-botocore==1.39.4
+botocore==1.39.7
     # via
     #   boto3
     #   s3transfer
@@ -125,7 +125,7 @@ djangorestframework==3.16.0
     #   drf-spectacular
     #   history4feed
     #   obstracts (pyproject.toml)
-dogesec-commons[stixifier]==1.0.6
+dogesec-commons[stixifier]==1.1.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
@@ -148,7 +148,7 @@ frozenlist==1.7.0
     # via
     #   aiohttp
     #   aiosignal
-fsspec==2025.5.1
+fsspec==2025.7.0
     # via llama-index-core
 google-api-core[grpc]==2.25.1
     # via google-cloud-vision
@@ -182,7 +182,7 @@ gunicorn==23.0.0
     #   obstracts (pyproject.toml)
 h11==0.16.0
     # via httpcore
-history4feed==1.0.0
+history4feed==1.0.1
     # via obstracts (pyproject.toml)
 httpcore==1.0.9
     # via httpx
@@ -226,7 +226,7 @@ jsonschema-specifications==2025.4.1
     # via jsonschema
 kombu==5.5.4
     # via celery
-llama-index-core==0.12.48
+llama-index-core==0.12.49
     # via
     #   llama-index-llms-openai
     #   txt2stix
@@ -269,7 +269,7 @@ numpy==2.3.1
     # via
     #   llama-index-core
     #   pandas
-openai==1.95.1
+openai==1.97.0
     # via llama-index-llms-openai
 packaging==25.0
     # via
@@ -453,7 +453,7 @@ tqdm==4.67.1
     #   nltk
     #   openai
     #   stix2arango
-txt2stix==1.0.1.post3
+txt2stix==1.0.3
     # via dogesec-commons
 typing-extensions==4.14.1
     # via
