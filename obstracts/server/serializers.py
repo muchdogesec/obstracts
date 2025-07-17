@@ -6,7 +6,6 @@ from history4feed.app import serializers as h4fserializers
 from .models import File, Profile, Job, FileImage
 from drf_spectacular.utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
-from dogesec_commons.stixifier.summarizer import parse_summarizer_model
 
 
 class ObstractsJobSerializer(serializers.ModelSerializer):
