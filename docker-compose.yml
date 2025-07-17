@@ -1,6 +1,3 @@
-# include:
-#   - ./history4feed/docker-compose.yml
-   
 services:
     env_django:
         image: obstracts
@@ -17,14 +14,13 @@ services:
             - DEBUG=1
         env_file:
             - ./.env
+        command: "python manage.py migrate"
     django:
         extends: env_django
         command: >
                 bash -c "
-                    python manage.py makemigrations &&
-                            python manage.py migrate &&
-                            python manage.py runserver 0.0.0.0:8001
-                    " 
+                    python manage.py runserver 0.0.0.0:8001
+                " 
         ports:
             - 8001:8001
         depends_on:
@@ -41,6 +37,8 @@ services:
                 condition: service_healthy
             redis:
                 condition: service_started
+            env_django: 
+                condition: service_completed_successfully
     pgdb:
         image: postgres
         env_file:
