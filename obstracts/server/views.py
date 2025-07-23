@@ -251,7 +251,7 @@ class FeedView(h4f_views.FeedView):
 
     @decorators.action(methods=["PATCH"], detail=True)
     def fetch(self, request, *args, **kwargs):
-        s = serializers.FetchFeedSerializer(data=request.data, partial=True)
+        s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_fetch_job(request)
         job = tasks.new_task(h4f_job, s.validated_data["profile_id"])
@@ -457,7 +457,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         _, h4f_job = self.new_reindex_post_job(request)
         job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
         return Response(
-            ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+            self.get_serializer(job).data, status=status.HTTP_201_CREATED
         )
 
     @extend_schema(
