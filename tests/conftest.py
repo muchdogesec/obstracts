@@ -62,7 +62,6 @@ def stixifier_profile():
         ai_settings_relationships=None,
         ai_settings_extractions=[],
         ai_content_check_provider=None,
-        ai_summary_provider=None,
         ai_create_attack_flow=False,
         id="26fce5ea-c3df-45a2-8989-0225549c704b",
     )
