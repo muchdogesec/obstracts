@@ -1,27 +1,18 @@
 from functools import reduce
-import io
-import json
-import logging
 import operator
-from urllib.parse import urljoin
-from django.http import Http404, HttpResponse, FileResponse
-from django.shortcuts import get_object_or_404
+from django.http import FileResponse
 from django.urls import resolve
 from rest_framework import viewsets, decorators, exceptions, status, renderers, mixins
 from drf_spectacular.utils import (
     OpenApiParameter,
-    OpenApiResponse,
-    PolymorphicProxySerializer,
 )
 from drf_spectacular.types import OpenApiTypes
-import txt2stix.common
 from stix2arango.services import ArangoDBService
 
 from obstracts.server.md_helper import MarkdownImageReplacer
 from . import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
-import hyperlink
-from django.db.models import OuterRef, Subquery, F, Q
+from django.db.models import OuterRef, Subquery, Q
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from .utils import (
     MinMaxDateFilter,
@@ -35,8 +26,6 @@ from django_filters.rest_framework import (
     Filter,
     BaseCSVFilter,
     UUIDFilter,
-    CharFilter,
-    MultipleChoiceFilter,
     filters,
 )
 from .serializers import (
@@ -44,22 +33,16 @@ from .serializers import (
     FeedCreateSerializer,
 )
 from .serializers import h4fserializers
-import txt2stix.txt2stix
-import requests
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from history4feed.app import views as h4f_views
 from . import models
 from .autoschema import ObstractsAutoSchema
-from dogesec_commons.utils import custom_exception_handler
 
 from ..cjob import tasks
 from obstracts.server import serializers
 import textwrap
 
-import mistune
-from mistune.renderers.markdown import MarkdownRenderer
-from mistune.util import unescape
 
 
 from drf_spectacular.views import SpectacularAPIView
@@ -509,6 +492,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
             Use this endpoint to view this file which can be useful to understanding how the output for the post was produced.
             """
         ),
+        responses={200: dict}
     )
     @decorators.action(detail=True, methods=["GET"])
     def extractions(self, request, post_id=None, **kwargs):
@@ -538,6 +522,8 @@ class PostOnlyView(h4f_views.PostOnlyView):
     @decorators.action(detail=True, methods=["GET"])
     def markdown(self, request, post_id=None, **kwargs):
         obj = self.get_obstracts_file(fail_if_no_extraction=True)
+        if not obj.markdown_file:
+            raise exceptions.NotFound("post has no associated markdown file")
         images = {
             img.name: img.file.url
             for img in models.FileImage.objects.filter(report__post_id=post_id)
