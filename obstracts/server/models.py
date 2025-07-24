@@ -50,6 +50,7 @@ class JobState(models.TextChoices):
     QUEUED     = "in-queue"
     PROCESSING = "processing"
     PROCESSED  = "processed"
+    CANCELLING = "cancelling"
     CANCELLED  = "cancelled"
     PROCESS_FAILED = "processing_failed"
     RETRIEVE_FAILED = "retrieve_failed"
@@ -236,19 +237,21 @@ class Job(models.Model):
     errors = ArrayField(base_field=models.CharField(max_length=1024), default=list)
 
     def is_cancelled(self):
-        if self.history4feed_job.is_cancelled():
+        obj = Job.objects.get(pk=self.pk)
+        if obj.history4feed_job.is_cancelled():
             self.cancel()
-        return self.state == JobState.CANCELLED
+        return obj.state in [JobState.CANCELLED, JobState.CANCELLING]
     
     def cancel(self):
         self.history4feed_job.cancel()
-        self.update_state(JobState.CANCELLED)
-        
+        self.update_state(JobState.CANCELLING)        
 
     @transaction.atomic
     def update_state(self, state):
         obj = self.__class__.objects.select_for_update().get(pk=self.pk)
-        if obj.state not in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
+        if obj.state == JobState.CANCELLING and state == JobState.CANCELLED:
+            pass
+        elif obj.state not in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
             return obj.state
         obj.state = state
         obj.save()
