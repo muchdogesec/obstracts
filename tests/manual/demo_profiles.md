@@ -48,7 +48,11 @@ ID = `becfca33-a5bf-5eb8-a601-433d47c7ba71`
         "ignore_embedded_relationships": false,
         "ignore_embedded_relationships_sro": false,
         "ignore_embedded_relationships_smo": false,
-        "ai_create_attack_flow": false
+        "ai_content_check_provider": "openai:gpt-4o",
+        "ai_extract_if_no_incidence": false,
+        "ai_create_attack_flow": false,
+        "ai_create_attack_navigator_layer": false,
+        "generate_pdf": true
     }
 ```
 
