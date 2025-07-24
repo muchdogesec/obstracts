@@ -1,15 +1,10 @@
 import io
 import logging
-import time
-from urllib.parse import urljoin
 from celery import shared_task, chain, current_task, Task as CeleryTask
-from django.conf import settings
-from django.core.files.uploadedfile import SimpleUploadedFile
 import typing
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
-from dogesec_commons.stixifier.summarizer import parse_summarizer_model
-from ..server.models import Job, FeedProfile
+from ..server.models import Job
 from ..server import models
 from django.core.cache import cache
 from history4feed.app import models as h4f_models
@@ -47,8 +42,8 @@ class CancelledJob(Exception):
 @shared_task
 def job_completed_with_error(job_id):
     job = Job.objects.get(pk=job_id)
-    if job.state == models.JobState.CANCELLED:
-        pass
+    if job.state in [models.JobState.CANCELLING, models.JobState.CANCELLED]:
+        job.update_state(models.JobState.CANCELLED)
     elif job.processed_items == 0 and job.failed_processes > 0:
         job.update_state(models.JobState.PROCESS_FAILED)
     else:
@@ -91,12 +86,11 @@ def wait_in_queue(self: CeleryTask, job_id):
     job = Job.objects.get(pk=job_id)
     if job.is_cancelled():
         job.errors.append("job cancelled while in queue")
-        job.save()
+        job.save(update_fields=['errors'])
         return False
     if not queue_lock(job):
         return self.retry(max_retries=300)
     job.update_state(models.JobState.PROCESSING)
-    job.save()
     return True
 
 def download_pdf(url):
@@ -218,7 +212,7 @@ def process_post(job_id, post_id, *args):
         logging.error(msg, exc_info=True)
         job.failed_processes += 1
         job.errors.append(msg)
-    job.save()
+    job.save(update_fields=['errors', 'processed_items', 'failed_processes'])
     return job_id
 
 

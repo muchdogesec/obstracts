@@ -24,6 +24,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from tests.src.views.utils import make_h4f_job
 
+from dogesec_commons.objects.helpers import ArangoDBHelper
+from django.conf import settings
 
 def test_class_variables():
     assert FeedView.serializer_class == FeedCreateSerializer
@@ -104,3 +106,16 @@ def test_fetch(client, feed_with_posts, stixifier_profile):
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
         assert resp.data["id"] == str(mocked_job.id)
+
+
+@pytest.mark.django_db
+def test_feed_destroy(client, feed_with_posts):
+    resp = client.delete(f"/api/v1/feeds/{feed_with_posts.id}/")
+    assert resp.status_code == 204, resp.content
+    helper = ArangoDBHelper(settings.VIEW_NAME, None)
+    assert not helper.db.has_collection(
+        feed_with_posts.vertex_collection
+    ), "vertex collection should already be deleted"
+    assert not helper.db.has_collection(
+        feed_with_posts.edge_collection
+    ), "eddge collection should already be deleted"

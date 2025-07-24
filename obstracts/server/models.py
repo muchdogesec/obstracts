@@ -50,6 +50,7 @@ class JobState(models.TextChoices):
     QUEUED     = "in-queue"
     PROCESSING = "processing"
     PROCESSED  = "processed"
+    CANCELLING = "cancelling"
     CANCELLED  = "cancelled"
     PROCESS_FAILED = "processing_failed"
     RETRIEVE_FAILED = "retrieve_failed"
@@ -104,21 +105,32 @@ class FeedProfile(models.Model):
             contact_information=self.feed.url,
         )
     
+    @property
+    def identity_dict(self):
+        return json.loads(self.identity.serialize())
+    
 @receiver(post_save, sender=h4f_models.Feed)
 def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
-    feed, _ = FeedProfile.objects.update_or_create(feed=instance)
+    feed, created = FeedProfile.objects.update_or_create(feed=instance)
+    if created:
+        create_collection(feed)
 
-def auto_create_collection(feed: FeedProfile, identity):
+
+@receiver(post_save, sender=h4f_models.Feed)
+def auto_update_identity(sender, instance: h4f_models.Feed, created, **kwargs):
+    if not created:
+        feed: FeedProfile = instance.obstracts_feed
+        update_identities(feed)
+
+def create_collection(feed: FeedProfile):
     s2a = Stix2Arango(database=settings.ARANGODB_DATABASE, collection=feed.collection_name, file='', host_url=settings.ARANGODB_HOST_URL, create_collection=True)
-    s2a.run(data=dict(type="bundle", id="bundle--"+str(feed.id), objects=[identity]))
+    s2a.run(data=dict(type="bundle", id="bundle--"+str(feed.id), objects=[feed.identity_dict]))
     link_one_collection(s2a.arango.db, settings.ARANGODB_DATABASE_VIEW, feed.vertex_collection)
     link_one_collection(s2a.arango.db, settings.ARANGODB_DATABASE_VIEW, feed.edge_collection)
 
-@receiver(post_save, sender=FeedProfile)
-def auto_update_identity(sender, instance: FeedProfile, created, **kwargs):
-    identity = json.loads(instance.identity.serialize())
-    if created:
-        auto_create_collection(instance, identity)
+
+def update_identities(feed: FeedProfile):
+    identity = feed.identity_dict
     identity['_record_modified'] = timezone.now().isoformat().replace('+00:00', 'Z')
     query = """
     FOR doc IN @@vertex_collection
@@ -127,7 +139,7 @@ def auto_update_identity(sender, instance: FeedProfile, created, **kwargs):
     RETURN doc._key
     """
     binds = {
-        '@vertex_collection': instance.vertex_collection,
+        '@vertex_collection': feed.vertex_collection,
         'identity': identity,
     }
 
@@ -136,7 +148,7 @@ def auto_update_identity(sender, instance: FeedProfile, created, **kwargs):
     helper = ArangoDBHelper(settings.VIEW_NAME, Request(HttpRequest()))
     try:
         updated_keys = helper.execute_query(query, bind_vars=binds, paginate=False)
-        logging.info(f"updated {len(updated_keys)} identities for {instance.id}")
+        logging.info(f"updated {len(updated_keys)} identities for {feed.id}")
     except Exception as e:
         logging.exception("could not update identities")
 
@@ -225,19 +237,21 @@ class Job(models.Model):
     errors = ArrayField(base_field=models.CharField(max_length=1024), default=list)
 
     def is_cancelled(self):
-        if self.history4feed_job.is_cancelled():
+        obj = Job.objects.get(pk=self.pk)
+        if obj.history4feed_job.is_cancelled():
             self.cancel()
-        return self.state == JobState.CANCELLED
+        return obj.state in [JobState.CANCELLED, JobState.CANCELLING]
     
     def cancel(self):
         self.history4feed_job.cancel()
-        self.update_state(JobState.CANCELLED)
-        
+        self.update_state(JobState.CANCELLING)        
 
     @transaction.atomic
     def update_state(self, state):
         obj = self.__class__.objects.select_for_update().get(pk=self.pk)
-        if obj.state not in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
+        if obj.state == JobState.CANCELLING and state == JobState.CANCELLED:
+            pass
+        elif obj.state not in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
             return obj.state
         obj.state = state
         obj.save()

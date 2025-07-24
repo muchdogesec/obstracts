@@ -6,7 +6,6 @@ from history4feed.app import serializers as h4fserializers
 from .models import File, Profile, Job, FileImage
 from drf_spectacular.utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
-from dogesec_commons.stixifier.summarizer import parse_summarizer_model
 
 
 class ObstractsJobSerializer(serializers.ModelSerializer):
@@ -35,7 +34,7 @@ class ProfileIDField(serializers.PrimaryKeyRelatedField):
         return super().to_representation(value)
 
 class CreateTaskSerializer(serializers.Serializer):
-    profile_id = ProfileIDField(help_text="profile id to use", write_only=True)
+    profile_id = ProfileIDField(help_text="profile id to use", write_only=True, required=True)
 
 class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
     count_of_posts = serializers.IntegerField(source='obstracts_feed.visible_posts_count', read_only=True, help_text="Number of posts in feed")
@@ -69,7 +68,7 @@ class PostCreateSerializer(CreateTaskSerializer):
 
 
 class ObstractsPostSerializer(h4fserializers.PostSerializer):
-    profile_id = serializers.UUIDField(source='obstracts_post.profile_id', required=True)
+    profile_id = serializers.UUIDField(source='obstracts_post.profile_id', required=False, allow_null=True)
     ai_describes_incident = serializers.BooleanField(source='obstracts_post.ai_describes_incident', required=False, read_only=True, allow_null=True)
     ai_incident_summary = serializers.CharField(source='obstracts_post.ai_incident_summary', required=False, read_only=True, allow_null=True)
     ai_incident_classification = serializers.ListField(source='obstracts_post.ai_incident_classification', required=False, read_only=True, allow_null=True)

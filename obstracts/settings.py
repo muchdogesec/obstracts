@@ -238,6 +238,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Profiles", "description": "Create and search for extraction profile applied to text in Posts"},
         {"name": "Extractors", "description": "Search through extractors that can be used in Profiles"},
         {"name": "Jobs", "description": "Check the status of data retrieval from Feeds"},
+        {"name": "Server Status", "description": "Checks health of the server."},
     ]
 }
 
