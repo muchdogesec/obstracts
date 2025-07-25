@@ -47,7 +47,7 @@ def test_class_variables():
     assert history4feed_views.PostOnlyView in PostOnlyView.mro()
 
     assert history4feed_views.feed_post_view in FeedPostView.mro()
-    assert FeedPostView.serializer_class == ObstractsPostSerializer
+    assert FeedPostView.serializer_class == PostWithFeedIDSerializer
 
 
 @pytest.mark.django_db
@@ -339,15 +339,6 @@ def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile, api_s
 def list_post_posts(feed_with_posts):
     posts = File.objects.filter(feed=feed_with_posts)
 
-    post4 = posts[3]
-    post4.ai_incident_classification = [
-        "ransomware",
-        "malware",
-        "infostealer",
-    ]
-    post4.ai_describes_incident = False
-    post4.save()
-
     post1 = posts[0]
     post1.ai_describes_incident = True
     post1.save()
@@ -362,6 +353,15 @@ def list_post_posts(feed_with_posts):
     ]
     post3.processed = False
     post3.save()
+
+    post4 = posts[3]
+    post4.ai_incident_classification = [
+        "ransomware",
+        "malware",
+        "infostealer",
+    ]
+    post4.ai_describes_incident = False
+    post4.save()
     return posts
 
 

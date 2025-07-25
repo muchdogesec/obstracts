@@ -57,10 +57,32 @@ def test_api(case: schemathesis.Case, **kwargs):
     profile_id=profile_ids,
     job_id=job_ids
 )
-@schema.include(method=["POST", "PATCH"]).parametrize()
+@schema.include(method=["POST", "PATCH"]).exclude(path="/api/v1/feeds/").parametrize()
 @patch('celery.app.task.Task.run')
 def test_imports(mock, case: schemathesis.Case, **kwargs):
     for k, v in kwargs.items():
         if k in case.path_parameters:
             case.path_parameters[k] = v
     case.call_and_validate(excluded_checks=[negative_data_rejection, positive_data_acceptance])
+
+
+@pytest.mark.django_db(transaction=True)
+@schema.given(
+    feed_id=feed_ids,
+    profile_id=profile_ids,
+    url=strategies.sampled_from([
+        "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata-partial.xml",
+        "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata.xml",
+        "https://blog.eclecticiq.com/rss.xml"
+    ])
+)
+@schema.include(method="POST", path="/api/v1/feeds/").parametrize()
+@patch('celery.app.task.Task.run')
+def test_create_feed(mock, case: schemathesis.Case, url, **kwargs):
+    for k, v in kwargs.items():
+        if k in case.path_parameters:
+            case.path_parameters[k] = v
+    if isinstance(case.body, dict) and 'url' in case.body:
+        case.body['url'] = url
+    case.call_and_validate(excluded_checks=[negative_data_rejection, positive_data_acceptance])
+
