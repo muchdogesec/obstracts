@@ -1,12 +1,8 @@
-import time
 from unittest.mock import patch
-from urllib.parse import urlencode
 import uuid
 import schemathesis
 import pytest
-from schemathesis.core.transport import Response as SchemathesisResponse
 from obstracts.wsgi import application as wsgi_app
-from rest_framework.response import Response as DRFResponse
 from hypothesis import settings
 from hypothesis import strategies
 from schemathesis.specs.openapi.checks import negative_data_rejection, positive_data_acceptance
