@@ -1,4 +1,3 @@
-import os
 import pytest
 import os
 from django.conf import settings
@@ -6,16 +5,10 @@ from arango.client import ArangoClient
 from pytest_django.fixtures import SettingsWrapper
 from pytest_django.lazy_django import skip_if_no_django
 from dogesec_commons.stixifier.models import Profile
-from unittest.mock import patch
 
 import pytest
 from obstracts.cjob.tasks import create_job_entry
 from obstracts.server import models
-from obstracts.server.views import PostOnlyView
-from dogesec_commons.utils import Pagination, Ordering
-from dogesec_commons.utils.filters import MinMaxDateFilter
-from obstracts.server.serializers import PostWithFeedIDSerializer
-from django_filters.rest_framework import DjangoFilterBackend
 from history4feed.app import models as h4f_models
 from django.utils import timezone
 
@@ -119,3 +112,10 @@ def feed_with_posts():
         models.File.objects.create(feed=feed, processed=True, post=post)
 
     yield feed
+
+
+@pytest.fixture(scope='session')
+def api_schema():
+    import schemathesis
+    from obstracts.asgi import application
+    yield schemathesis.openapi.from_asgi("/api/schema/?format=json", application)

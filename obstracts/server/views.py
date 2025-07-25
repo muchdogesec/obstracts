@@ -440,7 +440,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         _, h4f_job = self.new_reindex_post_job(request)
         job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
         return Response(
-            self.get_serializer(job).data, status=status.HTTP_201_CREATED
+            serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
 
     @extend_schema(
@@ -711,7 +711,7 @@ FOR doc IN @@view
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
-    serializer_class = serializers.ObstractsPostSerializer
+    serializer_class = serializers.PostWithFeedIDSerializer
 
     openapi_tags = ["Posts (by Feed)"]
 

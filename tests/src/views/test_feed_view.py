@@ -1,31 +1,22 @@
-import io
 from unittest.mock import patch
 import uuid
 
 import pytest
-from rest_framework.response import Response
 from obstracts.cjob import tasks
-from obstracts.server import models
-from obstracts.server.models import FeedProfile, File
-from obstracts.server.views import FeedView, FeedView, MarkdownImageReplacer, FeedView
-from dogesec_commons.utils import Pagination, Ordering
-from dogesec_commons.utils.filters import MinMaxDateFilter
+from obstracts.server.views import FeedView, FeedView, FeedView
+from dogesec_commons.utils import Pagination
 from obstracts.server.serializers import (
-    CreateTaskSerializer,
     FeedCreateSerializer,
     FetchFeedSerializer,
-    ObstractsPostSerializer,
-    PostWithFeedIDSerializer,
 )
-from django_filters.rest_framework import DjangoFilterBackend
-from history4feed.app import models as h4f_models
 from history4feed.app import views as history4feed_views
-from django.core.files.uploadedfile import SimpleUploadedFile
 
 from tests.src.views.utils import make_h4f_job
 
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from django.conf import settings
+
+from tests.utils import Transport
 
 def test_class_variables():
     assert FeedView.serializer_class == FeedCreateSerializer
@@ -37,7 +28,7 @@ def test_class_variables():
 
 
 @pytest.mark.django_db
-def test_create(client, feed_with_posts, stixifier_profile):
+def test_create(client, feed_with_posts, stixifier_profile, api_schema):
     job = make_h4f_job(feed_with_posts)
 
     payload = {
@@ -71,10 +62,11 @@ def test_create(client, feed_with_posts, stixifier_profile):
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
         assert resp.data["id"] == str(mocked_job.id)
+        api_schema['/api/v1/feeds/']['POST'].validate_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_fetch(client, feed_with_posts, stixifier_profile):
+def test_fetch(client, feed_with_posts, stixifier_profile, api_schema):
     payload = {
         "profile_id": stixifier_profile.id,
     }
@@ -106,10 +98,11 @@ def test_fetch(client, feed_with_posts, stixifier_profile):
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
         assert resp.data["id"] == str(mocked_job.id)
+        api_schema['/api/v1/feeds/{feed_id}/fetch/']['PATCH'].validate_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_feed_destroy(client, feed_with_posts):
+def test_feed_destroy(client, feed_with_posts, api_schema):
     resp = client.delete(f"/api/v1/feeds/{feed_with_posts.id}/")
     assert resp.status_code == 204, resp.content
     helper = ArangoDBHelper(settings.VIEW_NAME, None)
@@ -119,3 +112,4 @@ def test_feed_destroy(client, feed_with_posts):
     assert not helper.db.has_collection(
         feed_with_posts.edge_collection
     ), "eddge collection should already be deleted"
+    api_schema['/api/v1/feeds/{feed_id}/']['DELETE'].validate_response(Transport.get_st_response(None, resp))
