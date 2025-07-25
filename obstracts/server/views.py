@@ -440,7 +440,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         _, h4f_job = self.new_reindex_post_job(request)
         job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
         return Response(
-            self.get_serializer(job).data, status=status.HTTP_201_CREATED
+            serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
 
     @extend_schema(
@@ -498,6 +498,15 @@ class PostOnlyView(h4f_views.PostOnlyView):
     def extractions(self, request, post_id=None, **kwargs):
         post_file: models.File = self.get_obstracts_file()
         return Response(post_file.txt2stix_data or {})
+    
+    @decorators.action(detail=True, methods=["GET"], url_path="attack-navigator", serializer_class=serializers.AttackNavigatorSerializer)
+    def attack_navigator(self, request, post_id=None, **kwargs):
+        post_file: models.File = self.get_obstracts_file()
+        layers = (post_file.txt2stix_data or {}).get('navigator_layer') or []
+        s = serializers.AttackNavigatorSerializer(data={layer['domain'].removesuffix('-attack'): layer for layer in layers})
+        s.is_valid()
+        return Response(s.data)
+    
 
     @extend_schema(
         responses=None,
