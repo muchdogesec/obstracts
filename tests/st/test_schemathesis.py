@@ -1,16 +1,14 @@
-import time
 from unittest.mock import patch
-from urllib.parse import urlencode
 import uuid
 import schemathesis
 import pytest
-from schemathesis.core.transport import Response as SchemathesisResponse
 from obstracts.wsgi import application as wsgi_app
-from rest_framework.response import Response as DRFResponse
 from hypothesis import settings
 from hypothesis import strategies
 from schemathesis.specs.openapi.checks import negative_data_rejection, positive_data_acceptance
 from schemathesis.config import GenerationConfig
+
+from tests.utils import Transport
 
 schema = schemathesis.openapi.from_wsgi("/api/schema/?format=json", wsgi_app)
 schema.config.base_url = "http://localhost:8001/"
@@ -24,51 +22,14 @@ profile_ids  = strategies.sampled_from([uuid.uuid4() for _ in range(3)]+["26fce5
 
 @pytest.fixture(autouse=True)
 def override_transport(monkeypatch, client):
-    from schemathesis.transport.wsgi import WSGI_TRANSPORT, WSGITransport
-
-    class Transport(WSGITransport):
-        def __init__(self):
-            super().__init__()
-            self._copy_serializers_from(WSGI_TRANSPORT)
-
-        @staticmethod
-        def case_as_request(case):
-            from schemathesis.transport.requests import REQUESTS_TRANSPORT
-            import requests
-
-            r_dict = REQUESTS_TRANSPORT.serialize_case(
-                case,
-                base_url=case.operation.base_url,
-            )
-            return requests.Request(**r_dict).prepare()
-
-        def send(self, case: schemathesis.Case, *args, **kwargs):
-            t = time.time()
-            case.headers.pop("Authorization", "")
-            serialized_request = WSGI_TRANSPORT.serialize_case(case)
-            serialized_request.update(
-                QUERY_STRING=urlencode(serialized_request["query_string"])
-            )
-            response: DRFResponse = client.generic(**serialized_request)
-            elapsed = time.time() - t
-            return SchemathesisResponse(
-                response.status_code,
-                headers={k: [v] for k, v in response.headers.items()},
-                content=response.content,
-                request=self.case_as_request(case),
-                elapsed=elapsed,
-                verify=True,
-            )
-
     ## patch transport.get
     from schemathesis import transport
-
     monkeypatch.setattr(transport, "get", lambda _: Transport())
 
 
 
 @pytest.fixture(autouse=True)
-def module_setup(feed_with_posts, stixifier_profile, obstracts_job):
+def db_setup(feed_with_posts, stixifier_profile, obstracts_job):
     from obstracts.cjob.celery import app
     app.conf.task_always_eager = False
     yield
@@ -96,10 +57,32 @@ def test_api(case: schemathesis.Case, **kwargs):
     profile_id=profile_ids,
     job_id=job_ids
 )
-@schema.include(method=["POST", "PATCH"]).parametrize()
+@schema.include(method=["POST", "PATCH"]).exclude(path="/api/v1/feeds/").parametrize()
 @patch('celery.app.task.Task.run')
 def test_imports(mock, case: schemathesis.Case, **kwargs):
     for k, v in kwargs.items():
         if k in case.path_parameters:
             case.path_parameters[k] = v
     case.call_and_validate(excluded_checks=[negative_data_rejection, positive_data_acceptance])
+
+
+@pytest.mark.django_db(transaction=True)
+@schema.given(
+    feed_id=feed_ids,
+    profile_id=profile_ids,
+    url=strategies.sampled_from([
+        "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata-partial.xml",
+        "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata.xml",
+        "https://blog.eclecticiq.com/rss.xml"
+    ])
+)
+@schema.include(method="POST", path="/api/v1/feeds/").parametrize()
+@patch('celery.app.task.Task.run')
+def test_create_feed(mock, case: schemathesis.Case, url, **kwargs):
+    for k, v in kwargs.items():
+        if k in case.path_parameters:
+            case.path_parameters[k] = v
+    if isinstance(case.body, dict) and 'url' in case.body:
+        case.body['url'] = url
+    case.call_and_validate(excluded_checks=[negative_data_rejection, positive_data_acceptance])
+

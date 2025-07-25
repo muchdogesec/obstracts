@@ -62,24 +62,24 @@ def test_feed_create_signals():
 
 @pytest.mark.django_db
 def test_create_collection():
-    h4f_feed = h4f_models.Feed.objects.create(
-        title="Example Feed Name (2)",
-        url="https://example.com/2",
-        id="79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
-    )
-    feed: models.FeedProfile = h4f_feed.obstracts_feed
     id_dict = {
         "name": "original name",
         "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
         "type": "identity",
         "spec_version": "2.1",
     }
-
+    feed = None
     with patch.object(
         models.FeedProfile,
         "identity_dict",
         id_dict.copy(),
     ) as mock_identity:
+        h4f_feed = h4f_models.Feed.objects.create(
+            title="Example Feed Name (2)",
+            url="https://example.com/2",
+            id="79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
+        )
+        feed: models.FeedProfile = h4f_feed.obstracts_feed
         models.create_collection(feed)
 
     helper = ArangoDBHelper(settings.VIEW_NAME, None)
@@ -223,6 +223,9 @@ def test_upload_to(feed_with_posts):
         == "6ca6ce37-1c69-4a81-8490-89c91b57e557/posts/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b_0_image_0.png"
     )
     assert (
-        models.upload_to_func(file, "this is a test for very looooooong filenames, so lets see the output.pdf")
+        models.upload_to_func(
+            file,
+            "this is a test for very looooooong filenames, so lets see the output.pdf",
+        )
         == "6ca6ce37-1c69-4a81-8490-89c91b57e557/posts/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b_this-is-a-test-for-very-looooooo.pdf"
     )
