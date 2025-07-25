@@ -7,22 +7,21 @@ import pytest
 from rest_framework.response import Response
 from obstracts.cjob import tasks
 from obstracts.server import models
-from obstracts.server.models import FeedProfile, File
+from obstracts.server.models import File
 from obstracts.server.views import FeedPostView, MarkdownImageReplacer, PostOnlyView
 from dogesec_commons.utils import Pagination, Ordering
 from dogesec_commons.utils.filters import MinMaxDateFilter
 from obstracts.server.serializers import (
     CreateTaskSerializer,
-    FetchFeedSerializer,
     ObstractsPostSerializer,
     PostWithFeedIDSerializer,
 )
 from django_filters.rest_framework import DjangoFilterBackend
-from history4feed.app import models as h4f_models
 from history4feed.app import views as history4feed_views
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from tests.src.views.utils import make_h4f_job
+from tests.utils import Transport
 
 
 def test_class_variables():
@@ -52,7 +51,7 @@ def test_class_variables():
 
 
 @pytest.mark.django_db
-def test_list_posts(client, feed_with_posts):
+def test_list_posts(client, feed_with_posts, api_schema):
     with patch.object(
         PostWithFeedIDSerializer,
         "many_init",
@@ -62,20 +61,22 @@ def test_list_posts(client, feed_with_posts):
         assert resp.status_code == 200
         assert resp.data["total_results_count"] == 4, resp.data
         mock_serializer.assert_called_once()  # confirm that we use correct serializer
+        api_schema['/api/v1/posts/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_retrieve_posts(client, feed_with_posts):
+def test_retrieve_posts(client, feed_with_posts, api_schema):
     with patch.object(PostWithFeedIDSerializer, "to_representation") as mock_serializer:
         mock_serializer.return_value = {"some bad data": 1}
         resp = client.get("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 200
         assert resp.data == mock_serializer.return_value
         mock_serializer.assert_called_once()  # confirm that we use correct serializer
+        api_schema['/api/v1/posts/{post_id}/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_reindex_post(client, feed_with_posts, stixifier_profile):
+def test_reindex_post(client, feed_with_posts, stixifier_profile, api_schema):
     payload = {"profile_id": stixifier_profile.id}
     mocked_job = make_h4f_job(feed_with_posts)
     with (
@@ -102,10 +103,11 @@ def test_reindex_post(client, feed_with_posts, stixifier_profile):
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
+        api_schema['/api/v1/posts/{post_id}/reindex/']['PATCH'].is_valid_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_post_objects(client, feed_with_posts):
+def test_post_objects(client, feed_with_posts, api_schema):
     with (patch.object(PostOnlyView, "get_post_objects") as mock_get_post_objects,):
         mock_get_post_objects.return_value = Response()
         resp = client.get(
@@ -117,10 +119,12 @@ def test_post_objects(client, feed_with_posts):
         mock_get_post_objects.assert_called_once_with(
             "561ed102-7584-4b7d-a302-43d4bca5605b"
         )
+        resp.headers['content-type'] = 'application/json'
+        api_schema['/api/v1/posts/{post_id}/objects/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_post_extractions__not_processed(client, feed_with_posts):
+def test_post_extractions__not_processed(client, feed_with_posts, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
     post.txt2stix_data = {"data": "here"}
     post.processed = False
@@ -135,10 +139,10 @@ def test_post_extractions__not_processed(client, feed_with_posts):
         json.loads(resp.content)["details"]["error"]
         == "This post is in failed extraction state, please reindex to access"
     )
-
+    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
 
 @pytest.mark.django_db
-def test_post_extractions(client, feed_with_posts):
+def test_post_extractions(client, feed_with_posts, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
     post.txt2stix_data = {"data": "here"}
     post.save()
@@ -158,10 +162,11 @@ def test_post_extractions(client, feed_with_posts):
         assert resp.status_code == 200, resp.content
         mock_get_obstracts_file.assert_called_once()
         assert resp.data == post.txt2stix_data
+        api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_post_extractions_no_data(client, feed_with_posts):
+def test_post_extractions_no_data(client, feed_with_posts, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
 
     resp = client.get(
@@ -171,6 +176,8 @@ def test_post_extractions_no_data(client, feed_with_posts):
     )
     assert resp.status_code == 200, resp.content
     assert resp.data == {}
+    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
+
 
 
 @pytest.mark.django_db
@@ -206,7 +213,7 @@ def test_post_markdown(client, feed_with_posts):
 
 
 @pytest.mark.django_db
-def test_post_images(client, feed_with_posts):
+def test_post_images(client, feed_with_posts, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
     models.FileImage.objects.create(
         report=post, file=SimpleUploadedFile("nb", b"f1"), name="image1"
@@ -223,10 +230,11 @@ def test_post_images(client, feed_with_posts):
     assert resp.status_code == 200, resp.content
     assert "images" in resp.data
     assert len(resp.data["images"]) == 2
+    api_schema['/api/v1/posts/{post_id}/images/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_post_images_no_images(client, feed_with_posts):
+def test_post_images_no_images(client, feed_with_posts, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
 
     resp = client.get(
@@ -237,10 +245,12 @@ def test_post_images_no_images(client, feed_with_posts):
     assert resp.status_code == 200, resp.content
     assert "images" in resp.data
     assert len(resp.data["images"]) == 0
+    api_schema['/api/v1/posts/{post_id}/images/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
+
 
 
 @pytest.mark.django_db
-def test_post_destroy(client, feed_with_posts):
+def test_post_destroy(client, feed_with_posts, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
     with (
         patch.object(PostOnlyView, "remove_report_objects", autospec=True) as mock_remove_report_objects,
@@ -250,10 +260,11 @@ def test_post_destroy(client, feed_with_posts):
         resp = client.get("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 404
         mock_remove_report_objects.assert_called_once_with(post)
+        api_schema['/api/v1/posts/{post_id}/']['DELETE'].is_valid_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_create_post_in_feed(client, feed_with_posts, stixifier_profile):
+def test_create_post_in_feed(client, feed_with_posts, stixifier_profile, api_schema):
     payload = {
         "profile_id": stixifier_profile.id,
         "posts": [],
@@ -287,10 +298,11 @@ def test_create_post_in_feed(client, feed_with_posts, stixifier_profile):
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
+        api_schema['/api/v1/feeds/{feed_id}/posts/']['POST'].is_valid_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile):
+def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile, api_schema):
     payload = {"profile_id": stixifier_profile.id}
     mocked_job = make_h4f_job(feed_with_posts)
     with (
@@ -317,6 +329,8 @@ def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile):
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
+        api_schema['/api/v1/feeds/{feed_id}/posts/reindex/']['PATCH'].is_valid_response(Transport.get_st_response(None, resp))
+
 
 
 @pytest.fixture
@@ -405,8 +419,85 @@ def list_post_posts(feed_with_posts):
     ],
 )
 @pytest.mark.django_db
-def test_list_posts_filter(client, list_post_posts, filters, expected_ids):
+def test_list_posts_filter(client, list_post_posts, api_schema, filters, expected_ids):
     resp = client.get("/api/v1/posts/", query_params=filters)
     assert resp.status_code == 200, resp.content
     assert {post["id"] for post in resp.data["posts"]} == set(expected_ids)
     assert resp.data["total_results_count"] == len(expected_ids)
+    api_schema['/api/v1/posts/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
+
+
+
+@pytest.mark.django_db
+def test_post_layers__not_processed(client, feed_with_posts, api_schema):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": []}
+    post.processed = False
+    post.save()
+    resp = client.get(
+        "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+        data=None,
+        content_type="application/json",
+    )
+    assert resp.status_code == 404, resp.content
+    assert (
+        json.loads(resp.content)["details"]["error"]
+        == "This post is in failed extraction state, please reindex to access"
+    )
+    api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "layer",
+    [
+        None,
+        []
+    ]
+)
+def test_post_extractions__nothing(client, feed_with_posts, api_schema, layer):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": layer}
+    post.save()
+    with (
+        patch.object(
+            PostOnlyView,
+            "get_obstracts_file",
+            side_effect=PostOnlyView.get_obstracts_file,
+            autospec=True,
+        ) as mock_get_obstracts_file,
+    ):
+        resp = client.get(
+            "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+            data=None,
+            content_type="application/json",
+        )
+        assert resp.status_code == 200, resp.content
+        mock_get_obstracts_file.assert_called_once()
+        assert resp.data == {}
+        api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
+
+
+
+@pytest.mark.django_db
+def test_post_extractions__has_data(client, feed_with_posts, api_schema):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": [{"domain": "ics-attack"}, {"domain": "mobile-attack"}]}
+    post.save()
+    with (
+        patch.object(
+            PostOnlyView,
+            "get_obstracts_file",
+            side_effect=PostOnlyView.get_obstracts_file,
+            autospec=True,
+        ) as mock_get_obstracts_file,
+    ):
+        resp = client.get(
+            "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+            data=None,
+            content_type="application/json",
+        )
+        assert resp.status_code == 200, resp.content
+        mock_get_obstracts_file.assert_called_once()
+        assert resp.data == {"ics": {"domain": "ics-attack"}, "mobile": {"domain": "mobile-attack"}}
+        api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
+

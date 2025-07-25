@@ -1,15 +1,13 @@
 from functools import lru_cache
 import time
 from django.conf import settings
-from django.http import HttpRequest
-import rest_framework.request
 import pytest
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from stix2arango.stix2arango import Stix2Arango
 import contextlib
-from arango.client import ArangoClient
 from obstracts.server.models import File
 from obstracts.server.views import PostOnlyView
+from tests.utils import Transport
 
 
 def as_arango2stix_db(db_name):
@@ -221,7 +219,7 @@ def upload_arango_objects(feed_id):
 )
 @pytest.mark.django_db
 def test_get_post_objects_filters(
-    client, feed_with_posts, post_id, filters, expected_ids
+    client, feed_with_posts, post_id, filters, expected_ids, api_schema
 ):
     upload_arango_objects(str(feed_with_posts.id))
     resp = client.get(f"/api/v1/posts/{post_id}/objects/", query_params=filters)
@@ -230,6 +228,8 @@ def test_get_post_objects_filters(
     assert len(objects) == resp.data["page_results_count"]
     assert {obj["id"] for obj in objects} == set(expected_ids)
     assert len(objects) == len(expected_ids)
+    api_schema['/api/v1/posts/{post_id}/objects/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
+
 
 
 @pytest.mark.parametrize(

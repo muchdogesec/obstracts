@@ -119,3 +119,10 @@ def feed_with_posts():
         models.File.objects.create(feed=feed, processed=True, post=post)
 
     yield feed
+
+
+@pytest.fixture(scope='session')
+def api_schema():
+    import schemathesis
+    from obstracts.asgi import application
+    yield schemathesis.openapi.from_asgi("/api/schema/?format=json", application)
