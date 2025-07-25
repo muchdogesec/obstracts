@@ -40,9 +40,11 @@ def validate_extractor(types, name):
 def upload_to_func(instance: 'File|FileImage', filename: str):
     if isinstance(instance, FileImage):
         instance = instance.report
-    name_part, _, ext_part = filename.rpartition('.')
+    name_part, ext_part = os.path.splitext(filename)
     if ext_part and name_part:
-        filename = f"{slugify(name_part)}.{ext_part}"
+        name_part = slugify(name_part)[:32]
+        filename = f"{name_part}{ext_part}"
+    filename = str(instance.post_id) + '_' + filename
     return os.path.join(str(instance.feed.id), 'posts', str(instance.post_id), filename)
 
 class JobState(models.TextChoices):
@@ -176,8 +178,8 @@ class File(models.Model):
     post = models.OneToOneField(h4f_models.Post, on_delete=models.CASCADE, primary_key=True, related_name="obstracts_post")
     processed = models.BooleanField(default=False)
 
-    markdown_file = models.FileField(upload_to=upload_to_func, null=True)
-    pdf_file = models.FileField(upload_to=upload_to_func, null=True)
+    markdown_file = models.FileField(upload_to=upload_to_func, null=True, max_length=1024)
+    pdf_file = models.FileField(upload_to=upload_to_func, null=True, max_length=1024)
     summary = models.CharField(max_length=65535, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.PROTECT, default=None, null=True)
 
@@ -218,7 +220,7 @@ def delete_collections(sender, instance: FeedProfile, **kwargs):
 
 class FileImage(models.Model):
     report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
-    file = models.ImageField(upload_to=upload_to_func)
+    file = models.ImageField(upload_to=upload_to_func, max_length=1024)
     name = models.CharField(max_length=256)
 
     @property

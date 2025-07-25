@@ -1,14 +1,8 @@
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.conf import settings
 import pytest
 from obstracts.server import models
-from obstracts.server.views import PostOnlyView
-from dogesec_commons.utils import Pagination, Ordering
-from dogesec_commons.utils.filters import MinMaxDateFilter
-from obstracts.server.serializers import PostWithFeedIDSerializer
-from django_filters.rest_framework import DjangoFilterBackend
 from history4feed.app import models as h4f_models
 from datetime import datetime as dt
 from dogesec_commons.objects.helpers import ArangoDBHelper
@@ -214,3 +208,21 @@ def test_feed_identity__no_date_modified():
         "description": "my description 3",
         "contact_information": "https://example.com/2",
     }
+
+
+@pytest.mark.django_db
+def test_upload_to(feed_with_posts):
+    file = models.File.objects.get(pk="345c8d0b-c6ca-4419-b1f7-0daeb4e9278b")
+    image = models.FileImage.objects.create(report=file)
+    assert (
+        models.upload_to_func(file, "markdown.md")
+        == "6ca6ce37-1c69-4a81-8490-89c91b57e557/posts/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b_markdown.md"
+    )
+    assert (
+        models.upload_to_func(image, "0_image_0.png")
+        == "6ca6ce37-1c69-4a81-8490-89c91b57e557/posts/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b_0_image_0.png"
+    )
+    assert (
+        models.upload_to_func(file, "this is a test for very looooooong filenames, so lets see the output.pdf")
+        == "6ca6ce37-1c69-4a81-8490-89c91b57e557/posts/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b_this-is-a-test-for-very-looooooo.pdf"
+    )
