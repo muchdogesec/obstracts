@@ -253,7 +253,9 @@ def test_post_images_no_images(client, feed_with_posts, api_schema):
 def test_post_destroy(client, feed_with_posts, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
     with (
-        patch.object(PostOnlyView, "remove_report_objects", autospec=True) as mock_remove_report_objects,
+        patch.object(
+            PostOnlyView, "remove_report_objects", autospec=True
+        ) as mock_remove_report_objects,
     ):
         resp = client.delete("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 204, resp.content
@@ -393,18 +395,19 @@ def list_post_posts(feed_with_posts):
         ),
         (
             dict(ai_describes_incident="false"),
-            [
-                '42a5d042-26fa-41f3-8850-307be3f330cf'
-            ],
+            ["42a5d042-26fa-41f3-8850-307be3f330cf"],
         ),
         (
             dict(ai_describes_incident="true"),
             [
-                '561ed102-7584-4b7d-a302-43d4bca5605b',
+                "561ed102-7584-4b7d-a302-43d4bca5605b",
             ],
         ),
         (
-            dict(show_hidden_posts=True, ai_incident_classification=["ransomware", "cyber_crime"]),
+            dict(
+                show_hidden_posts=True,
+                ai_incident_classification=["ransomware", "cyber_crime"],
+            ),
             [
                 "72e1ad04-8ce9-413d-b620-fe7c75dc0a39",
                 "42a5d042-26fa-41f3-8850-307be3f330cf",

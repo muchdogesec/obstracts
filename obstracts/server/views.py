@@ -711,7 +711,7 @@ FOR doc IN @@view
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
-    serializer_class = serializers.ObstractsPostSerializer
+    serializer_class = serializers.PostWithFeedIDSerializer
 
     openapi_tags = ["Posts (by Feed)"]
 
