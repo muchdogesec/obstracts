@@ -93,3 +93,8 @@ class ImageSerializer(serializers.ModelSerializer):
             photo_url = instance.file.url
             return request.build_absolute_uri(photo_url)
         return None
+
+class AttackNavigatorSerializer(serializers.Serializer):
+    mobile = serializers.DictField(required=False)
+    ics = serializers.DictField(required=False)
+    enterprise = serializers.DictField(required=False)

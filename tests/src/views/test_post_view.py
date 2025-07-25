@@ -428,3 +428,77 @@ def test_list_posts_filter(client, api_schema, list_post_posts, filters, expecte
     assert {post["id"] for post in resp.data["posts"]} == set(expected_ids)
     assert resp.data["total_results_count"] == len(expected_ids)
     api_schema['/api/v1/posts/']['GET'].validate_response(Transport.get_st_response(None, resp))
+
+@pytest.mark.django_db
+def test_attack_navigator__not_processed(client, feed_with_posts, api_schema):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": []}
+    post.processed = False
+    post.save()
+    resp = client.get(
+        "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+        data=None,
+        content_type="application/json",
+    )
+    assert resp.status_code == 404, resp.content
+    assert (
+        json.loads(resp.content)["details"]["error"]
+        == "This post is in failed extraction state, please reindex to access"
+    )
+    api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].validate_response(Transport.get_st_response(None, resp))
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "layer",
+    [
+        None,
+        []
+    ]
+)
+def test_attack_navigator__nothing(client, feed_with_posts, layer, api_schema):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": layer}
+    post.save()
+    with (
+        patch.object(
+            PostOnlyView,
+            "get_obstracts_file",
+            side_effect=PostOnlyView.get_obstracts_file,
+            autospec=True,
+        ) as mock_get_obstracts_file,
+    ):
+        resp = client.get(
+            "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+            data=None,
+            content_type="application/json",
+        )
+        assert resp.status_code == 200, resp.content
+        mock_get_obstracts_file.assert_called_once()
+        assert resp.data == {}
+        api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].validate_response(Transport.get_st_response(None, resp))
+
+
+
+@pytest.mark.django_db
+def test_attack_navigator__has_data(client, feed_with_posts, api_schema):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": [{"domain": "ics-attack"}, {"domain": "mobile-attack"}]}
+    post.save()
+    with (
+        patch.object(
+            PostOnlyView,
+            "get_obstracts_file",
+            side_effect=PostOnlyView.get_obstracts_file,
+            autospec=True,
+        ) as mock_get_obstracts_file,
+    ):
+        resp = client.get(
+            "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+            data=None,
+            content_type="application/json",
+        )
+        assert resp.status_code == 200, resp.content
+        mock_get_obstracts_file.assert_called_once()
+        assert resp.data == {"ics": {"domain": "ics-attack"}, "mobile": {"domain": "mobile-attack"}}
+        api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].validate_response(Transport.get_st_response(None, resp))
+
