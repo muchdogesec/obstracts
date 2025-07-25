@@ -228,7 +228,7 @@ def test_get_post_objects_filters(
     assert len(objects) == resp.data["page_results_count"]
     assert {obj["id"] for obj in objects} == set(expected_ids)
     assert len(objects) == len(expected_ids)
-    api_schema['/api/v1/posts/{post_id}/objects/']['GET'].is_valid_response(Transport.get_st_response(None, resp))
+    api_schema['/api/v1/posts/{post_id}/objects/']['GET'].validate_response(Transport.get_st_response(None, resp))
 
 
 
