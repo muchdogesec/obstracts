@@ -410,3 +410,76 @@ def test_list_posts_filter(client, list_post_posts, filters, expected_ids):
     assert resp.status_code == 200, resp.content
     assert {post["id"] for post in resp.data["posts"]} == set(expected_ids)
     assert resp.data["total_results_count"] == len(expected_ids)
+
+
+
+@pytest.mark.django_db
+def test_attack_navigator__not_processed(client, feed_with_posts, api_schema):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": []}
+    post.processed = False
+    post.save()
+    resp = client.get(
+        "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+        data=None,
+        content_type="application/json",
+    )
+    assert resp.status_code == 404, resp.content
+    assert (
+        json.loads(resp.content)["details"]["error"]
+        == "This post is in failed extraction state, please reindex to access"
+    )
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "layer",
+    [
+        None,
+        []
+    ]
+)
+def test_attack_navigator__nothing(client, feed_with_posts, layer):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": layer}
+    post.save()
+    with (
+        patch.object(
+            PostOnlyView,
+            "get_obstracts_file",
+            side_effect=PostOnlyView.get_obstracts_file,
+            autospec=True,
+        ) as mock_get_obstracts_file,
+    ):
+        resp = client.get(
+            "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+            data=None,
+            content_type="application/json",
+        )
+        assert resp.status_code == 200, resp.content
+        mock_get_obstracts_file.assert_called_once()
+        assert resp.data == {}
+
+
+
+@pytest.mark.django_db
+def test_attack_navigator__has_data(client, feed_with_posts):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": [{"domain": "ics-attack"}, {"domain": "mobile-attack"}]}
+    post.save()
+    with (
+        patch.object(
+            PostOnlyView,
+            "get_obstracts_file",
+            side_effect=PostOnlyView.get_obstracts_file,
+            autospec=True,
+        ) as mock_get_obstracts_file,
+    ):
+        resp = client.get(
+            "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/",
+            data=None,
+            content_type="application/json",
+        )
+        assert resp.status_code == 200, resp.content
+        mock_get_obstracts_file.assert_called_once()
+        assert resp.data == {"ics": {"domain": "ics-attack"}, "mobile": {"domain": "mobile-attack"}}
+
