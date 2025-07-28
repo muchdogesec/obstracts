@@ -61,17 +61,26 @@ def test_list_posts(client, feed_with_posts, api_schema):
         assert resp.status_code == 200
         assert resp.data["total_results_count"] == 4, resp.data
         mock_serializer.assert_called_once()  # confirm that we use correct serializer
-        api_schema['/api/v1/posts/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        api_schema["/api/v1/posts/"]["GET"].validate_response(
+            Transport.get_st_response(None, resp)
+        )
 
 
 @pytest.mark.django_db
 def test_retrieve_posts(client, feed_with_posts, api_schema):
-    with patch.object(PostWithFeedIDSerializer, "to_representation", autospec=True, side_effect=PostWithFeedIDSerializer.to_representation) as mock_serializer:
+    with patch.object(
+        PostWithFeedIDSerializer,
+        "to_representation",
+        autospec=True,
+        side_effect=PostWithFeedIDSerializer.to_representation,
+    ) as mock_serializer:
         resp = client.get("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 200
-        assert resp.data['id'] == "561ed102-7584-4b7d-a302-43d4bca5605b"
+        assert resp.data["id"] == "561ed102-7584-4b7d-a302-43d4bca5605b"
         mock_serializer.assert_called_once()  # confirm that we use correct serializer
-        api_schema['/api/v1/posts/{post_id}/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        api_schema["/api/v1/posts/{post_id}/"]["GET"].validate_response(
+            Transport.get_st_response(None, resp)
+        )
 
 
 @pytest.mark.django_db
@@ -102,12 +111,21 @@ def test_reindex_post(client, feed_with_posts, stixifier_profile, api_schema):
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/posts/{post_id}/reindex/']['PATCH'].validate_response(Transport.get_st_response(None, resp))
+        api_schema["/api/v1/posts/{post_id}/reindex/"]["PATCH"].validate_response(
+            Transport.get_st_response(None, resp)
+        )
 
 
 @pytest.mark.django_db
 def test_post_objects(client, feed_with_posts, api_schema):
-    with (patch.object(PostOnlyView, "get_post_objects", autospec=True, side_effect=PostOnlyView.get_post_objects) as mock_get_post_objects,):
+    with (
+        patch.object(
+            PostOnlyView,
+            "get_post_objects",
+            autospec=True,
+            side_effect=PostOnlyView.get_post_objects,
+        ) as mock_get_post_objects,
+    ):
         resp = client.get(
             "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/objects/",
             data=None,
@@ -116,11 +134,13 @@ def test_post_objects(client, feed_with_posts, api_schema):
         assert resp.status_code == 200, resp.content
         mock_get_post_objects.assert_called_once_with(
             mock_get_post_objects.call_args[0][0],
-            "561ed102-7584-4b7d-a302-43d4bca5605b"
+            "561ed102-7584-4b7d-a302-43d4bca5605b",
         )
-        resp.headers['content-type'] = 'application/json'
-        
-        api_schema['/api/v1/posts/{post_id}/objects/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        resp.headers["content-type"] = "application/json"
+
+        api_schema["/api/v1/posts/{post_id}/objects/"]["GET"].validate_response(
+            Transport.get_st_response(None, resp)
+        )
 
 
 @pytest.mark.django_db
@@ -139,7 +159,10 @@ def test_post_extractions__not_processed(client, feed_with_posts, api_schema):
         json.loads(resp.content)["details"]["error"]
         == "This post is in failed extraction state, please reindex to access"
     )
-    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema["/api/v1/posts/{post_id}/extractions/"]["GET"].validate_response(
+        Transport.get_st_response(None, resp)
+    )
+
 
 @pytest.mark.django_db
 def test_post_extractions(client, feed_with_posts, api_schema):
@@ -162,7 +185,9 @@ def test_post_extractions(client, feed_with_posts, api_schema):
         assert resp.status_code == 200, resp.content
         mock_get_obstracts_file.assert_called_once()
         assert resp.data == post.txt2stix_data
-        api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        api_schema["/api/v1/posts/{post_id}/extractions/"]["GET"].validate_response(
+            Transport.get_st_response(None, resp)
+        )
 
 
 @pytest.mark.django_db
@@ -176,8 +201,9 @@ def test_post_extractions_no_data(client, feed_with_posts, api_schema):
     )
     assert resp.status_code == 200, resp.content
     assert resp.data == {}
-    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(None, resp))
-
+    api_schema["/api/v1/posts/{post_id}/extractions/"]["GET"].validate_response(
+        Transport.get_st_response(None, resp)
+    )
 
 
 @pytest.mark.django_db
@@ -230,7 +256,9 @@ def test_post_images(client, feed_with_posts, api_schema):
     assert resp.status_code == 200, resp.content
     assert "images" in resp.data
     assert len(resp.data["images"]) == 2
-    api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema["/api/v1/posts/{post_id}/images/"]["GET"].validate_response(
+        Transport.get_st_response(None, resp)
+    )
 
 
 @pytest.mark.django_db
@@ -245,8 +273,9 @@ def test_post_images_no_images(client, feed_with_posts, api_schema):
     assert resp.status_code == 200, resp.content
     assert "images" in resp.data
     assert len(resp.data["images"]) == 0
-    api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(None, resp))
-
+    api_schema["/api/v1/posts/{post_id}/images/"]["GET"].validate_response(
+        Transport.get_st_response(None, resp)
+    )
 
 
 @pytest.mark.django_db
@@ -262,7 +291,9 @@ def test_post_destroy(client, feed_with_posts, api_schema):
         resp = client.get("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 404
         mock_remove_report_objects.assert_called_once_with(post)
-        api_schema['/api/v1/posts/{post_id}/']['DELETE'].validate_response(Transport.get_st_response(None, resp))
+        api_schema["/api/v1/posts/{post_id}/"]["DELETE"].validate_response(
+            Transport.get_st_response(None, resp)
+        )
 
 
 @pytest.mark.django_db
@@ -300,7 +331,9 @@ def test_create_post_in_feed(client, feed_with_posts, stixifier_profile, api_sch
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/feeds/{feed_id}/posts/']['POST'].validate_response(Transport.get_st_response(None, resp))
+        api_schema["/api/v1/feeds/{feed_id}/posts/"]["POST"].validate_response(
+            Transport.get_st_response(None, resp)
+        )
 
 
 @pytest.mark.django_db
@@ -331,8 +364,9 @@ def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile, api_s
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/feeds/{feed_id}/posts/reindex/']['PATCH'].validate_response(Transport.get_st_response(None, resp))
-
+        api_schema["/api/v1/feeds/{feed_id}/posts/reindex/"]["PATCH"].validate_response(
+            Transport.get_st_response(None, resp)
+        )
 
 
 @pytest.fixture
@@ -427,10 +461,13 @@ def test_list_posts_filter(client, api_schema, list_post_posts, filters, expecte
     assert resp.status_code == 200, resp.content
     assert {post["id"] for post in resp.data["posts"]} == set(expected_ids)
     assert resp.data["total_results_count"] == len(expected_ids)
-    api_schema['/api/v1/posts/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema["/api/v1/posts/"]["GET"].validate_response(
+        Transport.get_st_response(None, resp)
+    )
+
 
 @pytest.mark.django_db
-def test_attack_navigator__not_processed(client, feed_with_posts, api_schema):
+def test_list_attack_navigator__not_processed(client, feed_with_posts, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
     post.txt2stix_data = {"navigator_layer": []}
     post.processed = False
@@ -445,17 +482,14 @@ def test_attack_navigator__not_processed(client, feed_with_posts, api_schema):
         json.loads(resp.content)["details"]["error"]
         == "This post is in failed extraction state, please reindex to access"
     )
-    api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema["/api/v1/posts/{post_id}/attack-navigator/"]["GET"].validate_response(
+        Transport.get_st_response(None, resp)
+    )
+
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "layer",
-    [
-        None,
-        []
-    ]
-)
-def test_attack_navigator__nothing(client, feed_with_posts, layer, api_schema):
+@pytest.mark.parametrize("layer", [None, []])
+def test_list_attack_navigator__nothing(client, feed_with_posts, layer, api_schema):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
     post.txt2stix_data = {"navigator_layer": layer}
     post.save()
@@ -474,15 +508,18 @@ def test_attack_navigator__nothing(client, feed_with_posts, layer, api_schema):
         )
         assert resp.status_code == 200, resp.content
         mock_get_obstracts_file.assert_called_once()
-        assert resp.data == {}
-        api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].validate_response(Transport.get_st_response(None, resp))
-
+        assert resp.data == {"ics": False, "mobile": False, "enterprise": False}
+        api_schema["/api/v1/posts/{post_id}/attack-navigator/"][
+            "GET"
+        ].validate_response(Transport.get_st_response(None, resp))
 
 
 @pytest.mark.django_db
-def test_attack_navigator__has_data(client, feed_with_posts, api_schema):
+def test_list_attack_navigator__has_data(client, feed_with_posts, api_schema, navigator_data):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
-    post.txt2stix_data = {"navigator_layer": [{"domain": "ics-attack"}, {"domain": "mobile-attack"}]}
+    post.txt2stix_data = {
+        "navigator_layer": navigator_data
+    }
     post.save()
     with (
         patch.object(
@@ -499,6 +536,114 @@ def test_attack_navigator__has_data(client, feed_with_posts, api_schema):
         )
         assert resp.status_code == 200, resp.content
         mock_get_obstracts_file.assert_called_once()
-        assert resp.data == {"ics": {"domain": "ics-attack"}, "mobile": {"domain": "mobile-attack"}}
-        api_schema['/api/v1/posts/{post_id}/attack-navigator/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        assert resp.data == {"ics": True, "mobile": True, "enterprise": False}
+        api_schema["/api/v1/posts/{post_id}/attack-navigator/"][
+            "GET"
+        ].validate_response(Transport.get_st_response(None, resp))
 
+
+@pytest.mark.django_db
+def test_retrieve_attack_navigator__no_data(client, feed_with_posts, api_schema):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {}
+    post.save()
+    with (
+        patch.object(
+            PostOnlyView,
+            "get_obstracts_file",
+            side_effect=PostOnlyView.get_obstracts_file,
+            autospec=True,
+        ) as mock_get_obstracts_file,
+    ):
+        resp = client.get(
+            "/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/ics/",
+            data=None,
+            content_type="application/json",
+        )
+        assert resp.status_code == 404, resp.content
+        json.loads(resp.content) == {
+            "code": 404,
+            "details": {"error": "no navigator for this domain", "domains": []},
+            "message": "Not Found",
+        }
+        mock_get_obstracts_file.assert_called_once()
+        api_schema["/api/v1/posts/{post_id}/attack-navigator/{attack_domain}/"][
+            "GET"
+        ].validate_response(Transport.get_st_response(None, resp))
+
+
+@pytest.fixture
+def navigator_data():
+    return [
+        {
+            "version": "4.5",
+            "name": "Basic ICS Layer",
+            "domain": "ics-attack",
+            "description": "A simple example ICS layer using only required fields.",
+            "techniques": [{"techniqueID": "T0887"}, {"techniqueID": "T0853"}],
+        },
+        {
+            "version": "4.5",
+            "name": "Minimal Mobile Layer",
+            "domain": "mobile-attack",
+            "description": "A basic mobile layer with minimal configuration.",
+            "techniques": [{"techniqueID": "T1406"}, {"techniqueID": "T1475"}],
+        },
+    ]
+
+
+@pytest.mark.django_db
+def test_retrieve_attack_navigator__has_data(
+    client, feed_with_posts, api_schema, navigator_data
+):
+    post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
+    post.txt2stix_data = {"navigator_layer": navigator_data}
+    post.save()
+
+    resp = client.get(
+        f"/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/ics/",
+        data=None,
+        content_type="application/json",
+    )
+    assert resp.status_code == 200, resp.content
+    assert resp.data == {
+        "version": "4.5",
+        "name": "Basic ICS Layer",
+        "domain": "ics-attack",
+        "description": "A simple example ICS layer using only required fields.",
+        "techniques": [{"techniqueID": "T0887"}, {"techniqueID": "T0853"}],
+    }
+    api_schema["/api/v1/posts/{post_id}/attack-navigator/{attack_domain}/"][
+        "GET"
+    ].validate_response(Transport.get_st_response(None, resp))
+
+    resp = client.get(
+        f"/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/mobile/",
+        data=None,
+        content_type="application/json",
+    )
+    assert resp.status_code == 200, resp.content
+    assert resp.data == {
+        "version": "4.5",
+        "name": "Minimal Mobile Layer",
+        "domain": "mobile-attack",
+        "description": "A basic mobile layer with minimal configuration.",
+        "techniques": [{"techniqueID": "T1406"}, {"techniqueID": "T1475"}],
+    }
+    api_schema["/api/v1/posts/{post_id}/attack-navigator/{attack_domain}/"][
+        "GET"
+    ].validate_response(Transport.get_st_response(None, resp))
+
+    resp = client.get(
+        f"/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/attack-navigator/enterprise/",
+        data=None,
+        content_type="application/json",
+    )
+    assert resp.status_code == 404, resp.content
+    assert json.loads(resp.content)["details"] == {
+        "error": "no navigator for this domain",
+        "domains": ["ics", "mobile"],
+    }
+    api_schema["/api/v1/posts/{post_id}/attack-navigator/{attack_domain}/"][
+        "GET"
+    ].validate_response(Transport.get_st_response(None, resp))
