@@ -57,6 +57,7 @@ def stixifier_profile():
         ai_content_check_provider=None,
         ai_create_attack_flow=False,
         id="26fce5ea-c3df-45a2-8989-0225549c704b",
+        generate_pdf=True,
     )
     yield profile
 
