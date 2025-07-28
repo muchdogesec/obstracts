@@ -263,6 +263,8 @@ def test_post_destroy(client, feed_with_posts, api_schema):
         assert resp.status_code == 404
         mock_remove_report_objects.assert_called_once_with(post)
         api_schema['/api/v1/posts/{post_id}/']['DELETE'].validate_response(Transport.get_st_response(resp))
+        with pytest.raises(File.DoesNotExist):
+            File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
 
 
 @pytest.mark.django_db
