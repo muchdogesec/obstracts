@@ -174,11 +174,10 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "generate_pdf",
-    [True, False]
-)
-def test_process_post_generate_pdf(obstracts_job, fake_stixifier_processor, generate_pdf):
+@pytest.mark.parametrize("generate_pdf", [True, False])
+def test_process_post_generate_pdf(
+    obstracts_job, fake_stixifier_processor, generate_pdf
+):
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
     obstracts_job.profile.generate_pdf = generate_pdf
     obstracts_job.profile.save()
@@ -191,7 +190,9 @@ def test_process_post_generate_pdf(obstracts_job, fake_stixifier_processor, gene
     ):
         mock_stixify_processor_cls.return_value = fake_stixifier_processor
         process_post.si(obstracts_job.id, post_id).delay()
-        assert mock_add_pdf_to_post.called == generate_pdf # should only be called if generate_pdf == True
+        assert (
+            mock_add_pdf_to_post.called == generate_pdf
+        )  # should only be called if generate_pdf == True
         file = models.File.objects.get(pk=post_id)
         assert file.processed == True
 

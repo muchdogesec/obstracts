@@ -61,7 +61,7 @@ def test_list_posts(client, feed_with_posts, api_schema):
         assert resp.status_code == 200
         assert resp.data["total_results_count"] == 4, resp.data
         mock_serializer.assert_called_once()  # confirm that we use correct serializer
-        api_schema['/api/v1/posts/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/posts/']['GET'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -71,7 +71,7 @@ def test_retrieve_posts(client, feed_with_posts, api_schema):
         assert resp.status_code == 200
         assert resp.data['id'] == "561ed102-7584-4b7d-a302-43d4bca5605b"
         mock_serializer.assert_called_once()  # confirm that we use correct serializer
-        api_schema['/api/v1/posts/{post_id}/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/posts/{post_id}/']['GET'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -102,7 +102,7 @@ def test_reindex_post(client, feed_with_posts, stixifier_profile, api_schema):
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/posts/{post_id}/reindex/']['PATCH'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/posts/{post_id}/reindex/']['PATCH'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -120,7 +120,7 @@ def test_post_objects(client, feed_with_posts, api_schema):
         )
         resp.headers['content-type'] = 'application/json'
         
-        api_schema['/api/v1/posts/{post_id}/objects/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/posts/{post_id}/objects/']['GET'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -139,7 +139,7 @@ def test_post_extractions__not_processed(client, feed_with_posts, api_schema):
         json.loads(resp.content)["details"]["error"]
         == "This post is in failed extraction state, please reindex to access"
     )
-    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(resp))
 
 @pytest.mark.django_db
 def test_post_extractions(client, feed_with_posts, api_schema):
@@ -162,7 +162,7 @@ def test_post_extractions(client, feed_with_posts, api_schema):
         assert resp.status_code == 200, resp.content
         mock_get_obstracts_file.assert_called_once()
         assert resp.data == post.txt2stix_data
-        api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -176,7 +176,7 @@ def test_post_extractions_no_data(client, feed_with_posts, api_schema):
     )
     assert resp.status_code == 200, resp.content
     assert resp.data == {}
-    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(resp))
 
 
 
@@ -230,7 +230,7 @@ def test_post_images(client, feed_with_posts, api_schema):
     assert resp.status_code == 200, resp.content
     assert "images" in resp.data
     assert len(resp.data["images"]) == 2
-    api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -245,7 +245,7 @@ def test_post_images_no_images(client, feed_with_posts, api_schema):
     assert resp.status_code == 200, resp.content
     assert "images" in resp.data
     assert len(resp.data["images"]) == 0
-    api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(resp))
 
 
 
@@ -262,7 +262,7 @@ def test_post_destroy(client, feed_with_posts, api_schema):
         resp = client.get("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 404
         mock_remove_report_objects.assert_called_once_with(post)
-        api_schema['/api/v1/posts/{post_id}/']['DELETE'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/posts/{post_id}/']['DELETE'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -300,7 +300,7 @@ def test_create_post_in_feed(client, feed_with_posts, stixifier_profile, api_sch
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/feeds/{feed_id}/posts/']['POST'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/feeds/{feed_id}/posts/']['POST'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -331,7 +331,7 @@ def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile, api_s
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/feeds/{feed_id}/posts/reindex/']['PATCH'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/feeds/{feed_id}/posts/reindex/']['PATCH'].validate_response(Transport.get_st_response(resp))
 
 
 
@@ -427,4 +427,4 @@ def test_list_posts_filter(client, api_schema, list_post_posts, filters, expecte
     assert resp.status_code == 200, resp.content
     assert {post["id"] for post in resp.data["posts"]} == set(expected_ids)
     assert resp.data["total_results_count"] == len(expected_ids)
-    api_schema['/api/v1/posts/']['GET'].validate_response(Transport.get_st_response(None, resp))
+    api_schema['/api/v1/posts/']['GET'].validate_response(Transport.get_st_response(resp))
