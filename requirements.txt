@@ -453,7 +453,7 @@ tqdm==4.67.1
     #   nltk
     #   openai
     #   stix2arango
-txt2stix==1.0.3
+txt2stix==1.0.4
     # via dogesec-commons
 typing-extensions==4.14.1
     # via
