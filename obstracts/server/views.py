@@ -43,7 +43,7 @@ from ..cjob import tasks
 from obstracts.server import serializers
 import textwrap
 
-
+ATTACK_DOMAINS = ["ics", "mobile", "enterprise"]
 
 from drf_spectacular.views import SpectacularAPIView
 from rest_framework.response import Response
@@ -329,6 +329,27 @@ class FeedView(h4f_views.FeedView):
         },
         request=serializers.PatchPostSerializer,
     ),
+    list_attack_navigators=extend_schema(
+        summary="Show available ATT&CK Navigators Domains Available",
+        description=textwrap.dedent(
+            """
+            This endpoint will return available ATT&CK Navigator layers for this post.
+
+            An ATT&CK Navigator layer will only be generated if `ai_create_attack_navigator_layer` is set to true, and you enable ATT&CK Enterprise/ICS/Mobile extractions (which extract data).
+            """
+        ),
+    ),
+    retrieve_attack_navigators=extend_schema(
+        summary="Retrieve the ATT&CK Navigator layer",
+        description=textwrap.dedent(
+            """
+            This endpoint will return the ATT&CK Navigator layer for the specified domain. The layer file produced can be imported directly to the ATT&CK Navigator.
+
+            Note, if no ATT&CK Navigator layer exists for the specified domain, for the post, a 404 will be returned. You can check if a layer exists using the show available layers endpoint.
+            """
+        ),
+        parameters=[OpenApiParameter("attack_domain", enum=ATTACK_DOMAINS, location=OpenApiParameter.PATH)],
+    ),
 )
 class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
@@ -492,12 +513,47 @@ class PostOnlyView(h4f_views.PostOnlyView):
             Use this endpoint to view this file which can be useful to understanding how the output for the post was produced.
             """
         ),
-        responses={200: dict}
+        responses={200: dict},
     )
     @decorators.action(detail=True, methods=["GET"])
     def extractions(self, request, post_id=None, **kwargs):
         post_file: models.File = self.get_obstracts_file()
         return Response(post_file.txt2stix_data or {})
+
+    @decorators.action(
+        detail=True,
+        methods=["GET"],
+        url_path="attack-navigator",
+        serializer_class=serializers.AttackNavigatorSerializer,
+    )
+    def list_attack_navigators(self, request, post_id=None, **kwargs):
+        post_file: models.File = self.get_obstracts_file()
+        layers = (post_file.txt2stix_data or {}).get("navigator_layer") or []
+        s = serializers.AttackNavigatorSerializer(
+            data={layer["domain"].removesuffix("-attack"): True for layer in layers}
+        )
+        s.is_valid()
+        return Response(s.data)
+
+    @decorators.action(
+        detail=True,
+        methods=["GET"],
+        url_path="attack-navigator/<attack_domain>",
+        serializer_class=serializers.AttackNavigatorDomainSerializer,
+    )
+    def retrieve_attack_navigators(
+        self, request, post_id=None, attack_domain=None, **kwargs
+    ):
+        if attack_domain not in ATTACK_DOMAINS:
+            raise exceptions.NotFound({"error": "unknown attack domain"})
+        post_file: models.File = self.get_obstracts_file()
+        layers = (post_file.txt2stix_data or {}).get("navigator_layer") or []
+        layers = {layer["domain"].removesuffix("-attack"): layer for layer in layers}
+        if not layers.get(attack_domain):
+            raise exceptions.NotFound(
+                {"error": "no navigator for this domain", "domains": list(layers)}
+            )
+        return Response(layers[attack_domain])
 
     @extend_schema(
         responses=None,
@@ -577,7 +633,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         self.remove_report_objects(obj.obstracts_post)
         models.File.objects.filter(pk=obj.pk).delete()
         return retval
-    
+
     @staticmethod
     def remove_report_objects(instance: models.File):
         instance = models.File.objects.get(pk=instance.post_id)
@@ -592,9 +648,9 @@ class PostOnlyView(h4f_views.PostOnlyView):
         )
         helper = ArangoDBHelper(settings.VIEW_NAME, None)
         bind_vars = {
-                'post_id': str(instance.post_id),
-                "@vertex": instance.feed.vertex_collection,
-                "@edge": instance.feed.edge_collection,
+            "post_id": str(instance.post_id),
+            "@vertex": instance.feed.vertex_collection,
+            "@edge": instance.feed.edge_collection,
         }
         query = """
         LET removed_edges = (
@@ -610,12 +666,26 @@ class PostOnlyView(h4f_views.PostOnlyView):
         )
         RETURN [removed_vertices, removed_edges]
         """
-        removed_vertices, removed_edges = helper.execute_query(query, bind_vars=bind_vars, paginate=False)[0]
-        
-        for collection, objects in [(instance.feed.vertex_collection, removed_vertices), (instance.feed.edge_collection, removed_edges)]:
-            helper.db.collection(collection).delete_many([dict(_key=x[0]) for x in objects], silent=True)
-            db_service.update_is_latest_several_chunked([x[1] for x in objects], collection, collection.removesuffix('_vertex_collection').removesuffix('_edge_collection')+'_edge_collection')
-    
+        removed_vertices, removed_edges = helper.execute_query(
+            query, bind_vars=bind_vars, paginate=False
+        )[0]
+
+        for collection, objects in [
+            (instance.feed.vertex_collection, removed_vertices),
+            (instance.feed.edge_collection, removed_edges),
+        ]:
+            helper.db.collection(collection).delete_many(
+                [dict(_key=x[0]) for x in objects], silent=True
+            )
+            db_service.update_is_latest_several_chunked(
+                [x[1] for x in objects],
+                collection,
+                collection.removesuffix("_vertex_collection").removesuffix(
+                    "_edge_collection"
+                )
+                + "_edge_collection",
+            )
+
     def get_post_objects(self, post_id):
         post_file: models.File = self.get_obstracts_file()
         helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
@@ -824,15 +894,15 @@ class JobView(
 
 
 @extend_schema(
-    responses={204:{}},
+    responses={204: {}},
     tags=["Server Status"],
     summary="Check if the service is running",
     description=textwrap.dedent(
         """
         If this endpoint returns a 204, the service is running as expected.
         """
-        ),
-    )
+    ),
+)
 @decorators.api_view(["GET"])
 def health_check(request):
-   return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response(status=status.HTTP_204_NO_CONTENT)

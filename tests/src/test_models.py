@@ -41,6 +41,18 @@ def test_feed_generate_collection_name():
         == "example_feed_name_2_79c488e3b1c840f18b8f2d90e660e47c"
     )
 
+@pytest.mark.django_db
+def test_feed_generate_collection_name__starts_with_number():
+    h4f_feed = h4f_models.Feed.objects.create(
+        title="2Example Feed Name (2)",
+        url="https://example.com/2",
+        id="79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
+    )
+    feed: models.FeedProfile = h4f_feed.obstracts_feed
+    assert (
+        feed.generate_collection_name()
+        == "obs_2example_feed_name_2_79c488e3b1c840f18b8f2d90e660e47c"
+    )
 
 @pytest.mark.django_db
 def test_feed_create_signals():
