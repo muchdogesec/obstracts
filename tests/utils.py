@@ -37,7 +37,7 @@ class Transport(WSGITransport):
                 cookies=case.COOKIES,
                 params=case.GET,
             ).prepare()
-            
+
         return case
 
     def send(self, case: schemathesis.Case, *args, **kwargs):
@@ -54,16 +54,16 @@ class Transport(WSGITransport):
         client = django.test.Client()
         response: DRFResponse = client.generic(**serialized_request)
         elapsed = time.time() - t
-        return self.get_st_response(case, response, elapsed)
+        return self.get_st_response(response, case, elapsed)
 
     @classmethod
-    def get_st_response(self, case, response: DRFResponse, elapsed=1):
+    def get_st_response(self, response: DRFResponse, case=None, elapsed=1):
         if not case:
             case = response.wsgi_request
         return SchemathesisResponse(
             response.status_code,
             headers={k: [v] for k, v in response.headers.items()},
-            content=response.content,
+            content=response.getvalue(),
             request=self.case_as_request(case),
             elapsed=elapsed,
             verify=True,

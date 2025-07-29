@@ -62,7 +62,7 @@ def test_create(client, feed_with_posts, stixifier_profile, api_schema):
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
         assert resp.data["id"] == str(mocked_job.id)
-        api_schema['/api/v1/feeds/']['POST'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/feeds/']['POST'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -98,7 +98,7 @@ def test_fetch(client, feed_with_posts, stixifier_profile, api_schema):
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
         assert resp.data["id"] == str(mocked_job.id)
-        api_schema['/api/v1/feeds/{feed_id}/fetch/']['PATCH'].validate_response(Transport.get_st_response(None, resp))
+        api_schema['/api/v1/feeds/{feed_id}/fetch/']['PATCH'].validate_response(Transport.get_st_response(resp))
 
 
 @pytest.mark.django_db
@@ -112,4 +112,4 @@ def test_feed_destroy(client, feed_with_posts, api_schema):
     assert not helper.db.has_collection(
         feed_with_posts.edge_collection
     ), "eddge collection should already be deleted"
-    api_schema['/api/v1/feeds/{feed_id}/']['DELETE'].validate_response(Transport.get_st_response(None, resp))
+    api_schema['/api/v1/feeds/{feed_id}/']['DELETE'].validate_response(Transport.get_st_response(resp))

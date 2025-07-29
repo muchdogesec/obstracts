@@ -124,15 +124,20 @@ def fake_stixifier_processor():
 def test_process_post_job(obstracts_job, fake_stixifier_processor):
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
     obstracts_job.processed_items = 12
+    obstracts_job.failed_processes = 5
     obstracts_job.save()
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
-        patch("obstracts.cjob.tasks.add_pdf_to_post") as mock_add_pdf_to_post,
+        patch(
+            "obstracts.cjob.tasks.add_pdf_to_post.run", side_effect=add_pdf_to_post.run
+        ) as mock_add_pdf_to_post,
+        patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf,
         patch.object(
             PostOnlyView, "remove_report_objects"
         ) as mock_remove_report_objects,
     ):
+        mock_download_pdf.return_value = b"this is a pdf"
         mock_stixify_processor_cls.return_value = fake_stixifier_processor
         process_post.si(obstracts_job.id, post_id).delay()
         obstracts_job.refresh_from_db()
@@ -152,10 +157,12 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
         assert file.summary == fake_stixifier_processor.summary
         assert file.txt2stix_data == {"data": "data is here"}
         assert file.markdown_file.read() == b"Generated MD File"
+        assert obstracts_job.failed_processes == 5
         assert obstracts_job.processed_items == 13
         process_stream: io.BytesIO = mock_stixify_processor_cls.call_args[0][0]
         process_stream.seek(0)
         assert process_stream.getvalue() == file.post.description.encode()
+        assert file.pdf_file.read() == mock_download_pdf.return_value
         mock_stixify_processor_cls.assert_called_once_with(
             process_stream,
             obstracts_job.profile,
@@ -164,6 +171,30 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
             report_id=post_id,
             base_url=file.post.link,
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("generate_pdf", [True, False])
+def test_process_post_generate_pdf(
+    obstracts_job, fake_stixifier_processor, generate_pdf
+):
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    obstracts_job.profile.generate_pdf = generate_pdf
+    obstracts_job.profile.save()
+
+    with (
+        patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch(
+            "obstracts.cjob.tasks.add_pdf_to_post.run", side_effect=add_pdf_to_post.run
+        ) as mock_add_pdf_to_post,
+    ):
+        mock_stixify_processor_cls.return_value = fake_stixifier_processor
+        process_post.si(obstracts_job.id, post_id).delay()
+        assert (
+            mock_add_pdf_to_post.called == generate_pdf
+        )  # should only be called if generate_pdf == True
+        file = models.File.objects.get(pk=post_id)
+        assert file.processed == True
 
 
 @pytest.mark.django_db

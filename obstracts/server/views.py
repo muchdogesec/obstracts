@@ -631,6 +631,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         obj = self.get_object()
         retval = super().destroy(*args, **kwargs)
         self.remove_report_objects(obj.obstracts_post)
+        models.File.objects.filter(pk=obj.pk).delete()
         return retval
 
     @staticmethod

@@ -29,8 +29,8 @@ def pytest_sessionstart():
         password=settings.ARANGODB_PASSWORD,
     )
     for c in db.collections():
-        c_name = c['name']
-        if c_name.endswith('_collection'):
+        c_name = c["name"]
+        if c_name.endswith("_collection"):
             db.collection(c_name).truncate()
 
 
@@ -57,6 +57,7 @@ def stixifier_profile():
         ai_content_check_provider=None,
         ai_create_attack_flow=False,
         id="26fce5ea-c3df-45a2-8989-0225549c704b",
+        generate_pdf=True,
     )
     yield profile
 
@@ -114,8 +115,9 @@ def feed_with_posts():
     yield feed
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def api_schema():
     import schemathesis
     from obstracts.asgi import application
+
     yield schemathesis.openapi.from_asgi("/api/schema/?format=json", application)
