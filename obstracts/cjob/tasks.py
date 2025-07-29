@@ -12,7 +12,7 @@ from history4feed.app import models as h4f_models
 from django.core.files.base import File
 
 if typing.TYPE_CHECKING:
-    from ..import settings
+    from .. import settings
 
 POLL_INTERVAL = 30
 LOCK_EXPIRE = 60 * 10
@@ -23,17 +23,20 @@ def get_lock_id(job: Job):
     logging.debug("using lock id %s", lock_id)
     return lock_id
 
+
 def queue_lock(job: Job):
     logging.debug("lock_value = {v}".format(v=cache.get(get_lock_id(job))))
     lock_value = dict(feed_id=str(job.feed.id))
     if job:
         lock_value["job_id"] = str(job.id)
-        
+
     status = cache.add(get_lock_id(job), lock_value, timeout=LOCK_EXPIRE)
     return status
 
+
 class ShouldRetry(Exception):
     pass
+
 
 class CancelledJob(Exception):
     pass
@@ -61,8 +64,11 @@ def job_completed_with_error(job_id):
 def new_task(h4f_job: h4f_models.Job, profile_id):
     return create_job_entry(h4f_job, profile_id)
 
+
 def create_job_entry(h4f_job: h4f_models.Job, profile_id):
-    job = Job.objects.create(history4feed_job=h4f_job, feed_id=h4f_job.feed_id, profile_id=profile_id)
+    job = Job.objects.create(
+        history4feed_job=h4f_job, feed_id=h4f_job.feed_id, profile_id=profile_id
+    )
     return job
 
 
@@ -72,10 +78,17 @@ def start_processing(job_id):
     logging.info(
         f"processing {job_id=}, {job.feed_id=}, {current_task.request.root_id=}"
     )
-    posts = [f.post.id for f in h4f_models.FulltextJob.objects.filter(job=job.history4feed_job, status=h4f_models.FullTextState.RETRIEVED).all()]
-    
+    posts = [
+        f.post.id
+        for f in h4f_models.FulltextJob.objects.filter(
+            job=job.history4feed_job, status=h4f_models.FullTextState.RETRIEVED
+        ).all()
+    ]
+
     logging.info("processing %d posts for job %s", len(posts), job_id)
-    tasks = [wait_in_queue.si(job_id)] + [process_post.si(job_id, str(post_id)) for post_id in posts]
+    tasks = [wait_in_queue.si(job_id)] + [
+        process_post.si(job_id, str(post_id)) for post_id in posts
+    ]
     tasks.append(job_completed_with_error.si(job_id))
     return chain(tasks).apply_async()
 
@@ -86,19 +99,21 @@ def wait_in_queue(self: CeleryTask, job_id):
     job = Job.objects.get(pk=job_id)
     if job.is_cancelled():
         job.errors.append("job cancelled while in queue")
-        job.save(update_fields=['errors'])
+        job.save(update_fields=["errors"])
         return False
     if not queue_lock(job):
         return self.retry(max_retries=300)
     job.update_state(models.JobState.PROCESSING)
     return True
 
+
 def download_pdf(url):
     from playwright.sync_api import sync_playwright
+
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(url, wait_until='domcontentloaded')
+        page.goto(url, wait_until="domcontentloaded")
         dimensions = page.evaluate(
             """
         function(){
@@ -113,23 +128,28 @@ def download_pdf(url):
         pdf_bytes = page.pdf(**dimensions)
         browser.close()
         return bytes(pdf_bytes)
-    
 
+
+@shared_task
 def add_pdf_to_post(job_id, post_id):
     job = models.Job.objects.get(pk=job_id)
     post_file = models.File.objects.get(pk=post_id)
     try:
         pdf_bytes = download_pdf(post_file.post.link)
-        post_file.pdf_file.save(f"{post_file.post.title}.pdf", io.BytesIO(pdf_bytes), save=True)
-        post_file.save()
-    except Exception as  e:
+        post_file.pdf_file.save(
+            f"{post_file.post.title}.pdf", io.BytesIO(pdf_bytes), save=False
+        )
+        post_file.save(update_fields=["pdf_file"])
+    except Exception as e:
         logging.exception(f"process file to pdf failed for {post_file.pk}")
         job.errors.append(f"process file to pdf failed for {post_file.pk}")
         job.save()
 
+
 @shared_task
 def process_post(job_id, post_id, *args):
     from obstracts.server.views import PostOnlyView
+
     job = Job.objects.get(pk=job_id)
     post = h4f_models.Post.objects.get(pk=post_id)
     try:
@@ -144,7 +164,8 @@ def process_post(job_id, post_id, *args):
                 processed=False,
             ),
         )
-        add_pdf_to_post(job_id, post_id)
+        if job.profile.generate_pdf:
+            add_pdf_to_post.delay(job_id, post_id)
         PostOnlyView.remove_report_objects(file)
 
         stream = io.BytesIO(post.description.encode())
@@ -192,7 +213,7 @@ def process_post(job_id, post_id, *args):
         )
         file.summary = processor.summary
 
-        file.markdown_file.save("markdown.md", processor.md_file.open(), save=True)
+        file.markdown_file.save("markdown.md", processor.md_file.open(), save=False)
         models.FileImage.objects.filter(report=file).delete()  # remove old references
 
         for image in processor.md_images:
@@ -201,7 +222,17 @@ def process_post(job_id, post_id, *args):
             )
 
         file.processed = True
-        file.save()
+        file.save(
+            update_fields=[
+                "processed",
+                "markdown_file",
+                "summary",
+                "txt2stix_data",
+                "ai_describes_incident",
+                "ai_incident_summary",
+                "ai_incident_classification",
+            ]
+        )
         job.processed_items += 1
     except CancelledJob:
         msg = f"job cancelled by user for post {post_id}"
@@ -212,12 +243,22 @@ def process_post(job_id, post_id, *args):
         logging.error(msg, exc_info=True)
         job.failed_processes += 1
         job.errors.append(msg)
-    job.save(update_fields=['errors', 'processed_items', 'failed_processes'])
+    job.save(update_fields=["errors", "processed_items", "failed_processes"])
     return job_id
 
 
 from celery import signals
+
+
 @signals.worker_ready.connect
 def mark_old_jobs_as_failed(**kwargs):
-    models.Job.objects.filter(state=models.JobState.RETRIEVING).update(state=models.JobState.RETRIEVE_FAILED)
-    models.Job.objects.filter(state__in=[models.JobState.RETRIEVING, models.JobState.QUEUED, models.JobState.PROCESSING]).update(state=models.JobState.CANCELLED)
+    models.Job.objects.filter(state=models.JobState.RETRIEVING).update(
+        state=models.JobState.RETRIEVE_FAILED
+    )
+    models.Job.objects.filter(
+        state__in=[
+            models.JobState.RETRIEVING,
+            models.JobState.QUEUED,
+            models.JobState.PROCESSING,
+        ]
+    ).update(state=models.JobState.CANCELLED)
