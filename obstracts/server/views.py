@@ -15,6 +15,7 @@ from dogesec_commons.objects.helpers import OBJECT_TYPES
 from django.db.models import OuterRef, Subquery, Q
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from .utils import (
+    FEED_406_ERROR,
     MinMaxDateFilter,
     Ordering,
     Pagination,
@@ -104,7 +105,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
     ),
     create=extend_schema(
         request=FeedCreateSerializer,
-        responses={201: ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        responses={201: ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR, 406: FEED_406_ERROR},
         summary="Create a New Feed",
         description=textwrap.dedent(
             """

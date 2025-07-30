@@ -8,6 +8,8 @@ from rest_framework import response
 
 from dogesec_commons.utils import Pagination, Ordering
 from dogesec_commons.utils.filters import MinMaxDateFilter
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse
+from dogesec_commons.utils.serializers import CommonErrorSerializer
 
 
 
@@ -24,3 +26,15 @@ class Response(response.Response):
 class ErrorResp(Response):
     def __init__(self, status, title, details=None):
         super().__init__({"message": title, "code": status}, status=status)
+
+
+FEED_406_ERROR = OpenApiResponse(
+    CommonErrorSerializer,
+    "Unsupported feed type",
+    [
+        OpenApiExample(
+            "http406",
+            {"message": "Feed is not of type atom or rss", "code": 406},
+        )
+    ],
+)
