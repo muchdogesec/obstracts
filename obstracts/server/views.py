@@ -330,7 +330,7 @@ class FeedView(h4f_views.FeedView):
         request=serializers.PatchPostSerializer,
     ),
     list_attack_navigators=extend_schema(
-        summary="Show available ATT&CK Navigators Domains Available",
+        summary="Show available ATT&CK Navigator Domains",
         description=textwrap.dedent(
             """
             This endpoint will return available ATT&CK Navigator layers for this post.
