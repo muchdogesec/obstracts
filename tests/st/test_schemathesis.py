@@ -73,7 +73,12 @@ def test_imports(mock, case: schemathesis.Case, **kwargs):
     url=strategies.sampled_from([
         "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata-partial.xml",
         "https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-cdata.xml",
-        "https://blog.eclecticiq.com/rss.xml"
+        "https://blog.eclecticiq.com/rss.xml",
+        "https://example.com/1",
+        "https://example.com/2",
+        "https://example.com/3",
+        "https://example.com/2",
+        "https://example.com/2",
     ])
 )
 @schema.include(method="POST", path="/api/v1/feeds/").parametrize()
@@ -84,5 +89,4 @@ def test_create_feed(mock, case: schemathesis.Case, url, **kwargs):
             case.path_parameters[k] = v
     if isinstance(case.body, dict) and 'url' in case.body:
         case.body['url'] = url
-    case.call_and_validate(excluded_checks=[negative_data_rejection, positive_data_acceptance])
-
+    case.call_and_validate(excluded_checks=[positive_data_acceptance])
