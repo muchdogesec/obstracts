@@ -1,3 +1,4 @@
+from enum import StrEnum, auto
 import uuid
 from rest_framework import serializers
 
@@ -235,3 +236,33 @@ class AttackNavigatorDomainSerializer(JSONSchemaSerializer):
         },
         "additionalProperties": True,
     }
+
+
+
+class HealthCheckChoices(StrEnum):
+    AUTHORIZED = auto()
+    UNAUTHORIZED = auto()
+    UNSUPPORTED = auto()
+    NOT_CONFIGURED = "not-configured"
+    UNKNOWN = auto()
+    OFFLINE = auto()
+
+class HealthCheckChoiceField(serializers.ChoiceField):
+    def __init__(self, **kwargs):
+        choices = [m.value for m in HealthCheckChoices]
+        super().__init__(choices, **kwargs)
+        
+class HealthCheckLLMs(serializers.Serializer):
+    openai = HealthCheckChoiceField()
+    deepseek = HealthCheckChoiceField()
+    anthropic = HealthCheckChoiceField()
+    gemini = HealthCheckChoiceField()
+    openrouter = HealthCheckChoiceField()
+
+class HealthCheckSerializer(serializers.Serializer):
+    ctibutler = HealthCheckChoiceField()
+    vulmatch = HealthCheckChoiceField()
+    btcscan = HealthCheckChoiceField()
+    binlist = HealthCheckChoiceField()
+    llms = HealthCheckLLMs()
+
