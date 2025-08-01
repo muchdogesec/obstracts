@@ -61,9 +61,11 @@ regex_router.register('objects/sdos', arango_views.SDOView, "object-view-sdo")
 # txt2stix views
 router.register('extractors', ExtractorsView, "extractors-view")
 
+healthcheck = routers.SimpleRouter(use_regex_path=False)
+healthcheck.register('', views.HealthCheck, "service-status-view")
 
 urlpatterns = [
-    path(f'api/healthcheck/', views.health_check),
+    path(f'api/healthcheck/', include(healthcheck.urls)),
     path(f'api/{API_VERSION}/', include(router.urls)),
     path(f'api/{API_VERSION}/', include(regex_router.urls)),
     path('admin/', admin.site.urls),
