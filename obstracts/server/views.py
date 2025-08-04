@@ -420,7 +420,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         def semantic_search(self, queryset, name, text):
             from django.contrib.postgres.search import SearchQuery, SearchVector
             queryset = queryset.annotate(
-                text=SearchVector("title", "description", "obstracts_post__summary"),
+                text=SearchVector("title", "description", "obstracts_post__summary", "obstracts_post__ai_incident_summary"),
             )
             return queryset.filter(text=SearchQuery(text, search_type="websearch"))
 
