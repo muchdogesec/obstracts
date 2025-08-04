@@ -1,3 +1,4 @@
+import uuid
 import pytest
 import os
 from django.conf import settings
@@ -96,11 +97,11 @@ def feed_with_posts():
     )
     post3 = h4f_models.Post.objects.create(
         feed=h4f_feed,
-        title="Post 3",
+        title="Post 3: Royalty",
         pubdate=timezone.now(),
         id="72e1ad04-8ce9-413d-b620-fe7c75dc0a39",
         link="https://example.blog/3",
-        description="blah Post 3 description blah",
+        description="blah Post 3 description blah. It's a beautiful day to be king",
     )
     post4 = h4f_models.Post.objects.create(
         feed=h4f_feed,
@@ -108,11 +109,39 @@ def feed_with_posts():
         pubdate=timezone.now(),
         id="42a5d042-26fa-41f3-8850-307be3f330cf",
         link="https://example.blog/4",
+        description="The execution was so beautiful and royal."
     )
-    for post in [post1, post2, post3, post4]:
-        models.File.objects.create(feed=feed, processed=True, post=post)
+    for post, summary in [(post1, "blank"), (post2, "something very random"), (post3, "this is not so random"), (post4, "die die die, fascists must die")]:
+        models.File.objects.create(feed=feed, processed=True, post=post, summary=summary)
 
     yield feed
+
+
+@pytest.fixture
+def feeds():
+    return [
+        h4f_models.Feed.objects.create(
+            url="https://example.com/rss1.xml",
+            title="Latest TTPs from APT29 in 2025",
+            feed_type="atom",
+            description="A technical breakdown of tactics, techniques, and procedures used by APT29, focusing on credential harvesting and living-off-the-land binaries.",
+            id=uuid.UUID("6ca6ce37-1c69-4a81-8490-89c91b57e557"),
+        ),
+        h4f_models.Feed.objects.create(
+            url="https://example.com/rss2.xml",
+            title="Threat Intelligence with MISP",
+            feed_type="rss",
+            description="A practical guide on how to use MISP to collect, correlate, and share cyber threat intelligence.",
+            id=uuid.UUID("0dfccb58-158c-4436-b338-163e3662943c"),
+        ),
+        h4f_models.Feed.objects.create(
+            url="https://example.com/rss3.xml",
+            title="Indicators of Compromise in Financial Sector Attacks",
+            feed_type="skeleton",
+            id=uuid.UUID("dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"),
+            description="Analysis of IOCs observed in recent phishing and ransomware campaigns targeting banks and fintech firms."
+        ),
+    ]
 
 
 @pytest.fixture(scope="session")

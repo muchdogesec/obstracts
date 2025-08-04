@@ -259,7 +259,22 @@ def test_post_images_no_images(client, feed_with_posts, api_schema):
     assert len(resp.data["images"]) == 0
     api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(resp))
 
-
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ["text", "expected_ids"],
+    [
+        ["royal", ["42a5d042-26fa-41f3-8850-307be3f330cf"]],
+        ["royalty", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
+        ["king beautiful", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
+        ["beauty royalty", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
+        ["random post", ["345c8d0b-c6ca-4419-b1f7-0daeb4e9278b", "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
+        ["-king", ["345c8d0b-c6ca-4419-b1f7-0daeb4e9278b", "42a5d042-26fa-41f3-8850-307be3f330cf", "561ed102-7584-4b7d-a302-43d4bca5605b"]],
+    ]
+)
+def test_search_text(client, feed_with_posts, api_schema, text, expected_ids):
+    resp = client.get("/api/v1/posts/", query_params=dict(text=text))
+    assert resp.status_code == 200
+    assert {r['id'] for r in resp.data['posts']} == set(expected_ids)
 
 @pytest.mark.django_db
 def test_post_destroy(client, feed_with_posts, api_schema):
