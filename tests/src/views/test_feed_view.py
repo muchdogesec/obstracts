@@ -113,3 +113,19 @@ def test_feed_destroy(client, feed_with_posts, api_schema):
         feed_with_posts.edge_collection
     ), "eddge collection should already be deleted"
     api_schema['/api/v1/feeds/{feed_id}/']['DELETE'].validate_response(Transport.get_st_response(resp))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ["text", "expected_ids"],
+    [
+        ["MISP -APT29 -IOC", ["0dfccb58-158c-4436-b338-163e3662943c"]],
+        ["phishing or ransomware", ["dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"]],
+        ["TTP or MISP or IOC", ["0dfccb58-158c-4436-b338-163e3662943c", "dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"]],
+        ["(MISP or threat sharing) and (correlation or automation) or IOC", ["0dfccb58-158c-4436-b338-163e3662943c"]]
+    ]
+)
+def test_search_text(client, feeds, api_schema, text, expected_ids):
+    resp = client.get("/api/v1/feeds/", query_params=dict(text=text))
+    assert resp.status_code == 200
+    assert {r['id'] for r in resp.data['feeds']} == set(expected_ids)

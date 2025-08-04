@@ -224,6 +224,19 @@ class FeedView(h4f_views.FeedView):
     pagination_class = Pagination("feeds")
     schema = ObstractsAutoSchema()
 
+    class filterset_class(h4f_views.FeedView.filterset_class):
+        text = filters.CharFilter(
+            method="semantic_search",
+            help_text="Search in a Feeds Title and Description. Similar to `title` and `description` filters, but allows you to run in one query.",
+
+        )
+        def semantic_search(self, queryset, name, text):
+            from django.contrib.postgres.search import SearchQuery, SearchVector
+            queryset = queryset.annotate(
+                text=SearchVector("title", "description"),
+            )
+            return queryset.filter(text=SearchQuery(text, search_type="websearch"))
+
     def create(self, request, *args, **kwargs):
         request_body = request.body
         s = serializers.FeedCreateSerializer(data=request.data)
@@ -399,6 +412,17 @@ class PostOnlyView(h4f_views.PostOnlyView):
             method="ai_incident_classification_filter",
             choices=[(c, c) for c in incident_classification_types],
         )
+        text = filters.CharFilter(
+            method="semantic_search",
+            help_text="Search in a Posts Title, Description and Summary. Similar to `title` and `description` filters, but allows you to run in one query and includes Summary search to.",
+
+        )
+        def semantic_search(self, queryset, name, text):
+            from django.contrib.postgres.search import SearchQuery, SearchVector
+            queryset = queryset.annotate(
+                text=SearchVector("title", "description", "obstracts_post__summary", "obstracts_post__ai_incident_summary"),
+            )
+            return queryset.filter(text=SearchQuery(text, search_type="websearch"))
 
         def ai_describes_incident_filter(self, queryset, name, value):
             fv = None
@@ -721,7 +745,6 @@ FOR doc IN @@view
             "#more_filters", "\n".join(filters)
         )
         return helper.execute_query(query, bind_vars=bind_vars)
-
 
 @extend_schema_view(
     create=extend_schema(
