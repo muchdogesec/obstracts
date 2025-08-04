@@ -227,7 +227,7 @@ class FeedView(h4f_views.FeedView):
     class filterset_class(h4f_views.FeedView.filterset_class):
         text = filters.CharFilter(
             method="semantic_search",
-            help_text="Search in feed's title/description",
+            help_text="Search in a Feeds Title and Description. Similar to `title` and `description` filters, but allows you to run in one query.",
 
         )
         def semantic_search(self, queryset, name, text):
@@ -414,7 +414,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         )
         text = filters.CharFilter(
             method="semantic_search",
-            help_text="Search in post title/description/summary",
+            help_text="Search in a Posts Title, Description and Summary. Similar to `title` and `description` filters, but allows you to run in one query and includes Summary search to.",
 
         )
         def semantic_search(self, queryset, name, text):
