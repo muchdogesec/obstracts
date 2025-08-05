@@ -34,8 +34,8 @@ dependencies = [
     "django-cors-headers",
     "django-storages[s3]",
     "django-cleanup",
-    "playwright",
     "gunicorn",
+    "requests",
 
   ]
 [project.urls]

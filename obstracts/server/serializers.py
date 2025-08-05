@@ -264,5 +264,6 @@ class HealthCheckSerializer(serializers.Serializer):
     vulmatch = HealthCheckChoiceField()
     btcscan = HealthCheckChoiceField()
     binlist = HealthCheckChoiceField()
+    pdfshift = HealthCheckChoiceField()
     llms = HealthCheckLLMs()
 

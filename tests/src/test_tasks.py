@@ -241,7 +241,6 @@ def test_add_pdf_to_post__failure(obstracts_job):
         assert len(obstracts_job.errors) == 1
 
 
-@pytest.mark.django_db
 def test_download_pdf():
-    result = download_pdf("https://example.com/")
+    result = download_pdf("https://one.one.one.one/faq/", is_demo=True)
     assert tuple(result[:4]) == (0x25, 0x50, 0x44, 0x46)
