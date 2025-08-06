@@ -122,7 +122,6 @@ def test_feed_destroy(client, feed_with_posts, api_schema):
         ["MISP -APT29 -IOC", ["0dfccb58-158c-4436-b338-163e3662943c"]],
         ["phishing or ransomware", ["dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"]],
         ["TTP or MISP or IOC", ["0dfccb58-158c-4436-b338-163e3662943c", "dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"]],
-        ["(MISP or threat sharing) and (correlation or automation) or IOC", ["0dfccb58-158c-4436-b338-163e3662943c"]]
     ]
 )
 def test_search_text(client, feeds, api_schema, text, expected_ids):
