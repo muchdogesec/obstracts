@@ -26,7 +26,7 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "redis",
     "history4feed",
-    "dogesec-commons[stixifier]",
+    "dogesec-commons[stixifier]>=1.1.6",
     "txt2stix>=1.0.6",
     "hyperlink",
     "django>=5.2.1",
