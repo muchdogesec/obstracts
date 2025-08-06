@@ -52,7 +52,6 @@ jobs:
         id: setup_environment
         run: |
           pip install -e '.[test]' -r requirements.txt
-          bash setup_playwright.sh
           echo ARANGODB_HOST_URL="http://${{ steps.get_ip.outputs.IP_ADDRESS }}:18529" >> tests/tests.env
           echo POSTGRES_HOST="${{ steps.get_ip.outputs.IP_ADDRESS }}" >> tests/tests.env
           echo DJANGO_WWW_PATH=$PWD/django_www_path/ >> tests/tests.env
