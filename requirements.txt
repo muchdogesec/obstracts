@@ -18,7 +18,7 @@ annotated-types==0.7.0
     # via pydantic
 antlr4-python3-runtime==4.9.3
     # via stix2-patterns
-anyio==4.9.0
+anyio==4.10.0
     # via
     #   httpx
     #   openai
@@ -42,9 +42,9 @@ beautifulsoup4==4.13.4
     #   txt2stix
 billiard==4.2.1
     # via celery
-boto3==1.40.0
+boto3==1.40.2
     # via django-storages
-botocore==1.40.0
+botocore==1.40.2
     # via
     #   boto3
     #   s3transfer
@@ -58,7 +58,7 @@ celery==5.5.3 ; python_version >= "3.8"
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
-certifi==2025.7.14
+certifi==2025.8.3
     # via
     #   httpcore
     #   httpx
@@ -125,7 +125,7 @@ djangorestframework==3.16.0
     #   drf-spectacular
     #   history4feed
     #   obstracts (pyproject.toml)
-dogesec-commons[stixifier]==1.1.6
+dogesec-commons[stixifier]==1.1.7
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
@@ -163,9 +163,7 @@ googleapis-common-protos==1.70.0
     #   google-api-core
     #   grpcio-status
 greenlet==3.2.3
-    # via
-    #   playwright
-    #   sqlalchemy
+    # via sqlalchemy
 griffe==1.9.0
     # via banks
 grpcio==1.74.0
@@ -291,8 +289,6 @@ platformdirs==4.3.8
     # via
     #   banks
     #   llama-index-core
-playwright==1.54.0
-    # via obstracts (pyproject.toml)
 prompt-toolkit==3.0.51
     # via click-repl
 propcache==0.3.2
@@ -334,8 +330,6 @@ pydantic==2.11.7
     #   openai
 pydantic-core==2.33.2
     # via pydantic
-pyee==13.0.0
-    # via playwright
 pyjwt==2.10.1
     # via python-arango
 python-arango==8.2.1
@@ -367,7 +361,7 @@ readability-lxml==0.8.4.1
     # via
     #   file2txt
     #   history4feed
-redis==6.2.0
+redis==6.3.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
@@ -467,7 +461,6 @@ typing-extensions==4.14.1
     #   openai
     #   pydantic
     #   pydantic-core
-    #   pyee
     #   sqlalchemy
     #   typing-inspect
     #   typing-inspection

@@ -1,5 +1,7 @@
 from functools import reduce
+import logging
 import operator
+import typing
 from django.http import FileResponse
 from django.urls import resolve
 import requests
@@ -44,7 +46,8 @@ from .autoschema import ObstractsAutoSchema
 from ..cjob import tasks
 from obstracts.server import serializers
 import textwrap
-
+if typing.TYPE_CHECKING:
+    from .. import settings
 ATTACK_DOMAINS = ["ics", "mobile", "enterprise"]
 
 from drf_spectacular.views import SpectacularAPIView
@@ -918,7 +921,6 @@ class JobView(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
 @extend_schema_view(
     list=extend_schema(
         responses={204: {}},
@@ -945,7 +947,28 @@ class HealthCheck(viewsets.ViewSet):
     def service(self, request, *args, **kwargs):
         return Response(status=200, data=self.check_status())
 
-    @staticmethod
-    def check_status():
+    @classmethod
+    def check_status(cls):
         from txt2stix.credential_checker import check_statuses
-        return check_statuses(test_llms=True)
+        statuses = check_statuses(test_llms=True)
+        statuses.update(pdfshift=cls.check_pdfshift())
+        return statuses
+
+    @staticmethod
+    def check_pdfshift():
+        if not settings.PDFSHIFT_API_KEY:
+            return serializers.HealthCheckChoices.NOT_CONFIGURED.value
+        resp = requests.get(
+            f"https://api.pdfshift.io/v3/credits/usage",
+            headers={"X-API-Key": settings.PDFSHIFT_API_KEY},
+        )
+        logging.info(f'[check status] pdfshift {resp.content}')
+        match resp.status_code:
+            case 401 | 403:
+                return serializers.HealthCheckChoices.UNAUTHORIZED.value
+            case 200:
+                return serializers.HealthCheckChoices.AUTHORIZED.value
+            case 500:
+                return serializers.HealthCheckChoices.OFFLINE.value
+            case _:
+                return serializers.HealthCheckChoices.UNKNOWN.value

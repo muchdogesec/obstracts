@@ -4,12 +4,14 @@ from celery import shared_task, chain, current_task, Task as CeleryTask
 import typing
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
+import requests
 from ..server.models import Job
 from ..server import models
 from django.core.cache import cache
 from history4feed.app import models as h4f_models
 
 from django.core.files.base import File
+from django.conf import settings
 
 if typing.TYPE_CHECKING:
     from .. import settings
@@ -107,27 +109,20 @@ def wait_in_queue(self: CeleryTask, job_id):
     return True
 
 
-def download_pdf(url):
-    from playwright.sync_api import sync_playwright
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(url, wait_until="domcontentloaded")
-        dimensions = page.evaluate(
-            """
-        function(){
-            const rect = document.body.getBoundingClientRect();
-            return {
-                "width": rect.width.toString(),
-                "height": rect.height.toString(), 
-            }
-        }
-        """
-        )
-        pdf_bytes = page.pdf(**dimensions)
-        browser.close()
-        return bytes(pdf_bytes)
+def download_pdf(url, is_demo=False):
+    params = {'source': url, 'timeout': 30}
+    if is_demo:
+        params.update(sandbox=True)
+    response = requests.post(
+        f'https://api.pdfshift.io/v3/convert/pdf',
+        headers={'X-API-Key': settings.PDFSHIFT_API_KEY},
+        json=params
+    )
+    print
+    if not response.ok:
+        print(response.content)
+    response.raise_for_status()
+    return response.content
 
 
 @shared_task

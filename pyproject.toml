@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "obstracts"
-version = "1.0.1"
+version = "1.1.0"
 authors = [
   { name = "dogesec" }
 ]
@@ -34,8 +34,8 @@ dependencies = [
     "django-cors-headers",
     "django-storages[s3]",
     "django-cleanup",
-    "playwright",
     "gunicorn",
+    "requests",
 
   ]
 [project.urls]
