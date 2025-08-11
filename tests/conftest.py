@@ -74,10 +74,19 @@ def obstracts_job(feed_with_posts, stixifier_profile):
 
 @pytest.fixture
 def feed_with_posts():
+    feed = make_feed("6ca6ce37-1c69-4a81-8490-89c91b57e557")
+
+    yield feed
+
+@pytest.fixture(scope='module')
+def module_feed():
+    return make_feed('488d7378-583f-4640-834f-2aaefb8ad399')
+
+def make_feed(feed_id):
     h4f_feed = h4f_models.Feed.objects.create(
         title="Reindex Test Feed",
         url="https://example.com/",
-        id="6ca6ce37-1c69-4a81-8490-89c91b57e557",
+        id=feed_id,
     )
     feed: models.FeedProfile = h4f_feed.obstracts_feed
 
@@ -113,8 +122,7 @@ def feed_with_posts():
     )
     for post, summary in [(post1, "blank"), (post2, "something very random"), (post3, "this is not so random"), (post4, "die die die, fascists must die")]:
         models.File.objects.create(feed=feed, processed=True, post=post, summary=summary)
-
-    yield feed
+    return feed
 
 
 @pytest.fixture

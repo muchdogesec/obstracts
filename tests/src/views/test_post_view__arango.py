@@ -15,6 +15,11 @@ def as_arango2stix_db(db_name):
         return "_".join(db_name.split("_")[:-1])
     return db_name
 
+@pytest.fixture()
+def wp_feed(feed_with_posts):
+    upload_arango_objects(feed_with_posts.id)
+    return feed_with_posts
+
 
 @contextlib.contextmanager
 def make_s2a_uploads(
@@ -49,7 +54,6 @@ def make_s2a_uploads(
         for collection, _ in uploads:
             s2a.arango.db.collection(post_file.feed.vertex_collection).truncate()
             s2a.arango.db.collection(post_file.feed.edge_collection).truncate()
-
 
 @lru_cache
 def upload_arango_objects(feed_id):
@@ -219,9 +223,8 @@ def upload_arango_objects(feed_id):
 )
 @pytest.mark.django_db
 def test_get_post_objects_filters(
-    client, feed_with_posts, post_id, filters, expected_ids, api_schema
+    client, wp_feed, post_id, filters, expected_ids, api_schema
 ):
-    upload_arango_objects(str(feed_with_posts.id))
     resp = client.get(f"/api/v1/posts/{post_id}/objects/", query_params=filters)
     assert resp.status_code == 200, resp.content
     objects = resp.data["objects"]
@@ -240,13 +243,12 @@ def test_get_post_objects_filters(
     ],
 )
 @pytest.mark.django_db
-def test_remove_report_objects(client, feed_with_posts, post_id):
-    upload_arango_objects(str(feed_with_posts.id))
+def test_remove_report_objects(client, wp_feed, post_id):
     post = File.objects.get(pk=post_id)
     PostOnlyView.remove_report_objects(post)
     for collection_name in [
-        feed_with_posts.edge_collection,
-        feed_with_posts.vertex_collection,
+        wp_feed.edge_collection,
+        wp_feed.vertex_collection,
     ]:
         c = ArangoDBHelper("", None).db.collection(collection_name)
         for obj in c.all():
