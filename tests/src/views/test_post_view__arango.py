@@ -46,7 +46,6 @@ def make_s2a_uploads(
         s2a.run(
             data=dict(type="bundle", id="bundle--" + str(post_file.pk), objects=objects)
         )
-
     time.sleep(1)
     yield s2a
 
@@ -55,7 +54,6 @@ def make_s2a_uploads(
             s2a.arango.db.collection(post_file.feed.vertex_collection).truncate()
             s2a.arango.db.collection(post_file.feed.edge_collection).truncate()
 
-@lru_cache
 def upload_arango_objects(feed_id):
     posts = File.objects.filter(feed_id=feed_id).all()
     with make_s2a_uploads(

@@ -78,10 +78,6 @@ def feed_with_posts():
 
     yield feed
 
-@pytest.fixture(scope='module')
-def module_feed():
-    return make_feed('488d7378-583f-4640-834f-2aaefb8ad399')
-
 def make_feed(feed_id):
     h4f_feed = h4f_models.Feed.objects.create(
         title="Reindex Test Feed",
