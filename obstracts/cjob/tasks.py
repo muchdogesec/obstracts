@@ -118,7 +118,6 @@ def download_pdf(url, is_demo=False):
         headers={'X-API-Key': settings.PDFSHIFT_API_KEY},
         json=params
     )
-    print
     if not response.ok:
         print(response.content)
     response.raise_for_status()
@@ -162,7 +161,6 @@ def process_post(job_id, post_id, *args):
         if job.profile.generate_pdf:
             add_pdf_to_post.delay(job_id, post_id)
         PostOnlyView.remove_report_objects(file)
-
         stream = io.BytesIO(post.description.encode())
         stream.name = f"post-{post_id}.html"
         processor = StixifyProcessor(
