@@ -15,7 +15,7 @@ from stix2arango.services import ArangoDBService
 from obstracts.server.md_helper import MarkdownImageReplacer
 from . import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
-from django.db.models import OuterRef, Subquery, Q
+from django.db.models import OuterRef, Subquery, Q, Count
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from .utils import (
     FEED_406_ERROR,
@@ -46,6 +46,7 @@ from .autoschema import ObstractsAutoSchema
 from ..cjob import tasks
 from obstracts.server import serializers
 import textwrap
+
 if typing.TYPE_CHECKING:
     from .. import settings
 ATTACK_DOMAINS = ["ics", "mobile", "enterprise"]
@@ -109,7 +110,11 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
     ),
     create=extend_schema(
         request=FeedCreateSerializer,
-        responses={201: ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR, 406: FEED_406_ERROR},
+        responses={
+            201: ObstractsJobSerializer,
+            400: api_schema.DEFAULT_400_ERROR,
+            406: FEED_406_ERROR,
+        },
         summary="Create a New Feed",
         description=textwrap.dedent(
             """
@@ -231,10 +236,11 @@ class FeedView(h4f_views.FeedView):
         text = filters.CharFilter(
             method="semantic_search",
             help_text="Search in a Feeds Title and Description. Similar to `title` and `description` filters, but allows you to run in one query.",
-
         )
+
         def semantic_search(self, queryset, name, text):
             from django.contrib.postgres.search import SearchQuery, SearchVector
+
             queryset = queryset.annotate(
                 text=SearchVector("title", "description"),
             )
@@ -259,6 +265,15 @@ class FeedView(h4f_views.FeedView):
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
+
+    def filter_queryset(self, queryset):
+        qs = super().filter_queryset(queryset)
+        qs = qs.annotate(
+            count_of_posts=Count(
+                "posts", filter=Q(posts__obstracts_post__processed=True)
+            )
+        )
+        return qs
 
 
 @extend_schema_view(
@@ -366,7 +381,11 @@ class FeedView(h4f_views.FeedView):
             Note, if no ATT&CK Navigator layer exists for the specified domain, for the post, a 404 will be returned. You can check if a layer exists using the show available layers endpoint.
             """
         ),
-        parameters=[OpenApiParameter("attack_domain", enum=ATTACK_DOMAINS, location=OpenApiParameter.PATH)],
+        parameters=[
+            OpenApiParameter(
+                "attack_domain", enum=ATTACK_DOMAINS, location=OpenApiParameter.PATH
+            )
+        ],
     ),
 )
 class PostOnlyView(h4f_views.PostOnlyView):
@@ -418,12 +437,18 @@ class PostOnlyView(h4f_views.PostOnlyView):
         text = filters.CharFilter(
             method="semantic_search",
             help_text="Search in a Posts Title, Description and Summary. Similar to `title` and `description` filters, but allows you to run in one query and includes Summary search to.",
-
         )
+
         def semantic_search(self, queryset, name, text):
             from django.contrib.postgres.search import SearchQuery, SearchVector
+
             queryset = queryset.annotate(
-                text=SearchVector("title", "description", "obstracts_post__summary", "obstracts_post__ai_incident_summary"),
+                text=SearchVector(
+                    "title",
+                    "description",
+                    "obstracts_post__summary",
+                    "obstracts_post__ai_incident_summary",
+                ),
             )
             return queryset.filter(text=SearchQuery(text, search_type="websearch"))
 
@@ -749,6 +774,7 @@ FOR doc IN @@view
         )
         return helper.execute_query(query, bind_vars=bind_vars)
 
+
 @extend_schema_view(
     create=extend_schema(
         request=serializers.PostCreateSerializer,
@@ -950,6 +976,7 @@ class HealthCheck(viewsets.ViewSet):
     @classmethod
     def check_status(cls):
         from txt2stix.credential_checker import check_statuses
+
         statuses = check_statuses(test_llms=True)
         statuses.update(pdfshift=cls.check_pdfshift())
         return statuses
@@ -962,7 +989,7 @@ class HealthCheck(viewsets.ViewSet):
             f"https://api.pdfshift.io/v3/credits/usage",
             headers={"X-API-Key": settings.PDFSHIFT_API_KEY},
         )
-        logging.info(f'[check status] pdfshift {resp.content}')
+        logging.info(f"[check status] pdfshift {resp.content}")
         match resp.status_code:
             case 401 | 403:
                 return serializers.HealthCheckChoices.UNAUTHORIZED.value

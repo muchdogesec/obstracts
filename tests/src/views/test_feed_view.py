@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 from obstracts.cjob import tasks
+from obstracts.server import models
 from obstracts.server.views import FeedView, FeedView, FeedView
 from dogesec_commons.utils import Pagination
 from obstracts.server.serializers import (
@@ -128,3 +129,18 @@ def test_search_text(client, feeds, api_schema, text, expected_ids):
     resp = client.get("/api/v1/feeds/", query_params=dict(text=text))
     assert resp.status_code == 200
     assert {r['id'] for r in resp.data['feeds']} == set(expected_ids)
+
+
+@pytest.mark.django_db
+def test_count_of_post_considers_processed(client, feed_with_posts, rf):
+    resp = client.get(f'/api/v1/feeds/{feed_with_posts.pk}/')
+    assert resp.status_code == 200
+    assert resp.data['count_of_posts'] == 4
+
+
+    p = models.File.objects.get(pk="42a5d042-26fa-41f3-8850-307be3f330cf")
+    p.processed = False
+    p.save()
+    resp = client.get(f'/api/v1/feeds/{feed_with_posts.pk}/')
+    assert resp.status_code == 200
+    assert resp.data['count_of_posts'] == 3

@@ -53,7 +53,6 @@ class CreateTaskSerializer(serializers.Serializer):
 
 class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
     count_of_posts = serializers.IntegerField(
-        source="obstracts_feed.visible_posts_count",
         read_only=True,
         help_text="Number of posts in feed",
     )
