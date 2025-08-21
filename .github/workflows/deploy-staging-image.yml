@@ -7,6 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}_web_staging
+  PACKAGE_NAME: ${{ github.event.repository.name }}_web_staging
 
 jobs:
   build-and-push-image:
