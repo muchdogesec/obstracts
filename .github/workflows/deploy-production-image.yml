@@ -12,7 +12,6 @@ env:
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
-    environment: obstracts_web_production
     permissions:
       contents: read
       packages: write
