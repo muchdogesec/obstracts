@@ -429,7 +429,7 @@ stix2==3.0.1
     #   stix2extensions
 stix2-patterns==2.0.0
     # via stix2
-stix2arango==1.1.1
+stix2arango==1.1.2
     # via dogesec-commons
 stix2extensions==1.0.0
     # via txt2stix
