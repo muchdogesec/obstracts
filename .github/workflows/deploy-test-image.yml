@@ -37,15 +37,12 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.deploy
+          file: ./Dockerfile.test
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             DJANGO_DEBUG=True
-            R2_ACCESS_KEY=8f0366f040e83f8eccbc64949f7e504b
-            R2_CUSTOM_DOMAIN=static.obstracts.test.signalscorps.com
-            R2_BUCKET_NAME=obstracts-web-core-test
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
