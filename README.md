@@ -4,6 +4,8 @@
 
 ## Before you begin...
 
+![](docs/obstracts-web.png)
+
 We offer a fully hosted web version of Obstracts which includes many additional features over those in this codebase. [You can find out more about the web version here](https://www.obstracts.com/).
 
 ## Overview
