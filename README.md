@@ -28,12 +28,6 @@ It works at a high level like so:
 6. A user can access the bundle data or specific objects in the bundle via the API
 7. As new posts are added to remote blogs, user makes request to update blog and these are requested by history4feed
 
-## tl;dr
-
-[![Obstracts](https://img.youtube.com/vi/plp4hw95WdA/0.jpg)](https://www.youtube.com/watch?v=plp4hw95WdA)
-
-[Watch the demo](https://www.youtube.com/watch?v=plp4hw95WdA).
-
 ## Install
 
 ### Download and configure
