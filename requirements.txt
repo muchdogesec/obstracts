@@ -6,7 +6,7 @@
 #
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.12.15
+aiohttp==3.13.0
     # via llama-index-core
 aiosignal==1.4.0
     # via aiohttp
@@ -18,15 +18,17 @@ annotated-types==0.7.0
     # via pydantic
 antlr4-python3-runtime==4.9.3
     # via stix2-patterns
-anyio==4.10.0
+anyio==4.11.0
     # via
     #   httpx
     #   openai
-asgiref==3.9.1
+arrow==1.3.0
+    # via isoduration
+asgiref==3.10.0
     # via
     #   django
     #   django-cors-headers
-attrs==25.3.0
+attrs==25.4.0
     # via
     #   aiohttp
     #   jsonschema
@@ -35,16 +37,16 @@ banks==2.2.0
     # via llama-index-core
 base58==2.1.1
     # via txt2stix
-beautifulsoup4==4.13.4
+beautifulsoup4==4.14.2
     # via
     #   bs4
     #   markdownify
     #   txt2stix
-billiard==4.2.1
+billiard==4.2.2
     # via celery
-boto3==1.40.2
+boto3==1.40.51
     # via django-storages
-botocore==1.40.2
+botocore==1.40.51
     # via
     #   boto3
     #   s3transfer
@@ -52,24 +54,24 @@ brotlipy==0.7.0
     # via history4feed
 bs4==0.0.2
     # via file2txt
-cachetools==5.5.2
+cachetools==6.2.1
     # via google-auth
 celery==5.5.3 ; python_version >= "3.8"
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
-certifi==2025.8.3
+certifi==2025.10.5
     # via
     #   httpcore
     #   httpx
     #   requests
-cffi==1.17.1
+cffi==2.0.0
     # via brotlipy
 chardet==5.2.0
     # via readability-lxml
-charset-normalizer==3.4.2
+charset-normalizer==3.4.4
     # via requests
-click==8.2.1
+click==8.3.0
     # via
     #   celery
     #   click-didyoumean
@@ -83,7 +85,11 @@ click-plugins==1.1.1.2
 click-repl==0.3.0
     # via celery
 colorama==0.4.6
-    # via griffe
+    # via
+    #   griffe
+    #   stix2-validator
+cpe==1.3.1
+    # via stix2-validator
 cssselect==1.3.0
     # via readability-lxml
 dataclasses-json==0.6.7
@@ -99,7 +105,7 @@ dirtyjson==1.0.8
     # via llama-index-core
 distro==1.9.0
     # via openai
-django==5.2.4
+django==5.2.7
     # via
     #   django-cors-headers
     #   django-filter
@@ -110,16 +116,16 @@ django==5.2.4
     #   obstracts (pyproject.toml)
 django-cleanup==9.0.0
     # via obstracts (pyproject.toml)
-django-cors-headers==4.7.0
+django-cors-headers==4.9.0
     # via obstracts (pyproject.toml)
-django-filter==25.1
+django-filter==25.2
     # via
     #   dogesec-commons
     #   history4feed
     #   obstracts (pyproject.toml)
 django-storages[s3]==1.14.6
     # via obstracts (pyproject.toml)
-djangorestframework==3.16.0
+djangorestframework==3.16.1
     # via
     #   dogesec-commons
     #   drf-spectacular
@@ -138,21 +144,23 @@ fake-useragent==2.2.0
     # via history4feed
 file2txt==1.0.6
     # via dogesec-commons
-filelock==3.18.0
+filelock==3.20.0
     # via tldextract
 filetype==1.2.0
     # via
     #   file2txt
     #   llama-index-core
-frozenlist==1.7.0
+fqdn==1.5.1
+    # via jsonschema
+frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-fsspec==2025.7.0
+fsspec==2025.9.0
     # via llama-index-core
-google-api-core[grpc]==2.25.1
+google-api-core[grpc]==2.26.0
     # via google-cloud-vision
-google-auth==2.40.3
+google-auth==2.41.1
     # via
     #   google-api-core
     #   google-cloud-vision
@@ -162,15 +170,15 @@ googleapis-common-protos==1.70.0
     # via
     #   google-api-core
     #   grpcio-status
-greenlet==3.2.3
+greenlet==3.2.4
     # via sqlalchemy
-griffe==1.9.0
+griffe==1.14.0
     # via banks
-grpcio==1.74.0
+grpcio==1.75.1
     # via
     #   google-api-core
     #   grpcio-status
-grpcio-status==1.74.0
+grpcio-status==1.75.1
     # via
     #   file2txt
     #   google-api-core
@@ -192,66 +200,76 @@ hyperlink==21.0.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
-idna==3.10
+idna==3.11
     # via
     #   anyio
     #   httpx
     #   hyperlink
+    #   jsonschema
     #   requests
     #   tldextract
     #   yarl
-ijson==3.4.0
+ijson==3.4.0.post0
     # via stix2arango
 importlib-metadata==8.7.0
     # via python-arango
 inflection==0.5.1
     # via drf-spectacular
+isoduration==20.11.0
+    # via jsonschema
 jinja2==3.1.6
     # via banks
-jiter==0.10.0
+jiter==0.11.0
     # via openai
 jmespath==1.0.1
     # via
     #   boto3
     #   botocore
-joblib==1.5.1
+joblib==1.5.2
     # via nltk
-jsonschema==4.25.0
+jsonpointer==3.0.0
+    # via jsonschema
+jsonschema[format-nongpl]==4.25.1
     # via
     #   drf-spectacular
+    #   stix2-validator
     #   stix2arango
-jsonschema-specifications==2025.4.1
+jsonschema-specifications==2025.9.1
     # via jsonschema
 kombu==5.5.4
     # via celery
-llama-index-core==0.13.0
+lark==1.3.0
+    # via rfc3987-syntax
+llama-index-core==0.14.4
     # via
     #   llama-index-llms-openai
     #   txt2stix
-llama-index-instrumentation==0.4.0
+llama-index-instrumentation==0.4.2
     # via llama-index-workflows
-llama-index-llms-openai==0.5.0
+llama-index-llms-openai==0.6.4
     # via txt2stix
-llama-index-workflows==1.2.0
+llama-index-workflows==2.8.0
     # via llama-index-core
-lxml[html-clean]==6.0.0
+lxml[html-clean]==6.0.2
     # via
     #   lxml-html-clean
     #   readability-lxml
-lxml-html-clean==0.4.2
+lxml-html-clean==0.4.3
     # via
     #   file2txt
     #   history4feed
     #   lxml
-markdownify==1.1.0
+markdownify==1.2.0
     # via file2txt
-markupsafe==3.0.2
+markupsafe==3.0.3
     # via jinja2
 marshmallow==3.26.1
     # via dataclasses-json
-mistune==3.1.3
-    # via txt2stix
-multidict==6.6.3
+mistune==3.1.4
+    # via
+    #   file2txt
+    #   txt2stix
+multidict==6.7.0
     # via
     #   aiohttp
     #   yarl
@@ -261,13 +279,13 @@ nest-asyncio==1.6.0
     # via llama-index-core
 networkx==3.5
     # via llama-index-core
-nltk==3.9.1
+nltk==3.9.2
     # via llama-index-core
-numpy==2.3.2
+numpy==2.3.3
     # via
     #   llama-index-core
     #   pandas
-openai==1.98.0
+openai==1.109.1
     # via llama-index-llms-openai
 packaging==25.0
     # via
@@ -275,23 +293,23 @@ packaging==25.0
     #   kombu
     #   marshmallow
     #   python-arango
-pandas==2.3.1
+pandas==2.3.3
     # via file2txt
 pathvalidate==3.3.1
     # via txt2stix
-phonenumbers==9.0.10
+phonenumbers==9.0.16
     # via txt2stix
 pillow==11.3.0
     # via
     #   file2txt
     #   llama-index-core
-platformdirs==4.3.8
+platformdirs==4.5.0
     # via
     #   banks
     #   llama-index-core
-prompt-toolkit==3.0.51
+prompt-toolkit==3.0.52
     # via click-repl
-propcache==0.3.2
+propcache==0.4.1
     # via
     #   aiohttp
     #   yarl
@@ -299,14 +317,14 @@ proto-plus==1.26.1
     # via
     #   google-api-core
     #   google-cloud-vision
-protobuf==6.31.1
+protobuf==6.32.1
     # via
     #   google-api-core
     #   google-cloud-vision
     #   googleapis-common-protos
     #   grpcio-status
     #   proto-plus
-psycopg2-binary==2.9.10
+psycopg2-binary==2.9.11
     # via
     #   dogesec-commons
     #   history4feed
@@ -319,29 +337,31 @@ pyasn1-modules==0.4.2
     # via google-auth
 pycountry==24.6.1
     # via schwifty
-pycparser==2.22
+pycparser==2.23
     # via cffi
-pydantic==2.11.7
+pydantic==2.12.1
     # via
     #   banks
     #   llama-index-core
     #   llama-index-instrumentation
     #   llama-index-workflows
     #   openai
-pydantic-core==2.33.2
+pydantic-core==2.41.3
     # via pydantic
 pyjwt==2.10.1
     # via python-arango
-python-arango==8.2.1
+python-arango==8.2.2
     # via
     #   dogesec-commons
     #   stix2arango
 python-dateutil==2.9.0.post0
     # via
+    #   arrow
     #   botocore
     #   celery
     #   dateparser
     #   pandas
+    #   stix2-validator
 python-dotenv==1.1.1
     # via
     #   file2txt
@@ -353,7 +373,7 @@ pytz==2025.2
     #   dateparser
     #   pandas
     #   stix2
-pyyaml==6.0.2
+pyyaml==6.0.3
     # via
     #   drf-spectacular
     #   llama-index-core
@@ -361,29 +381,31 @@ readability-lxml==0.8.4.1
     # via
     #   file2txt
     #   history4feed
-redis==6.3.0
+redis==6.4.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
-referencing==0.36.2
+referencing==0.37.0
     # via
     #   jsonschema
     #   jsonschema-specifications
-regex==2025.7.34
+regex==2025.9.18
     # via
     #   dateparser
     #   nltk
     #   tiktoken
-requests==2.32.4
+requests==2.32.5
     # via
     #   file2txt
     #   google-api-core
     #   history4feed
     #   llama-index-core
+    #   obstracts (pyproject.toml)
     #   python-arango
     #   requests-file
     #   requests-toolbelt
     #   stix2
+    #   stix2-validator
     #   stix2arango
     #   stix2extensions
     #   tiktoken
@@ -393,7 +415,13 @@ requests-file==2.1.0
     # via tldextract
 requests-toolbelt==1.0.0
     # via python-arango
-rpds-py==0.26.0
+rfc3339-validator==0.1.4
+    # via jsonschema
+rfc3986-validator==0.1.1
+    # via jsonschema
+rfc3987-syntax==1.1.0
+    # via jsonschema
+rpds-py==0.27.1
     # via
     #   jsonschema
     #   referencing
@@ -401,24 +429,27 @@ rsa==4.9.1
     # via google-auth
 rstr==3.2.2
     # via schwifty
-s3transfer==0.13.1
+s3transfer==0.14.0
     # via boto3
-schwifty==2025.7.0
+schwifty==2025.9.0
     # via txt2stix
-simplejson==3.20.1
-    # via stix2
+simplejson==3.20.2
+    # via
+    #   stix2
+    #   stix2-validator
 six==1.17.0
     # via
     #   markdownify
     #   python-dateutil
+    #   rfc3339-validator
     #   stix2-patterns
 sniffio==1.3.1
     # via
     #   anyio
     #   openai
-soupsieve==2.7
+soupsieve==2.8
     # via beautifulsoup4
-sqlalchemy[asyncio]==2.0.42
+sqlalchemy[asyncio]==2.0.44
     # via llama-index-core
 sqlparse==0.5.3
     # via django
@@ -428,7 +459,11 @@ stix2==3.0.1
     #   stix2arango
     #   stix2extensions
 stix2-patterns==2.0.0
-    # via stix2
+    # via
+    #   stix2
+    #   stix2-validator
+stix2-validator==3.2.0
+    # via txt2stix
 stix2arango==1.1.4
     # via dogesec-commons
 stix2extensions==1.2.0
@@ -437,7 +472,7 @@ tabulate==0.9.0
     # via file2txt
 tenacity==9.1.2
     # via llama-index-core
-tiktoken==0.9.0
+tiktoken==0.12.0
     # via llama-index-core
 tld==0.13.1
     # via txt2stix
@@ -453,11 +488,15 @@ txt2stix==1.1.3
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)
-typing-extensions==4.14.1
+types-python-dateutil==2.9.0.20251008
+    # via arrow
+typing-extensions==4.15.0
     # via
     #   aiosqlite
     #   beautifulsoup4
+    #   grpcio
     #   llama-index-core
+    #   llama-index-workflows
     #   openai
     #   pydantic
     #   pydantic-core
@@ -468,7 +507,7 @@ typing-inspect==0.9.0
     # via
     #   dataclasses-json
     #   llama-index-core
-typing-inspection==0.4.1
+typing-inspection==0.4.2
     # via pydantic
 tzdata==2025.2
     # via
@@ -476,6 +515,8 @@ tzdata==2025.2
     #   pandas
 tzlocal==5.3.1
     # via dateparser
+uri-template==1.3.0
+    # via jsonschema
 uritemplate==4.2.0
     # via drf-spectacular
 urllib3==2.5.0
@@ -490,15 +531,19 @@ vine==5.1.0
     #   amqp
     #   celery
     #   kombu
-wcwidth==0.2.13
+wcwidth==0.2.14
     # via prompt-toolkit
+webcolors==24.11.1
+    # via jsonschema
 whitenoise==6.7.0
     # via history4feed
-wrapt==1.17.2
+wrapt==1.17.3
     # via
     #   deprecated
     #   llama-index-core
-yarl==1.20.1
+xlrd==2.0.2
+    # via file2txt
+yarl==1.22.0
     # via aiohttp
 zipp==3.23.0
     # via importlib-metadata
