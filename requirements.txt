@@ -484,7 +484,7 @@ tqdm==4.67.1
     #   nltk
     #   openai
     #   stix2arango
-txt2stix==1.1.3
+txt2stix==1.1.4
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)
