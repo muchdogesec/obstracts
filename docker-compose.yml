@@ -15,6 +15,9 @@ services:
         env_file:
             - ./.env
         command: "python manage.py migrate"
+        depends_on:
+            pgdb:
+                condition: service_healthy
     django:
         extends: env_django
         command: >

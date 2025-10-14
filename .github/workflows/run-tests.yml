@@ -68,7 +68,7 @@ jobs:
         if: ${{ failure() || success() }}
         run: |
           set -a; source tests/tests.env; set +a
-          pytest --cov --cov-branch --cov-append --cov-report=xml --junitxml=schemathesis.junit.xml -o junit_family=legacy tests/st/test_schemathesis.py
+          pytest --cov --cov-branch --cov-append --cov-report=xml --junitxml=schemathesis.junit.xml -o junit_family=legacy tests/st/test_schemathesis.py -v
 
       - name: Upload coverage reports to Codecov
         id: upload_unit_test_coverage
