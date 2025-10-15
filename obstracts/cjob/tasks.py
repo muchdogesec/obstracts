@@ -110,13 +110,18 @@ def wait_in_queue(self: CeleryTask, job_id):
 
 
 def download_pdf(url, is_demo=False):
-    params = {'source': url, 'timeout': 30}
+    params = {
+        "source": url,
+        "timeout": 30,
+        "css": "div.cookie-banner, .cookie-consent, #cookie-consent, .cc-window { display: none !important; }",
+        "javascript": 'document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent").forEach(e => e.remove());',
+    }
     if is_demo:
         params.update(sandbox=True)
     response = requests.post(
-        f'https://api.pdfshift.io/v3/convert/pdf',
-        headers={'X-API-Key': settings.PDFSHIFT_API_KEY},
-        json=params
+        f"https://api.pdfshift.io/v3/convert/pdf",
+        headers={"X-API-Key": settings.PDFSHIFT_API_KEY},
+        json=params,
     )
     if not response.ok:
         print(response.content)
