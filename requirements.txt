@@ -131,7 +131,7 @@ djangorestframework==3.16.1
     #   drf-spectacular
     #   history4feed
     #   obstracts (pyproject.toml)
-dogesec-commons[stixifier]==1.1.18
+dogesec-commons[stixifier]==1.1.19
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
