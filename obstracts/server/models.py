@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 import json
 import logging
 import os
@@ -240,6 +241,7 @@ class Job(models.Model):
     feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
     errors = ArrayField(base_field=models.CharField(max_length=1024), default=list)
+    completion_time = models.DateTimeField(default=None, null=True)
 
     def is_cancelled(self):
         obj = Job.objects.get(pk=self.pk)
@@ -254,6 +256,8 @@ class Job(models.Model):
     @transaction.atomic
     def update_state(self, state):
         obj = self.__class__.objects.select_for_update().get(pk=self.pk)
+        if state in [JobState.CANCELLED, JobState.PROCESS_FAILED, JobState.RETRIEVE_FAILED]:
+            obj.completion_time = datetime.now(UTC)
         if obj.state == JobState.CANCELLING and state == JobState.CANCELLED:
             pass
         elif obj.state not in [JobState.RETRIEVING, JobState.PROCESSING, JobState.QUEUED]:
