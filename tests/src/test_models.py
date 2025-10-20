@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.conf import settings
 import pytest
 from obstracts.server import models
+from obstracts.server.models import JobState
 from history4feed.app import models as h4f_models
 from datetime import datetime as dt
 from dogesec_commons.objects.helpers import ArangoDBHelper
@@ -241,3 +242,34 @@ def test_upload_to(feed_with_posts):
         )
         == "6ca6ce37-1c69-4a81-8490-89c91b57e557/posts/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b/345c8d0b-c6ca-4419-b1f7-0daeb4e9278b_this-is-a-test-for-very-looooooo.pdf"
     )
+
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "original_state, new_state, expected_state, has_completion_time",
+    [
+        (JobState.RETRIEVING, JobState.CANCELLED, JobState.CANCELLED, True),
+        (JobState.PROCESSING, JobState.CANCELLED, JobState.CANCELLED, True),
+        (JobState.PROCESSING, JobState.PROCESS_FAILED, JobState.PROCESS_FAILED, True),
+        (JobState.PROCESSING, JobState.RETRIEVE_FAILED, JobState.RETRIEVE_FAILED, True),
+        (JobState.PROCESSED, JobState.CANCELLED, JobState.PROCESSED, False),
+        (JobState.CANCELLING, JobState.CANCELLED, JobState.CANCELLED, True),
+        (JobState.QUEUED, JobState.PROCESSING, JobState.PROCESSING, False),
+        (JobState.RETRIEVING, JobState.PROCESSING, JobState.PROCESSING, False),
+    ]
+)
+def test_update_state_behavior(obstracts_job, original_state, new_state, expected_state, has_completion_time):
+    obstracts_job.state = original_state
+    obstracts_job.save()
+
+    result = obstracts_job.update_state(new_state)
+    obstracts_job.refresh_from_db()
+
+    assert obstracts_job.state == expected_state
+    assert result == expected_state
+
+    if has_completion_time:
+        assert obstracts_job.completion_time is not None
+    else:
+        assert obstracts_job.completion_time is None
