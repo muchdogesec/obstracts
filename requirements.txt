@@ -131,7 +131,7 @@ djangorestframework==3.16.1
     #   drf-spectacular
     #   history4feed
     #   obstracts (pyproject.toml)
-dogesec-commons[stixifier]==1.1.20
+dogesec-commons[stixifier]==1.2.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
@@ -188,7 +188,7 @@ gunicorn==23.0.0
     #   obstracts (pyproject.toml)
 h11==0.16.0
     # via httpcore
-history4feed==1.0.4
+history4feed==1.0.6
     # via obstracts (pyproject.toml)
 httpcore==1.0.9
     # via httpx
@@ -484,7 +484,7 @@ tqdm==4.67.1
     #   nltk
     #   openai
     #   stix2arango
-txt2stix==1.1.4
+txt2stix==1.1.6
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)
