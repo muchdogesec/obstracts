@@ -131,7 +131,7 @@ djangorestframework==3.16.1
     #   drf-spectacular
     #   history4feed
     #   obstracts (pyproject.toml)
-dogesec-commons[stixifier]==1.2.4
+dogesec-commons[stixifier]==1.2.6
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
@@ -464,7 +464,7 @@ stix2-patterns==2.0.0
     #   stix2-validator
 stix2-validator==3.2.0
     # via txt2stix
-stix2arango==1.1.4
+stix2arango==1.1.6
     # via dogesec-commons
 stix2extensions==1.2.0
     # via txt2stix
