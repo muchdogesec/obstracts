@@ -114,7 +114,7 @@ class FeedProfile(models.Model):
     @property
     def identity_dict(self):
         return json.loads(self.identity.serialize())
-    
+
 @receiver(post_save, sender=h4f_models.Feed)
 def auto_create_feed(sender, instance: h4f_models.Feed, **kwargs):
     feed, created = FeedProfile.objects.update_or_create(feed=instance)
@@ -158,7 +158,7 @@ def update_identities(feed: FeedProfile):
     except Exception as e:
         logging.exception("could not update identities")
 
-    
+
 @receiver(post_save, sender=h4f_models.Job)
 def start_job(sender, instance: h4f_models.Job, **kwargs):
     from ..cjob import tasks
@@ -208,7 +208,7 @@ class File(models.Model):
     @property
     def report_id(self):
         return "report--" + str(self.post_id)
-    
+
 FakeRequest = SimpleNamespace(GET=dict(), query_params=SimpleNamespace(dict=lambda:dict()))
 
 @receiver(post_delete, sender=FeedProfile)
@@ -220,7 +220,7 @@ def delete_collections(sender, instance: FeedProfile, **kwargs):
         graph.delete_vertex_collection(instance.collection_name+'_vertex_collection', purge=True)
     except BaseException as e:
         logging.error(f"cannot delete collection `{instance.collection_name}`: {e}") 
-    
+
 
 class FileImage(models.Model):
     report = models.ForeignKey(File, related_name='images', on_delete=models.CASCADE)
@@ -248,7 +248,7 @@ class Job(models.Model):
         if obj.history4feed_job.is_cancelled():
             self.cancel()
         return obj.state in [JobState.CANCELLED, JobState.CANCELLING]
-    
+
     def cancel(self):
         self.history4feed_job.cancel()
         self.update_state(JobState.CANCELLING)        
@@ -256,7 +256,12 @@ class Job(models.Model):
     @transaction.atomic
     def update_state(self, state):
         obj = self.__class__.objects.select_for_update().get(pk=self.pk)
-        if state in [JobState.CANCELLED, JobState.PROCESS_FAILED, JobState.RETRIEVE_FAILED]:
+        if state in [
+            JobState.CANCELLED,
+            JobState.PROCESS_FAILED,
+            JobState.RETRIEVE_FAILED,
+            JobState.PROCESSED,
+        ]:
             obj.completion_time = datetime.now(UTC)
         if obj.state == JobState.CANCELLING and state == JobState.CANCELLED:
             pass
@@ -266,21 +271,21 @@ class Job(models.Model):
         obj.save()
         self.refresh_from_db()
         return obj.state
-    
+
     @property
     def feed_id(self):
         if not self.feed:
             return None
         return self.feed.id
-    
+
     @property
     def id(self):
         return self.history4feed_job.id
-    
+
     @property
     def item_count(self):
         return self.processed_items + self.failed_processes
-    
+
     @property
     def history4feed_status(self) -> H4FState:
         return self.history4feed_job.state
