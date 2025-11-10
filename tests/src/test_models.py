@@ -253,6 +253,7 @@ def test_upload_to(feed_with_posts):
         (JobState.PROCESSING, JobState.CANCELLED, JobState.CANCELLED, True),
         (JobState.PROCESSING, JobState.PROCESS_FAILED, JobState.PROCESS_FAILED, True),
         (JobState.PROCESSING, JobState.RETRIEVE_FAILED, JobState.RETRIEVE_FAILED, True),
+        (JobState.PROCESSING, JobState.PROCESSED, JobState.PROCESSED, True),
         (JobState.PROCESSED, JobState.CANCELLED, JobState.PROCESSED, False),
         (JobState.CANCELLING, JobState.CANCELLED, JobState.CANCELLED, True),
         (JobState.QUEUED, JobState.PROCESSING, JobState.PROCESSING, False),
