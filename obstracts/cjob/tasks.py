@@ -135,7 +135,8 @@ def download_pdf(url, is_demo=False):
         "source": url,
         "timeout": 30,
         "css": "div.cookie-banner, .cookie-consent, #cookie-consent, .cc-window { display: none !important; }",
-        "javascript": 'document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent").forEach(e => e.remove());',
+        # "javascript": 'document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent").forEach(e => e.remove());',
+        'disable_javascript': True
     }
     if is_demo:
         params.update(sandbox=True)
