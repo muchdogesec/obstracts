@@ -1,11 +1,15 @@
+import copy
 import io
 from unittest.mock import MagicMock, patch, call
 import pytest
+import uuid
 from obstracts.cjob.tasks import (
     add_pdf_to_post,
+    create_pdf_reindex_job,
     download_pdf,
     process_post,
     start_processing,
+    reindex_pdf_for_post,
     wait_in_queue,
 )
 from obstracts.server import models
@@ -244,3 +248,101 @@ def test_add_pdf_to_post__failure(obstracts_job):
 def test_download_pdf():
     result = download_pdf("https://one.one.one.one/faq/", is_demo=True)
     assert tuple(result[:4]) == (0x25, 0x50, 0x44, 0x46)
+
+
+@pytest.fixture
+def pdf_job(feed_with_posts, stixifier_profile):
+    job = models.Job.objects.create(
+        feed=feed_with_posts,
+        profile=stixifier_profile,
+        type=models.JobType.PDF_INDEX,
+        id=uuid.uuid4(),
+    )
+    return job
+
+
+@pytest.mark.django_db
+def test_reindex_pdf_for_post_success(pdf_job):
+    post_file = models.File.objects.first()
+    post_file.profile.generate_pdf = True
+    post_file.profile.save()
+
+    with patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf:
+        mock_download_pdf.return_value = b"pdf content"
+        reindex_pdf_for_post.s(pdf_job.id, post_file.pk).delay()
+
+    pdf_job.refresh_from_db()
+    post_file.refresh_from_db()
+
+    mock_download_pdf.assert_called_once_with(post_file.post.link)
+    assert post_file.pdf_file.read() == b"pdf content"
+    assert pdf_job.processed_items == 1
+    assert pdf_job.failed_processes == 0
+    assert not pdf_job.errors
+    assert pdf_job.state == models.JobState.PROCESSING
+
+
+@pytest.mark.django_db
+def test_reindex_pdf_for_post_no_generate_pdf(pdf_job, stixifier_profile_no_pdf):
+    post_file = models.File.objects.first()
+    post_file.profile = stixifier_profile_no_pdf
+    post_file.save()
+
+    with patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf:
+        reindex_pdf_for_post.s(pdf_job.id, post_file.pk).delay()
+
+    pdf_job.refresh_from_db()
+    mock_download_pdf.assert_not_called()
+    assert not post_file.pdf_file
+    assert pdf_job.failed_processes == 1
+    assert pdf_job.errors == [f"cannot generate pdf for file {post_file.pk}"]
+
+
+@pytest.mark.django_db
+def test_reindex_pdf_for_post_download_fails(pdf_job):
+    post_file = models.File.objects.first()
+    post_file.profile.generate_pdf = True
+    post_file.profile.save()
+
+    with patch(
+        "obstracts.cjob.tasks.download_pdf", side_effect=Exception("Download failed")
+    ):
+        reindex_pdf_for_post.s(pdf_job.id, post_file.pk).delay()
+
+    pdf_job.refresh_from_db()
+    assert not post_file.pdf_file
+    assert pdf_job.failed_processes == 1
+    assert pdf_job.errors == [f"process file to pdf failed for {post_file.pk}"]
+
+
+@pytest.mark.django_db
+def test_reindex_pdf_for_post_job_cancelled(pdf_job):
+    post_file = models.File.objects.first()
+    pdf_job.cancel()
+
+    with patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf:
+        reindex_pdf_for_post.s(pdf_job.id, post_file.pk).delay()
+
+    mock_download_pdf.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_create_pdf_reindex_job(feed_with_posts):
+    with patch("obstracts.cjob.tasks.reindex_pdf_for_post.run") as mock_reindex:
+        job = create_pdf_reindex_job(feed_with_posts, models.File.objects.all())
+    assert mock_reindex.call_count == 4
+    
+
+@pytest.mark.django_db
+def test_create_pdf_reindex_job__skips_no_pdf(feed_with_posts, stixifier_profile_no_pdf):
+    post_file = models.File.objects.first()
+    post_file.profile = stixifier_profile_no_pdf
+    post_file.save()
+    with patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf:
+        mock_download_pdf.return_value = b""
+        job = create_pdf_reindex_job(feed_with_posts, models.File.objects.all())
+    assert mock_download_pdf.call_count == 3
+    job.refresh_from_db()
+    assert job.failed_processes == 1
+    assert job.processed_items == 3
+    

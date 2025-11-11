@@ -2,6 +2,7 @@ from functools import reduce
 import logging
 import operator
 import typing
+import uuid
 from django.http import FileResponse
 from django.urls import resolve
 import requests
@@ -255,6 +256,20 @@ class FeedView(h4f_views.FeedView):
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
+
+    @staticmethod
+    def reindex_pdfs(feed, files):
+        job = tasks.create_pdf_reindex_job(feed, files)
+        return Response(
+            serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+        )
+
+    @decorators.action(methods=["PATCH"], detail=True, url_path="reindex-pdfs")
+    def reindex_pdfs_for_feed(self, request, feed_id=None, **kwargs):
+        feed: models.FeedProfile = self.get_object()
+        files = models.File.objects.filter(feed_id=feed.pk, profile__generate_pdf=True, processed=True)
+        return FeedView.reindex_pdfs(feed, list(files))
+        
 
     @decorators.action(methods=["PATCH"], detail=True)
     def fetch(self, request, *args, **kwargs):
@@ -773,6 +788,11 @@ FOR doc IN @@view
             "#more_filters", "\n".join(filters)
         )
         return helper.execute_query(query, bind_vars=bind_vars)
+    
+    @decorators.action(detail=True, methods=["PATCH"], url_path="reindex-pdf")
+    def reindex_pdf(self, request, post_id=None, **kwargs):
+        post_file: models.File = self.get_obstracts_file()
+        return FeedView.reindex_pdfs(post_file.feed, [post_file])
 
 
 @extend_schema_view(

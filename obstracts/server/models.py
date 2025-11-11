@@ -58,6 +58,11 @@ class JobState(models.TextChoices):
     PROCESS_FAILED = "processing_failed"
     RETRIEVE_FAILED = "retrieve_failed"
 
+class JobType(models.TextChoices):
+    FEED_INDEX = "feed_index"
+    PDF_INDEX  = "pdf_index"
+
+
 class FeedProfile(models.Model):
     feed = models.OneToOneField(h4f_models.Feed, on_delete=models.CASCADE, primary_key=True, related_name="obstracts_feed")
     collection_name = models.CharField(max_length=200)
@@ -232,25 +237,26 @@ class FileImage(models.Model):
         return self.report.post_id
 
 class Job(models.Model):
-    history4feed_job = models.OneToOneField(h4f_models.Job, on_delete=models.CASCADE, primary_key=True, related_query_name='job_id', related_name="obstracts_job")
-
+    id = models.UUIDField(primary_key=True, editable=False)
+    history4feed_job = models.OneToOneField(h4f_models.Job, on_delete=models.CASCADE, related_name="obstracts_job", related_query_name='job_id', unique=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     state = models.CharField(choices=JobState.choices, max_length=20, default=JobState.RETRIEVING)
     processed_items = models.IntegerField(default=0)
     failed_processes = models.IntegerField(default=0)
     feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
+    type = models.CharField(choices=JobType.choices, max_length=20, default=JobType.FEED_INDEX)
     errors = ArrayField(base_field=models.CharField(max_length=1024), default=list)
     completion_time = models.DateTimeField(default=None, null=True)
 
     def is_cancelled(self):
         obj = Job.objects.get(pk=self.pk)
-        if obj.history4feed_job.is_cancelled():
+        if obj.history4feed_job and obj.history4feed_job.is_cancelled():
             self.cancel()
         return obj.state in [JobState.CANCELLED, JobState.CANCELLING]
 
     def cancel(self):
-        self.history4feed_job.cancel()
+        self.history4feed_job and self.history4feed_job.cancel()
         self.update_state(JobState.CANCELLING)        
 
     @transaction.atomic
@@ -277,10 +283,6 @@ class Job(models.Model):
         if not self.feed:
             return None
         return self.feed.id
-
-    @property
-    def id(self):
-        return self.history4feed_job.id
 
     @property
     def item_count(self):

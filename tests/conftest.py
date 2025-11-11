@@ -61,6 +61,17 @@ def stixifier_profile():
         generate_pdf=True,
     )
     yield profile
+    
+@pytest.fixture
+def stixifier_profile_no_pdf():
+    profile = Profile.objects.create(
+        name="test-profile-no-pdf",
+        extractions=["pattern_host_name"],
+        id="a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+        generate_pdf=False,
+        defang=False,
+    )
+    yield profile
 
 
 @pytest.fixture
@@ -73,18 +84,19 @@ def obstracts_job(feed_with_posts, stixifier_profile):
 
 
 @pytest.fixture
-def feed_with_posts():
-    feed = make_feed("6ca6ce37-1c69-4a81-8490-89c91b57e557")
+def feed_with_posts(stixifier_profile):
+    feed = make_feed("6ca6ce37-1c69-4a81-8490-89c91b57e557", stixifier_profile)
 
     yield feed
 
-def make_feed(feed_id):
+def make_feed(feed_id, profile=None):
     h4f_feed = h4f_models.Feed.objects.create(
         title="Reindex Test Feed",
         url="https://example.com/",
         id=feed_id,
     )
     feed: models.FeedProfile = h4f_feed.obstracts_feed
+
 
     post1 = h4f_models.Post.objects.create(
         feed=h4f_feed,
@@ -117,7 +129,7 @@ def make_feed(feed_id):
         description="The execution was so beautiful and royal."
     )
     for post, summary in [(post1, "blank"), (post2, "something very random"), (post3, "this is not so random"), (post4, "die die die, fascists must die")]:
-        models.File.objects.create(feed=feed, processed=True, post=post, summary=summary)
+        models.File.objects.create(feed=feed, processed=True, post=post, summary=summary, profile=profile)
     return feed
 
 

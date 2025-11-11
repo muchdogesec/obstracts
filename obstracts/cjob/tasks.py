@@ -1,6 +1,8 @@
 import io
 import logging
+import uuid
 from celery import shared_task, chain, current_task, Task as CeleryTask
+from django.db import transaction
 import typing
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
@@ -69,8 +71,27 @@ def new_task(h4f_job: h4f_models.Job, profile_id):
 
 def create_job_entry(h4f_job: h4f_models.Job, profile_id):
     job = Job.objects.create(
-        history4feed_job=h4f_job, feed_id=h4f_job.feed_id, profile_id=profile_id
+        id=h4f_job.id,
+        history4feed_job=h4f_job,
+        feed_id=h4f_job.feed_id,
+        profile_id=profile_id,
+        type=models.JobType.FEED_INDEX,
     )
+    return job
+
+
+def create_pdf_reindex_job(feed, files):
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.PDF_INDEX,
+        feed_id=feed.id,
+        state=models.JobState.QUEUED,
+    )
+
+    pdf_tasks = [reindex_pdf_for_post.si(job.id, f.post_id) for f in files]
+    pdf_tasks.append(job_completed_with_error.si(job.id))
+    chain(pdf_tasks).apply_async()
+
     return job
 
 
@@ -243,6 +264,46 @@ def process_post(job_id, post_id, *args):
         job.errors.append(msg)
     job.save(update_fields=["errors", "processed_items", "failed_processes"])
     return job_id
+
+
+@shared_task
+def reindex_pdf_for_post(job_id, post_id):
+    post_file = models.File.objects.get(pk=post_id)
+    error_msg = None
+    success = False
+    job = Job.objects.get(pk=job_id)
+    if job.is_cancelled():
+        return
+    job.update_state(models.JobState.PROCESSING)
+    try:
+        if not (post_file.profile and post_file.profile.generate_pdf):
+            error_msg = f"cannot generate pdf for file {post_id}"
+        else:
+            pdf_bytes = download_pdf(post_file.post.link)
+            post_file.pdf_file.save(
+                f"{post_file.post.title}.pdf", io.BytesIO(pdf_bytes), save=False
+            )
+            post_file.save(update_fields=["pdf_file"])
+            success = True
+    except Exception:
+        logging.exception(f"process file to pdf failed for {post_file.pk}")
+        error_msg = f"process file to pdf failed for {post_file.pk}"
+
+    with transaction.atomic():
+        job = Job.objects.select_for_update().get(pk=job_id)
+        if success:
+            job.processed_items += 1
+        else:
+            job.failed_processes += 1
+            if error_msg:
+                job.errors.append(error_msg)
+        job.save(
+            update_fields=[
+                "errors",
+                "processed_items",
+                "failed_processes",
+            ]
+        )
 
 
 from celery import signals
