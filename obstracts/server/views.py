@@ -32,6 +32,7 @@ from django_filters.rest_framework import (
     BaseCSVFilter,
     UUIDFilter,
     filters,
+    ChoiceFilter,
 )
 from .serializers import (
     ObstractsJobSerializer,
@@ -227,6 +228,11 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
     ),
     reindex_pdfs_for_feed=extend_schema(
         request=None,
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
         summary="Reindex PDFs for posts in feed",
         description="Reindex PDFs for posts in feed",
     )
@@ -409,6 +415,11 @@ class FeedView(h4f_views.FeedView):
     ),
     reindex_pdf=extend_schema(
         request=None,
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
         summary="Reindex PDF for this post",
         description="Reindex PDF for post",
     )
@@ -966,6 +977,7 @@ class JobView(
             label="Filter by Post ID",
             field_name="history4feed_job__fulltext_jobs__post_id",
         )
+        type = ChoiceFilter(help_text="Select `type` of job", choices=models.JobType.choices)
 
     def get_queryset(self):
         return models.Job.objects
