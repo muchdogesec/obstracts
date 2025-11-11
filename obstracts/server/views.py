@@ -225,6 +225,11 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             """
         ),
     ),
+    reindex_pdfs_for_feed=extend_schema(
+        request=None,
+        summary="Reindex PDFs for posts in feed",
+        description="Reindex PDFs for posts in feed",
+    )
 )
 class FeedView(h4f_views.FeedView):
     lookup_url_kwarg = "feed_id"
@@ -402,6 +407,11 @@ class FeedView(h4f_views.FeedView):
             )
         ],
     ),
+    reindex_pdf=extend_schema(
+        request=None,
+        summary="Reindex PDF for this post",
+        description="Reindex PDF for post",
+    )
 )
 class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
