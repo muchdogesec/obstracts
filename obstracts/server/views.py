@@ -233,8 +233,18 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
         },
-        summary="Reindex PDFs for posts in feed",
-        description="Reindex PDFs for posts in feed",
+        summary="Regenerate PDFs for all Posts in Feed",
+        description=textwrap.dedent(
+            """
+            Sometime PDF generation can provide inconsistent results, this request will regenerate all the PDF files for posts in this feed.
+
+            Beware, if a post has changed since the original indexing, this request will only update the PDF, and not the post content.
+
+            Generally it is better to re-index the entire post (which will re-index all assets), however, in some cases it does makes sense to only regenerate the PDF (to save AI tokens for re-extraction).
+
+            This request will only work if the profile attached to the post in the feed has generate PDF set to true.
+            """
+        ),
     )
 )
 class FeedView(h4f_views.FeedView):
@@ -344,14 +354,13 @@ class FeedView(h4f_views.FeedView):
         summary="Update a Post in a Feed",
         description=textwrap.dedent(
             """
-
             Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in the database matches the currently published post you make a request to this endpoint using the Post ID to update it.
 
             The following key/values are accepted in the body of the request:
 
             * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.
 
-            This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
+            This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post. It will also regenerate the PDF (if PDF originally generated).
 
             It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
 
@@ -420,8 +429,18 @@ class FeedView(h4f_views.FeedView):
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
         },
-        summary="Reindex PDF for this post",
-        description="Reindex PDF for post",
+        summary="Regenerate the PDF for this Post",
+        description=textwrap.dedent(
+            """
+            Sometime PDF generation can provide inconsistent results, this request will regenerate the PDF file.
+
+            Beware, if the post has changed since the original indexing, this request will only update the PDF, and not the post content.
+
+            Generally it is better to re-index the entire post (which will re-index all assets), however, in some cases it does makes sense to only regenerate the PDF (to save AI tokens for re-extraction).
+
+            This request will only work if the profile attached to the post has generate PDF set to true.
+            """
+        ),
     )
 )
 class PostOnlyView(h4f_views.PostOnlyView):
