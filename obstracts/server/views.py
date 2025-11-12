@@ -2,6 +2,7 @@ from functools import reduce
 import logging
 import operator
 import typing
+import uuid
 from django.http import FileResponse
 from django.urls import resolve
 import requests
@@ -31,6 +32,7 @@ from django_filters.rest_framework import (
     BaseCSVFilter,
     UUIDFilter,
     filters,
+    ChoiceFilter,
 )
 from .serializers import (
     ObstractsJobSerializer,
@@ -224,6 +226,26 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             """
         ),
     ),
+    reindex_pdfs_for_feed=extend_schema(
+        request=None,
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+        summary="Regenerate PDFs for all Posts in Feed",
+        description=textwrap.dedent(
+            """
+            Sometime PDF generation can provide inconsistent results, this request will regenerate all the PDF files for posts in this feed.
+
+            Beware, if a post has changed since the original indexing, this request will only update the PDF, and not the post content.
+
+            Generally it is better to re-index the entire post (which will re-index all assets), however, in some cases it does makes sense to only regenerate the PDF (to save AI tokens for re-extraction).
+
+            This request will only work if the profile attached to the post in the feed has generate PDF set to true.
+            """
+        ),
+    )
 )
 class FeedView(h4f_views.FeedView):
     lookup_url_kwarg = "feed_id"
@@ -255,6 +277,20 @@ class FeedView(h4f_views.FeedView):
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
+
+    @staticmethod
+    def reindex_pdfs(feed, files):
+        job = tasks.create_pdf_reindex_job(feed, files)
+        return Response(
+            serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+        )
+
+    @decorators.action(methods=["PATCH"], detail=True, url_path="reindex-pdfs")
+    def reindex_pdfs_for_feed(self, request, feed_id=None, **kwargs):
+        feed: models.FeedProfile = self.get_object()
+        files = models.File.objects.filter(feed_id=feed.pk, profile__generate_pdf=True, processed=True)
+        return FeedView.reindex_pdfs(feed, list(files))
+        
 
     @decorators.action(methods=["PATCH"], detail=True)
     def fetch(self, request, *args, **kwargs):
@@ -318,14 +354,13 @@ class FeedView(h4f_views.FeedView):
         summary="Update a Post in a Feed",
         description=textwrap.dedent(
             """
-
             Occasionally updates to blog posts are not reflected in RSS and ATOM feeds. To ensure the post stored in the database matches the currently published post you make a request to this endpoint using the Post ID to update it.
 
             The following key/values are accepted in the body of the request:
 
             * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this post using the Get Jobs endpoint and post id. Changing the profile will potentially change data extracted from the blog.
 
-            This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
+            This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post. It will also regenerate the PDF (if PDF originally generated).
 
             It will not update the `title`, `pubdate`, `author`, or `categories`. If you need to update these properties you can use the Update Post Metadata endpoint.
 
@@ -387,6 +422,26 @@ class FeedView(h4f_views.FeedView):
             )
         ],
     ),
+    reindex_pdf=extend_schema(
+        request=None,
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+        summary="Regenerate the PDF for this Post",
+        description=textwrap.dedent(
+            """
+            Sometime PDF generation can provide inconsistent results, this request will regenerate the PDF file.
+
+            Beware, if the post has changed since the original indexing, this request will only update the PDF, and not the post content.
+
+            Generally it is better to re-index the entire post (which will re-index all assets), however, in some cases it does makes sense to only regenerate the PDF (to save AI tokens for re-extraction).
+
+            This request will only work if the profile attached to the post has generate PDF set to true.
+            """
+        ),
+    )
 )
 class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
@@ -773,6 +828,11 @@ FOR doc IN @@view
             "#more_filters", "\n".join(filters)
         )
         return helper.execute_query(query, bind_vars=bind_vars)
+    
+    @decorators.action(detail=True, methods=["PATCH"], url_path="reindex-pdf")
+    def reindex_pdf(self, request, post_id=None, **kwargs):
+        post_file: models.File = self.get_obstracts_file()
+        return FeedView.reindex_pdfs(post_file.feed, [post_file])
 
 
 @extend_schema_view(
@@ -936,6 +996,7 @@ class JobView(
             label="Filter by Post ID",
             field_name="history4feed_job__fulltext_jobs__post_id",
         )
+        type = ChoiceFilter(help_text="Select `type` of job", choices=models.JobType.choices)
 
     def get_queryset(self):
         return models.Job.objects

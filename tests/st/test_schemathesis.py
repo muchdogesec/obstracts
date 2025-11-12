@@ -17,7 +17,7 @@ schema.config.generation = GenerationConfig(allow_x00=False)
 feed_ids = strategies.sampled_from([uuid.uuid4() for _ in range(3)]+["6ca6ce37-1c69-4a81-8490-89c91b57e557"])
 post_ids = strategies.sampled_from([uuid.uuid4() for _ in range(3)]+["561ed102-7584-4b7d-a302-43d4bca5605b", "345c8d0b-c6ca-4419-b1f7-0daeb4e9278b", "72e1ad04-8ce9-413d-b620-fe7c75dc0a39", "42a5d042-26fa-41f3-8850-307be3f330cf"])
 job_ids  = strategies.sampled_from([uuid.uuid4() for _ in range(3)]+["164716d9-85af-4a81-8f71-9168db3fadf0"])
-profile_ids  = strategies.sampled_from([uuid.uuid4() for _ in range(3)]+["26fce5ea-c3df-45a2-8989-0225549c704b"])
+profile_ids  = strategies.sampled_from([uuid.uuid4() for _ in range(3)]+["a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"])
 
 
 @pytest.fixture(autouse=True)

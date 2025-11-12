@@ -4,7 +4,6 @@ from unittest.mock import patch
 import uuid
 
 import pytest
-from rest_framework.response import Response
 from obstracts.cjob import tasks
 from obstracts.server import models
 from obstracts.server.models import File
@@ -13,7 +12,6 @@ from dogesec_commons.utils import Pagination, Ordering
 from dogesec_commons.utils.filters import MinMaxDateFilter
 from obstracts.server.serializers import (
     CreateTaskSerializer,
-    ObstractsPostSerializer,
     PostWithFeedIDSerializer,
 )
 from django_filters.rest_framework import DjangoFilterBackend
@@ -22,6 +20,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from tests.src.views.utils import make_h4f_job
 from tests.utils import Transport
+from rest_framework.test import APIClient
 
 
 def test_class_variables():
@@ -642,3 +641,39 @@ def test_retrieve_attack_navigator__has_data(
     api_schema["/api/v1/posts/{post_id}/attack-navigator/{attack_domain}/"][
         "GET"
     ].validate_response(Transport.get_st_response(resp))
+
+@pytest.mark.django_db
+def test_reindex_pdf_for_post(client: APIClient, feed_with_posts, api_schema):
+    post_file = models.File.objects.first()
+    path = "/api/v1/posts/{post_id}/reindex-pdf/"
+    url = path.format(post_id=post_file.pk)
+
+    with patch('obstracts.cjob.tasks.create_pdf_reindex_job') as mock_create_reindex_task:
+        mock_create_reindex_task.return_value = models.Job.objects.create(
+            id=uuid.uuid4(),
+            type=models.JobType.PDF_INDEX,
+            feed=feed_with_posts
+        )
+        response = client.patch(url)
+    
+    mock_create_reindex_task.assert_called_once()
+    assert str(mock_create_reindex_task.call_args[0][0].id) == feed_with_posts.id
+    assert mock_create_reindex_task.call_args[0][1][0].pk == post_file.pk
+
+    assert response.status_code == 201
+    job = models.Job.objects.get(id=response.data["id"])
+    assert mock_create_reindex_task.return_value.id == job.id
+
+    api_schema[path][
+        "PATCH"
+    ].validate_response(Transport.get_st_response(response))
+
+@pytest.mark.django_db
+def test_reindex_pdf_for_post_not_found(client: APIClient, api_schema):
+    non_existent_uuid = uuid.uuid4()
+    path = "/api/v1/posts/{post_id}/reindex-pdf/"
+    response = client.patch(path.format(post_id=non_existent_uuid))
+    assert response.status_code == 404
+    api_schema[path][
+        "PATCH"
+    ].validate_response(Transport.get_st_response(response))
