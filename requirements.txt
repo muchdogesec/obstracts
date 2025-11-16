@@ -466,7 +466,7 @@ stix2-validator==3.2.0
     # via txt2stix
 stix2arango==1.1.6
     # via dogesec-commons
-stix2extensions==1.2.6
+stix2extensions==2.0.1
     # via txt2stix
 tabulate==0.9.0
     # via file2txt
@@ -484,7 +484,7 @@ tqdm==4.67.1
     #   nltk
     #   openai
     #   stix2arango
-txt2stix==1.1.10
+txt2stix==1.1.11
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)
