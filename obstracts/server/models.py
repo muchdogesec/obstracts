@@ -63,11 +63,17 @@ class JobType(models.TextChoices):
     PDF_INDEX  = "pdf_index"
 
 
+class PDFCookieConsentMode(models.TextChoices):
+    disable_all_js = "disable_all_js"
+    remove_cookie_elements = "remove_cookie_elements"
+    
+
 class FeedProfile(models.Model):
     feed = models.OneToOneField(h4f_models.Feed, on_delete=models.CASCADE, primary_key=True, related_name="obstracts_feed")
     collection_name = models.CharField(max_length=200)
     last_run = models.DateTimeField(null=True)
     profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
+    pdfshift_cookie_settings = models.CharField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js)
 
     def save(self, *args, **kwargs) -> None:
         self.collection_name = self.generate_collection_name()

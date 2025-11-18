@@ -130,7 +130,12 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
     obstracts_job.processed_items = 12
     obstracts_job.failed_processes = 5
     obstracts_job.save()
-
+    post = h4f_models.Post.objects.get(pk=post_id)
+    post.categories.set(
+        h4f_models.Category.objects.get_or_create(name=x)[0]
+        for x in ("cat1", "cat2", "dog1", "dog2")
+    )
+    post.save()
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
         patch(
@@ -157,6 +162,12 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
         assert mock_stixify_processor_cls.return_value.setup.call_args[0][1] == dict(
             _obstracts_feed_id=str(obstracts_job.feed.id), _obstracts_post_id=post_id
         )
+        assert [
+            x.removeprefix("tag.")
+            for x in mock_stixify_processor_cls.return_value.setup.call_args[0][
+                0
+            ].labels
+        ] == ["cat1", "cat2", "dog1", "dog2"]
         assert file.processed == True
         assert file.summary == fake_stixifier_processor.summary
         assert file.txt2stix_data == {"data": "data is here"}
@@ -223,13 +234,28 @@ def test_process_post_with_incident(obstracts_job, fake_stixifier_processor):
         assert file.ai_incident_classification == incident.incident_classification
 
 
+@pytest.mark.parametrize(
+    "consent_setting",
+    [
+        models.PDFCookieConsentMode.disable_all_js,
+        models.PDFCookieConsentMode.remove_cookie_elements,
+    ],
+)
 @pytest.mark.django_db
-def test_add_pdf_to_post(obstracts_job):
+def test_add_pdf_to_post(obstracts_job, consent_setting):
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    feedp = models.FeedProfile.objects.get(
+        feed_id=models.File.objects.get(pk=post_id).feed_id
+    )
+    feedp.pdfshift_cookie_settings = consent_setting
+    feedp.save()
+
     with (patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf,):
         mock_download_pdf.return_value = b"assume this is a pdf"
         add_pdf_to_post(obstracts_job.id, post_id)
-        mock_download_pdf.assert_called_once_with("https://example.blog/3")
+        mock_download_pdf.assert_called_once_with(
+            "https://example.blog/3", cookie_consent_mode=consent_setting
+        )
         post_file = models.File.objects.get(pk=post_id)
         assert post_file.pdf_file.read() == mock_download_pdf.return_value
 
@@ -240,7 +266,10 @@ def test_add_pdf_to_post__failure(obstracts_job):
     with (patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf,):
         mock_download_pdf.side_effect = Exception
         add_pdf_to_post(obstracts_job.id, post_id)
-        mock_download_pdf.assert_called_once_with("https://example.blog/3")
+        mock_download_pdf.assert_called_once_with(
+            "https://example.blog/3",
+            cookie_consent_mode=models.PDFCookieConsentMode.disable_all_js,
+        )
         obstracts_job.refresh_from_db()
         assert len(obstracts_job.errors) == 1
 
@@ -274,7 +303,10 @@ def test_reindex_pdf_for_post_success(pdf_job):
     pdf_job.refresh_from_db()
     post_file.refresh_from_db()
 
-    mock_download_pdf.assert_called_once_with(post_file.post.link)
+    mock_download_pdf.assert_called_once_with(
+        post_file.post.link,
+        cookie_consent_mode=models.PDFCookieConsentMode.disable_all_js,
+    )
     assert post_file.pdf_file.read() == b"pdf content"
     assert pdf_job.processed_items == 1
     assert pdf_job.failed_processes == 0
@@ -331,10 +363,12 @@ def test_create_pdf_reindex_job(feed_with_posts):
     with patch("obstracts.cjob.tasks.reindex_pdf_for_post.run") as mock_reindex:
         job = create_pdf_reindex_job(feed_with_posts, models.File.objects.all())
     assert mock_reindex.call_count == 4
-    
+
 
 @pytest.mark.django_db
-def test_create_pdf_reindex_job__skips_no_pdf(feed_with_posts, stixifier_profile_no_pdf):
+def test_create_pdf_reindex_job__skips_no_pdf(
+    feed_with_posts, stixifier_profile_no_pdf
+):
     post_file = models.File.objects.first()
     post_file.profile = stixifier_profile_no_pdf
     post_file.save()
@@ -345,4 +379,3 @@ def test_create_pdf_reindex_job__skips_no_pdf(feed_with_posts, stixifier_profile
     job.refresh_from_db()
     assert job.failed_processes == 1
     assert job.processed_items == 3
-    

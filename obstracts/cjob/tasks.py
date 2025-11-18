@@ -130,14 +130,18 @@ def wait_in_queue(self: CeleryTask, job_id):
     return True
 
 
-def download_pdf(url, is_demo=False):
+def download_pdf(url, is_demo=False, cookie_consent_mode=None):
     params = {
         "source": url,
         "timeout": 30,
         "css": "div.cookie-banner, .cookie-consent, #cookie-consent, .cc-window { display: none !important; }",
-        # "javascript": 'document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent").forEach(e => e.remove());',
-        'disable_javascript': True
     }
+    if cookie_consent_mode == models.PDFCookieConsentMode.disable_all_js:
+        params.update(disable_javascript=True)
+    else:
+        params.update(
+            javascript='document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent").forEach(e => e.remove());'
+        )
     if is_demo:
         params.update(sandbox=True)
     response = requests.post(
@@ -155,8 +159,11 @@ def download_pdf(url, is_demo=False):
 def add_pdf_to_post(job_id, post_id):
     job = models.Job.objects.get(pk=job_id)
     post_file = models.File.objects.get(pk=post_id)
+    feedp = models.FeedProfile.objects.get(feed_id=post_file.feed_id)
     try:
-        pdf_bytes = download_pdf(post_file.post.link)
+        pdf_bytes = download_pdf(
+            post_file.post.link, cookie_consent_mode=feedp.pdfshift_cookie_settings
+        )
         post_file.pdf_file.save(
             f"{post_file.post.title}.pdf", io.BytesIO(pdf_bytes), save=False
         )
@@ -204,7 +211,7 @@ def process_post(job_id, post_id, *args):
             identity=file.feed.identity,
             tlp_level="clear",
             confidence=0,
-            labels=[],
+            labels=[f"tag.{cat.name}" for cat in post.categories.all()],
             created=file.post.pubdate,
             kwargs=dict(
                 external_references=[
@@ -276,11 +283,14 @@ def reindex_pdf_for_post(job_id, post_id):
     if job.is_cancelled():
         return
     job.update_state(models.JobState.PROCESSING)
+    feedp = models.FeedProfile.objects.get(feed_id=post_file.feed_id)
     try:
         if not (post_file.profile and post_file.profile.generate_pdf):
             error_msg = f"cannot generate pdf for file {post_id}"
         else:
-            pdf_bytes = download_pdf(post_file.post.link)
+            pdf_bytes = download_pdf(
+                post_file.post.link, cookie_consent_mode=feedp.pdfshift_cookie_settings
+            )
             post_file.pdf_file.save(
                 f"{post_file.post.title}.pdf", io.BytesIO(pdf_bytes), save=False
             )
