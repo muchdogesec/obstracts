@@ -871,7 +871,6 @@ FOR doc IN @@view
             * `title` (required):  history4feed cannot accurately determine the title of a post in all cases, so you must enter it manually.
             * `author` (optional): the value to be stored for the author of the post.
             * `categories` (optional) : the value(s) to be stored for the category of the post. Pass as a list like `["tag1","tag2"]`.
-            * `pdfshift_cookie_settings` (optional, only required if profile has `generate_pdf` = `true`, default is `disable_all_js`): either `disable_all_js` which will disable javascript on the page when generating the PDF file, or `remove_cookie_elements` which will try and surpress cookie messages. Generally you should disable all javascript (`disable_all_js`), unless you find the resulting PDFs are errounous because of no javascript in which case you should be less harsh on javascript surpression (`remove_cookie_elements`).
 
             Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
 
