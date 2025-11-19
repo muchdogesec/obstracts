@@ -876,7 +876,7 @@ FOR doc IN @@view
 
                 The following key/values are accepted in the body of the request:
 
-                * profile_id (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on re-index.
+                * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on re-index.
 
                 This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
 
