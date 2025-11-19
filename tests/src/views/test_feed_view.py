@@ -29,9 +29,15 @@ def test_class_variables():
 
     assert history4feed_views.FeedView in FeedView.mro()
 
-
+@pytest.mark.parametrize(
+    "pdfshift_cookie_settings",
+    [
+        models.PDFCookieConsentMode.disable_all_js,
+        models.PDFCookieConsentMode.remove_cookie_elements,
+    ],
+)
 @pytest.mark.django_db
-def test_create(client, feed_with_posts, stixifier_profile, api_schema):
+def test_create(client, feed_with_posts, stixifier_profile, pdfshift_cookie_settings, api_schema):
     job = make_h4f_job(feed_with_posts)
 
     payload = {
@@ -39,6 +45,8 @@ def test_create(client, feed_with_posts, stixifier_profile, api_schema):
         "title": "",
         "url": "https://example.net/blog",
     }
+    if pdfshift_cookie_settings:
+        payload["pdfshift_cookie_settings"] = pdfshift_cookie_settings
     mocked_job = make_h4f_job(feed_with_posts)
     with (
         patch.object(
@@ -62,12 +70,38 @@ def test_create(client, feed_with_posts, stixifier_profile, api_schema):
         mock_start_h4f_task.assert_called_once_with(request)
         mock_request_s_class_is_valid.assert_called_once()
         mock_create_job_entry.assert_called_once_with(
-            mocked_job, uuid.UUID(str(stixifier_profile.id))
+            mocked_job, uuid.UUID(str(stixifier_profile.id)), pdfshift_cookie_settings=pdfshift_cookie_settings
         )
         assert resp.data["id"] == str(mocked_job.id)
         api_schema["/api/v1/feeds/"]["POST"].validate_response(
             Transport.get_st_response(resp)
         )
+        feed_obj = models.FeedProfile.objects.get(pk=resp.data["feed_id"])
+        if pdfshift_cookie_settings:
+            assert feed_obj.pdfshift_cookie_settings == pdfshift_cookie_settings
+
+
+
+@pytest.mark.parametrize(
+    "pdfshift_cookie_settings",
+    [
+        models.PDFCookieConsentMode.disable_all_js,
+        models.PDFCookieConsentMode.remove_cookie_elements,
+    ],
+)
+@pytest.mark.django_db
+def test_update_feed_metadata_view(
+    client, feed_with_posts, pdfshift_cookie_settings, api_schema
+):
+    payload = dict(title="very new title", pdfshift_cookie_settings=pdfshift_cookie_settings)
+    resp = client.patch(
+        f"/api/v1/feeds/{feed_with_posts.id}/",
+        data=payload,
+        content_type="application/json",
+    )
+    assert resp.status_code == 201, resp.content
+    assert resp.json()["title"] == "very new title"
+    assert resp.json()["pdfshift_cookie_settings"] == pdfshift_cookie_settings
 
 
 @pytest.mark.django_db
@@ -191,4 +225,6 @@ def test_reindex_pdfs_for_feed(
     mock_create_reindex_task.assert_called_once()
 
     assert response.status_code == 201
-    assert len(mock_create_reindex_task.call_args[0][1]) == 2 # 4 items originally, two removed by the processed==True and generate_pdf==True filters
+    assert (
+        len(mock_create_reindex_task.call_args[0][1]) == 2
+    )  # 4 items originally, two removed by the processed==True and generate_pdf==True filters

@@ -65,11 +65,7 @@ def job_completed_with_error(job_id):
     job.save()
 
 
-def new_task(h4f_job: h4f_models.Job, profile_id):
-    return create_job_entry(h4f_job, profile_id)
-
-
-def create_job_entry(h4f_job: h4f_models.Job, profile_id):
+def create_job_entry(h4f_job: h4f_models.Job, profile_id, **extra):
     job = Job.objects.create(
         id=h4f_job.id,
         history4feed_job=h4f_job,
@@ -77,6 +73,9 @@ def create_job_entry(h4f_job: h4f_models.Job, profile_id):
         profile_id=profile_id,
         type=models.JobType.FEED_INDEX,
     )
+    if extra and extra.get('pdfshift_cookie_settings'):
+        job.feed.pdfshift_cookie_settings = extra['pdfshift_cookie_settings']
+        job.feed.save()
     return job
 
 

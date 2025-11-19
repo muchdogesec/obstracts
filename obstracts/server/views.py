@@ -38,6 +38,7 @@ from .serializers import (
     ObstractsJobSerializer,
     FeedCreateSerializer,
 )
+from django.db import transaction
 from .serializers import h4fserializers
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -93,7 +94,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             """
         ),
         responses={
-            200: h4fserializers.FeedSerializer,
+            200: serializers.FeedCreateSerializer,
             400: api_schema.DEFAULT_400_ERROR,
         },
     ),
@@ -174,6 +175,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR},
     ),
     partial_update=extend_schema(
+        request=serializers.PatchFeedSerializer,
         responses={
             201: serializers.FeedCreateSerializer,
             404: api_schema.DEFAULT_404_ERROR,
@@ -275,7 +277,7 @@ class FeedView(h4f_views.FeedView):
         s = serializers.FeedCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_create_job(request)
-        job = tasks.new_task(h4f_job, s.validated_data["profile_id"])
+        job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"], pdfshift_cookie_settings=s.validated_data.get('obstracts_feed', {}).get('pdfshift_cookie_settings'))
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
@@ -286,7 +288,18 @@ class FeedView(h4f_views.FeedView):
         return Response(
             serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
-
+    
+    @transaction.atomic
+    def partial_update(self, request, *args, **kwargs):
+        feed_obj = self.get_object()
+        s = serializers.PatchFeedSerializer(data=request.data, partial=True)
+        s.is_valid(raise_exception=True)
+        print(s.validated_data)
+        if "pdfshift_cookie_settings" in s.validated_data:
+            feed_obj.obstracts_feed.pdfshift_cookie_settings = s.validated_data['pdfshift_cookie_settings']
+            feed_obj.obstracts_feed.save()
+        return super().partial_update(request, *args, **kwargs)
+    
     @decorators.action(methods=["PATCH"], detail=True, url_path="reindex-pdfs")
     def reindex_pdfs_for_feed(self, request, feed_id=None, **kwargs):
         feed: models.FeedProfile = self.get_object()
@@ -299,7 +312,7 @@ class FeedView(h4f_views.FeedView):
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_fetch_job(request)
-        job = tasks.new_task(h4f_job, s.validated_data["profile_id"])
+        job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
