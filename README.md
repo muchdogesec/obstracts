@@ -37,6 +37,12 @@ It works at a high level like so:
 git clone https://github.com/muchdogesec/obstracts
 ```
 
+### Pre-requisites
+
+ArangoDB and Postgres must be running. We do not set these up in the compose file.
+
+If you are not sure what you are doing here, follow the basic setup steps here.
+
 ### Configuration options
 
 Obstracts has various settings that are defined in an `.env` file.
