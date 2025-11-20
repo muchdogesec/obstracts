@@ -37,6 +37,12 @@ It works at a high level like so:
 git clone https://github.com/muchdogesec/obstracts
 ```
 
+### Pre-requisites
+
+**IMPORTANT**: ArangoDB and Postgres must be running. These are not deployed in the compose file.
+
+If you are not sure what you are doing here, [follow the basic setup steps here](https://community.dogesec.com/t/best-way-to-create-databases-for-obstracts/153/2).
+
 ### Configuration options
 
 Obstracts has various settings that are defined in an `.env` file.
