@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 import uuid
 import pytest
 import os
@@ -101,21 +102,21 @@ def make_feed(feed_id, profile=None):
     post1 = h4f_models.Post.objects.create(
         feed=h4f_feed,
         title="Post 1",
-        pubdate=timezone.now(),
+        pubdate=datetime(2020, 1, 1, tzinfo=UTC),
         id="561ed102-7584-4b7d-a302-43d4bca5605b",
         link="https://example.blog/1",
     )
     post2 = h4f_models.Post.objects.create(
         feed=h4f_feed,
         title="Post 2",
-        pubdate=timezone.now(),
+        pubdate=datetime(2020, 1, 2, tzinfo=UTC),
         id="345c8d0b-c6ca-4419-b1f7-0daeb4e9278b",
         link="https://example.blog/2",
     )
     post3 = h4f_models.Post.objects.create(
         feed=h4f_feed,
         title="Post 3: Royalty",
-        pubdate=timezone.now(),
+        pubdate=datetime(2020, 1, 3, tzinfo=UTC),
         id="72e1ad04-8ce9-413d-b620-fe7c75dc0a39",
         link="https://example.blog/3",
         description="blah Post 3 description blah. It's a beautiful day to be king",
@@ -123,7 +124,7 @@ def make_feed(feed_id, profile=None):
     post4 = h4f_models.Post.objects.create(
         feed=h4f_feed,
         title="Post 4",
-        pubdate=timezone.now(),
+        pubdate=datetime(2020, 1, 4, tzinfo=UTC),
         id="42a5d042-26fa-41f3-8850-307be3f330cf",
         link="https://example.blog/4",
         description="The execution was so beautiful and royal."

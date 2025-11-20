@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 
 from history4feed.app import serializers as h4fserializers
-from .models import File, Profile, Job, FileImage
+from .models import File, PDFCookieConsentMode, Profile, Job, FileImage
 from drf_spectacular.utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 
@@ -56,14 +56,22 @@ class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
         read_only=True,
         help_text="Number of posts in feed",
     )
+    pdfshift_cookie_settings = serializers.ChoiceField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js, source='obstracts_feed.pdfshift_cookie_settings')
 
 
 class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
-    pass
+    pdfshift_cookie_settings = serializers.ChoiceField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js, source='obstracts_feed.pdfshift_cookie_settings')
 
 
-class PatchFeedSerializer(SkeletonFeedSerializer):
-    url = None
+
+class PatchFeedSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(required=True, help_text="title of feed")
+    description = serializers.CharField(required=True, help_text="description of feed")
+    pdfshift_cookie_settings = serializers.ChoiceField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js)
+
+    class Meta:
+        model = h4fserializers.FeedSerializer.Meta.model
+        fields = ['title', 'description', 'pretty_url', 'pdfshift_cookie_settings']
 
 
 class FetchFeedSerializer(CreateTaskSerializer):

@@ -38,6 +38,7 @@ from .serializers import (
     ObstractsJobSerializer,
     FeedCreateSerializer,
 )
+from django.db import transaction
 from .serializers import h4fserializers
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -93,7 +94,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             """
         ),
         responses={
-            200: h4fserializers.FeedSerializer,
+            200: serializers.FeedCreateSerializer,
             400: api_schema.DEFAULT_400_ERROR,
         },
     ),
@@ -131,6 +132,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             * `title` (optional): the title of the feed will be used if not passed. You can also manually pass the title of the blog here.
             * `description` (optional): the description of the feed will be used if not passed. You can also manually pass the description of the blog here.
             * `use_search_index` (optional, default is `false`): If the `url` is not a valid RSS or ATOM feed you must set this mode to `true`. Set to `true` this mode uses search results that contain the base `url` passed vs. the RSS/ATOM feed entries (when this mode is set to `false`). This mode is only be able to index results in Google Search, so can miss some sites entirely where they are not indexed by Google. You must also pass a `title` and `description` when setting this mode to `true`. Note, you can use the skeleton endpoint to create a feed manually from a non RSS/ATOM URL or where search results do not satisfy your use case.
+            * `pdfshift_cookie_settings` (optional, only required if profile has `generate_pdf` = `true`, default is `disable_all_js`): either `disable_all_js` which will disable javascript on the page when generating the PDF file, or `remove_cookie_elements` which will try and surpress cookie messages. Generally you should disable all javascript (`disable_all_js`), unless you find the resulting PDFs are errounous because of no javascript in which case you should be less harsh on javascript surpression (`remove_cookie_elements`).
 
             The `id` of a Feed is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used is `<FEED_URL>` (e.g. `https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml` would have the id `d1d96b71-c687-50db-9d2b-d0092d1d163a`). Therefore, you cannot add a URL that already exists, you must first delete it to add it with new settings.
 
@@ -173,6 +175,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR},
     ),
     partial_update=extend_schema(
+        request=serializers.PatchFeedSerializer,
         responses={
             201: serializers.FeedCreateSerializer,
             404: api_schema.DEFAULT_404_ERROR,
@@ -189,7 +192,8 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
 
             * `title` (optional): update the `title` of the Feed
             * `description` (optional): update the `description` of the Feed
-            * `pretty_url` (optional): update the `pretty_url of the Feed
+            * `pretty_url` (optional): update the `pretty_url` of the Feed
+            * `pdfshift_cookie_settings` (optional, only required if profile has `generate_pdf` = `true`, default is `disable_all_js`): either `disable_all_js` which will disable javascript on the page when generating the PDF file, or `remove_cookie_elements` which will try and surpress cookie messages. Generally you should disable all javascript (`disable_all_js`), unless you find the resulting PDFs are errounous because of no javascript in which case you should be less harsh on javascript surpression (`remove_cookie_elements`). Once this setting is applied, all future PDF generation for this feed will use this setting. If you need to apply the change retrospectively (to old posts), you should regenerate PDFs for the old posts using the reindex-pdf endpoints after this setting has been changed.
 
             Only one/key value is required in the request. For those not passed, the current value will remain unchanged.
 
@@ -273,7 +277,7 @@ class FeedView(h4f_views.FeedView):
         s = serializers.FeedCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_create_job(request)
-        job = tasks.new_task(h4f_job, s.validated_data["profile_id"])
+        job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"], pdfshift_cookie_settings=s.validated_data.get('obstracts_feed', {}).get('pdfshift_cookie_settings'))
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
@@ -284,7 +288,18 @@ class FeedView(h4f_views.FeedView):
         return Response(
             serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
-
+    
+    @transaction.atomic
+    def partial_update(self, request, *args, **kwargs):
+        feed_obj = self.get_object()
+        s = serializers.PatchFeedSerializer(data=request.data, partial=True)
+        s.is_valid(raise_exception=True)
+        print(s.validated_data)
+        if "pdfshift_cookie_settings" in s.validated_data:
+            feed_obj.obstracts_feed.pdfshift_cookie_settings = s.validated_data['pdfshift_cookie_settings']
+            feed_obj.obstracts_feed.save()
+        return super().partial_update(request, *args, **kwargs)
+    
     @decorators.action(methods=["PATCH"], detail=True, url_path="reindex-pdfs")
     def reindex_pdfs_for_feed(self, request, feed_id=None, **kwargs):
         feed: models.FeedProfile = self.get_object()
@@ -297,7 +312,7 @@ class FeedView(h4f_views.FeedView):
         s = serializers.FetchFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_fetch_job(request)
-        job = tasks.new_task(h4f_job, s.validated_data["profile_id"])
+        job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
@@ -873,7 +888,7 @@ FOR doc IN @@view
 
                 The following key/values are accepted in the body of the request:
 
-                * profile_id (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on re-index.
+                * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on re-index.
 
                 This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
 

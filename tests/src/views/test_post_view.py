@@ -365,7 +365,7 @@ def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile, api_s
 
 @pytest.fixture
 def list_post_posts(feed_with_posts):
-    posts = File.objects.filter(feed=feed_with_posts)
+    posts = sorted(File.objects.filter(feed=feed_with_posts), key=lambda file: file.post.pubdate)
 
     post1 = posts[0]
     post1.ai_describes_incident = True
