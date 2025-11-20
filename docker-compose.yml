@@ -10,14 +10,10 @@ services:
             - DJANGO_SETTINGS_MODULE=obstracts.settings
             - CELERY_BROKER_URL=redis://redis:6379/10
             - result_backend=redis://redis:6379/1
-            - POSTGRES_HOST=pgdb
             - DEBUG=1
         env_file:
             - ./.env
         command: "python manage.py migrate"
-        depends_on:
-            pgdb:
-                condition: service_healthy
     django:
         extends: env_django
         command: >
@@ -36,25 +32,10 @@ services:
                   celery -A obstracts.cjob worker -l INFO
                   "
         depends_on:
-            pgdb:
-                condition: service_healthy
             redis:
                 condition: service_started
             env_django: 
                 condition: service_completed_successfully
-    pgdb:
-        image: postgres
-        env_file:
-          - ./.env
-
-        volumes:
-            - pgdata:/var/lib/postgresql/data/
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-            interval: 10s
-            retries: 5
-            start_period: 10s
-            timeout: 10s
     redis:
         image: "redis:alpine"
 
