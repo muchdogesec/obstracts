@@ -133,13 +133,14 @@ def download_pdf(url, is_demo=False, cookie_consent_mode=None):
     params = {
         "source": url,
         "timeout": 30,
+        "delay": 1000,
         "css": "div.cookie-banner, .cookie-consent, #cookie-consent, .cc-window { display: none !important; }",
     }
     if cookie_consent_mode == models.PDFCookieConsentMode.disable_all_js:
         params.update(disable_javascript=True)
     else:
         params.update(
-            javascript='document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent").forEach(e => e.remove());'
+            javascript='document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent, .cky-consent-container, .cky-overlay, #ckyOverlay, #cky-consent, [class*="cky-"]").forEach(e => e.remove());'
         )
     if is_demo:
         params.update(sandbox=True)
