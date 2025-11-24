@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "obstracts"
-version = "1.1.4"
+version = "1.1.5"
 authors = [
   { name = "dogesec" }
 ]
@@ -27,7 +27,7 @@ dependencies = [
     "redis",
     "history4feed",
     "dogesec-commons[stixifier]",
-    "txt2stix",
+    "txt2stix[llms]",
     "hyperlink",
     "django>=5.2.1",
     "django-filter>=24.2",
