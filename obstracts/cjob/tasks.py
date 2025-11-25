@@ -140,7 +140,7 @@ def download_pdf(url, is_demo=False, cookie_consent_mode=None):
         params.update(disable_javascript=True)
     else:
         params.update(
-            javascript='document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent, .cky-consent-container, .cky-overlay, #ckyOverlay, #cky-consent, [class*="cky-"]").forEach(e => e.remove());'
+            javascript='document.querySelectorAll(".cookie-banner, .cookie-consent, #cookie-consent").forEach(e => e.remove());'
         )
     if is_demo:
         params.update(sandbox=True)
