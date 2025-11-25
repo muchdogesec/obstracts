@@ -38,6 +38,3 @@ services:
                 condition: service_completed_successfully
     redis:
         image: "redis:alpine"
-
-volumes:
-    pgdata:
