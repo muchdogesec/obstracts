@@ -6,6 +6,16 @@ from dogesec_commons.objects.helpers import ArangoDBHelper
 from txt2stix.retriever import STIXObjectRetriever
 from obstracts.server.models import FeedProfile, Job
 
+
+def batched(iterable, n):
+    """Yield lists of size n from iterable."""
+    it = iter(iterable)
+    while True:
+        batch = list(itertools.islice(it, n))
+        if not batch:
+            return
+        yield batch
+
 def get_vulnerabilities(collection_name, update_time):
     helper = ArangoDBHelper(collection_name, None)
     binds = {'@collection': collection_name}
@@ -18,7 +28,7 @@ RETURN [name, prim_key]
     vulnerabilities = dict(vulnerabilities)
     retriever = STIXObjectRetriever("vulmatch")
     updates = []
-    for chunk in itertools.batched(vulnerabilities, 50):
+    for chunk in batched(vulnerabilities, 50):
         chunk = ','.join(chunk)
         for v in retriever._retrieve_objects(urljoin(retriever.api_root, f"v1/cve/objects/?cve_id={chunk}")):
             primary_keys = vulnerabilities[v['name']]
@@ -37,7 +47,7 @@ def run_on_collections(job: Job):
         if not updates:
             continue
         collection = db.collection(collection_name)
-        for chunk in itertools.batched(updates, 500):
+        for chunk in batched(updates, 500):
             collection.update_many(chunk, raise_on_document_error=True)
             if job:
                 job.processed_items += len(chunk)
