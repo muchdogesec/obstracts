@@ -61,6 +61,7 @@ class JobState(models.TextChoices):
 class JobType(models.TextChoices):
     FEED_INDEX = "feed_index"
     PDF_INDEX  = "pdf_index"
+    SYNC_VULNERABILITIES = "sync-vulnerabilities"
 
 
 class PDFCookieConsentMode(models.TextChoices):
@@ -251,7 +252,7 @@ class Job(models.Model):
     failed_processes = models.IntegerField(default=0)
     feed = models.ForeignKey(FeedProfile, on_delete=models.CASCADE, null=True)
     profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True)
-    type = models.CharField(choices=JobType.choices, max_length=20, default=JobType.FEED_INDEX)
+    type = models.CharField(choices=JobType.choices, max_length=64, default=JobType.FEED_INDEX)
     errors = ArrayField(base_field=models.CharField(max_length=1024), default=list)
     completion_time = models.DateTimeField(default=None, null=True)
 

@@ -379,3 +379,30 @@ def test_create_pdf_reindex_job__skips_no_pdf(
     job.refresh_from_db()
     assert job.failed_processes == 1
     assert job.processed_items == 3
+
+
+@pytest.mark.django_db
+def test_update_vulnerabilities_task_success():
+    import uuid
+    job = models.Job.objects.create(id=uuid.uuid4(), type=models.JobType.SYNC_VULNERABILITIES, state=models.JobState.PROCESSING)
+    with patch("obstracts.cjob.tasks.helpers.run_on_collections") as mock_run:
+        # no exception -> should set state to PROCESSED
+        mock_run.return_value = None
+        from obstracts.cjob.tasks import update_vulnerabilities
+
+        update_vulnerabilities(job.id)
+    job.refresh_from_db()
+    assert job.state == models.JobState.PROCESSED
+
+
+@pytest.mark.django_db
+def test_update_vulnerabilities_task_failure():
+    import uuid
+    job = models.Job.objects.create(id=uuid.uuid4(), type=models.JobType.SYNC_VULNERABILITIES, state=models.JobState.PROCESSING)
+    with patch("obstracts.cjob.tasks.helpers.run_on_collections", side_effect=Exception("boom")):
+        from obstracts.cjob.tasks import update_vulnerabilities
+
+        update_vulnerabilities(job.id)
+    job.refresh_from_db()
+    assert job.state == models.JobState.PROCESS_FAILED
+    assert "boom" in job.errors[0]

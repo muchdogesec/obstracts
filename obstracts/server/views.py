@@ -249,7 +249,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             This request will only work if the profile attached to the post in the feed has generate PDF set to true.
             """
         ),
-    )
+    ),
 )
 class FeedView(h4f_views.FeedView):
     lookup_url_kwarg = "feed_id"
@@ -277,7 +277,13 @@ class FeedView(h4f_views.FeedView):
         s = serializers.FeedCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_create_job(request)
-        job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"], pdfshift_cookie_settings=s.validated_data.get('obstracts_feed', {}).get('pdfshift_cookie_settings'))
+        job = tasks.create_job_entry(
+            h4f_job,
+            s.validated_data["profile_id"],
+            pdfshift_cookie_settings=s.validated_data.get("obstracts_feed", {}).get(
+                "pdfshift_cookie_settings"
+            ),
+        )
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
@@ -288,7 +294,7 @@ class FeedView(h4f_views.FeedView):
         return Response(
             serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
-    
+
     @transaction.atomic
     def partial_update(self, request, *args, **kwargs):
         feed_obj = self.get_object()
@@ -296,16 +302,19 @@ class FeedView(h4f_views.FeedView):
         s.is_valid(raise_exception=True)
         print(s.validated_data)
         if "pdfshift_cookie_settings" in s.validated_data:
-            feed_obj.obstracts_feed.pdfshift_cookie_settings = s.validated_data['pdfshift_cookie_settings']
+            feed_obj.obstracts_feed.pdfshift_cookie_settings = s.validated_data[
+                "pdfshift_cookie_settings"
+            ]
             feed_obj.obstracts_feed.save()
         return super().partial_update(request, *args, **kwargs)
-    
+
     @decorators.action(methods=["PATCH"], detail=True, url_path="reindex-pdfs")
     def reindex_pdfs_for_feed(self, request, feed_id=None, **kwargs):
         feed: models.FeedProfile = self.get_object()
-        files = models.File.objects.filter(feed_id=feed.pk, profile__generate_pdf=True, processed=True)
+        files = models.File.objects.filter(
+            feed_id=feed.pk, profile__generate_pdf=True, processed=True
+        )
         return FeedView.reindex_pdfs(feed, list(files))
-        
 
     @decorators.action(methods=["PATCH"], detail=True)
     def fetch(self, request, *args, **kwargs):
@@ -456,7 +465,7 @@ class FeedView(h4f_views.FeedView):
             This request will only work if the profile attached to the post has generate PDF set to true.
             """
         ),
-    )
+    ),
 )
 class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
@@ -843,7 +852,7 @@ FOR doc IN @@view
             "#more_filters", "\n".join(filters)
         )
         return helper.execute_query(query, bind_vars=bind_vars)
-    
+
     @decorators.action(detail=True, methods=["PATCH"], url_path="reindex-pdf")
     def reindex_pdf(self, request, post_id=None, **kwargs):
         post_file: models.File = self.get_obstracts_file()
@@ -1011,7 +1020,9 @@ class JobView(
             label="Filter by Post ID",
             field_name="history4feed_job__fulltext_jobs__post_id",
         )
-        type = ChoiceFilter(help_text="Select `type` of job", choices=models.JobType.choices)
+        type = ChoiceFilter(
+            help_text="Select `type` of job", choices=models.JobType.choices
+        )
 
     def get_queryset(self):
         return models.Job.objects
@@ -1021,6 +1032,46 @@ class JobView(
         obj: models.Job = self.get_object()
         obj.cancel()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema_view(
+    update_vulnerabilities=extend_schema(
+        summary="Update local vulnerabilities",
+        description=textwrap.dedent(
+            """
+            Connect to remote vulmatch server and update all vulnerabilities
+            """
+        ),
+        request=None,
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+        },
+    ),
+)
+class TasksView(viewsets.GenericViewSet):
+    schema = ObstractsAutoSchema()
+    serializer_class = ObstractsJobSerializer
+    openapi_tags = ["Tasks"]
+    lookup_url_kwarg = "task_id"
+    filter_backends = [DjangoFilterBackend, Ordering]
+    ordering_fields = ["created"]
+    ordering = "created_descending"
+    pagination_class = Pagination("jobs")
+
+    @decorators.action(methods=["PATCH"], detail=False, url_path="sync-vulnerabilities")
+    def update_vulnerabilities(self, request, *args, **kwargs):
+        job = models.Job.objects.create(
+            id=uuid.uuid4(),
+            type=models.JobType.SYNC_VULNERABILITIES,
+            state=models.JobState.PROCESSING,
+        )
+        t = tasks.update_vulnerabilities.si(job.id)
+        t.apply_async()
+        self.kwargs.update(job_id=job.id)
+        obj = models.Job.objects.get(id=job.id)
+        s = serializers.ObstractsJobSerializer(obj)
+        return Response(s.data, status=status.HTTP_201_CREATED)
 
 
 @extend_schema_view(

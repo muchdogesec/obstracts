@@ -167,3 +167,13 @@ def api_schema():
     from obstracts.asgi import application
 
     yield schemathesis.openapi.from_asgi("/api/schema/?format=json", application)
+
+
+@pytest.fixture
+def celery_always_eager():
+    from history4feed.h4fscripts.celery import app
+
+    app.conf.task_always_eager = True
+    app.conf.broker_url = None
+    yield
+    app.conf.task_always_eager = False

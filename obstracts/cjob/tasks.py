@@ -7,6 +7,8 @@ import typing
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
 import requests
+
+from obstracts.cjob import helpers
 from ..server.models import Job
 from ..server import models
 from django.core.cache import cache
@@ -56,11 +58,12 @@ def job_completed_with_error(job_id):
     else:
         job.update_state(models.JobState.PROCESSED)
 
-    logging.info("removing queue lock for feed `%s`", str(job.feed.id))
-    if cache.delete(get_lock_id(job)):
-        logging.info("lock deleted")
-    else:
-        logging.error("Failed to remove lock")
+    if job.feed:
+        logging.info("removing queue lock for feed `%s`", str(job.feed.id))
+        if cache.delete(get_lock_id(job)):
+            logging.info("lock deleted")
+        else:
+            logging.error("Failed to remove lock")
 
     job.save()
 
@@ -154,6 +157,17 @@ def download_pdf(url, is_demo=False, cookie_consent_mode=None):
     response.raise_for_status()
     return response.content
 
+@shared_task
+def update_vulnerabilities(job_id):
+    job = models.Job.objects.get(pk=job_id)
+    state = models.JobState.PROCESSED
+    try:
+        helpers.run_on_collections(job)
+    except Exception as e:
+        job.errors.append(str(e))
+        job.save(update_fields=["errors"])
+        state = models.JobState.PROCESS_FAILED
+    job.update_state(state)
 
 @shared_task
 def add_pdf_to_post(job_id, post_id):
