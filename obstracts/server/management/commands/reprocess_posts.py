@@ -1,3 +1,7 @@
+# this script is designed to reindex extractions identified in data.json without triggering more calls to an AI. Useful when extractions have failed during lookup to remote sources (e.g. Vulmatch)
+# docker exec -it container_name bash
+# python manage.py reprocess_posts --help #this will show the help
+
 import itertools
 import json
 from django.core.management.base import BaseCommand, CommandError
