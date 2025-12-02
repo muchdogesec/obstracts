@@ -11,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 
 class ObstractsJobSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField()
-    feed_id = serializers.PrimaryKeyRelatedField(read_only=True, source="feed")
+    feed_id = serializers.PrimaryKeyRelatedField(read_only=True, source="feed", required=False, allow_null=True)
     profile_id = serializers.PrimaryKeyRelatedField(read_only=True, source="profile", required=False, allow_null=True)
 
     class Meta:
