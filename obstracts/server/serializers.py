@@ -64,14 +64,13 @@ class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
 
 
 
-class PatchFeedSerializer(serializers.ModelSerializer):
+class PatchFeedSerializer(h4fserializers.FeedPatchSerializer):
     title = serializers.CharField(required=True, help_text="title of feed")
     description = serializers.CharField(required=True, help_text="description of feed")
     pdfshift_cookie_settings = serializers.ChoiceField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js)
 
-    class Meta:
-        model = h4fserializers.FeedSerializer.Meta.model
-        fields = ['title', 'description', 'pretty_url', 'pdfshift_cookie_settings']
+    class Meta(h4fserializers.FeedPatchSerializer.Meta):
+        fields = h4fserializers.FeedPatchSerializer.Meta.fields + ['pdfshift_cookie_settings']
 
 
 class FetchFeedSerializer(CreateTaskSerializer):
