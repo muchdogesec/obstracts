@@ -174,3 +174,4 @@ tmp/
 google_vision_key/key.json
 www/
 obstracts-venv/
+jobs_status.txt
