@@ -826,9 +826,6 @@ class PostOnlyView(h4f_views.PostOnlyView):
         helper = ArangoDBHelper(settings.ARANGODB_DATABASE_VIEW, self.request)
         types = helper.query.get("types", "")
         bind_vars = {
-            "types": (
-                list(OBJECT_TYPES.intersection(types.split(","))) if types else None
-            ),
             "@view": settings.VIEW_NAME,
             "post_id": str(post_file.post_id),
         }
@@ -836,12 +833,16 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
         if q := helper.query_as_bool("ignore_embedded_sro", default=False):
             filters.append("FILTER doc._is_ref != TRUE")
+        
+        if types:
+            filters.append("FILTER doc.type IN @types")
+            bind_vars["types"] = list(OBJECT_TYPES.intersection(types.split(",")))
+
 
         query = """
 
-FOR doc IN @@view
-    FILTER doc._obstracts_post_id == @post_id
-    FILTER NOT @types OR doc.type IN @types
+    FOR doc IN @@view
+    SEARCH doc._obstracts_post_id == @post_id
     #more_filters
     
     COLLECT id = doc.id  INTO docs
