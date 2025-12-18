@@ -279,8 +279,9 @@ HISTORY4FEED_SETTINGS = {
     'WAYBACK_SLEEP_SECONDS': int(os.getenv("HISTORY4FEED_WAYBACK_SLEEP_SECONDS", 20)),
     'EARLIEST_SEARCH_DATE': datetime.strptime(os.environ.get("HISTORY4FEED_EARLIEST_SEARCH_DATE", "2024-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ"),
     'REQUEST_RETRY_COUNT': int(os.getenv("HISTORY4FEED_REQUEST_RETRY_COUNT", 3)),
+    "FULLTEXT_FETCH_TIMEOUT_SECONDS": int(os.getenv("HISTORY4FEED_FULLTEXT_FETCH_TIMEOUT_SECONDS", 100)), # time limit for fulltext fetch tasks
 }
-
+PROCESSING_TIMEOUT_SECONDS = int(os.getenv("PROCESSING_TIMEOUT_SECONDS", 300))  # time limit for processing tasks
 # stixifier settings
 STIXIFIER_NAMESPACE = uuid.UUID("a1f2e3ed-6241-5f05-ac2e-3394213b8e08")
 TXT2STIX_INCLUDE_URL = "https://github.com/muchdogesec/txt2stix/blob/obstracts/includes/"

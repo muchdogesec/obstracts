@@ -337,7 +337,6 @@ class FeedView(h4f_views.FeedView):
         )
         return qs
 
-
 @extend_schema_view(
     list=extend_schema(
         summary="Search for Posts",
@@ -918,7 +917,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
         },
-        request=serializers.CreateTaskSerializer,
+        request=serializers.ReindexFeedSerializer,
     ),
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
@@ -942,14 +941,21 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
 
     @decorators.action(methods=["PATCH"], detail=False, url_path="reindex")
     def reindex_feed(self, request, *args, feed_id=None, **kwargs):
-        s = serializers.CreateTaskSerializer(data=request.data)
+        s = serializers.ReindexFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
+        self.only_hidden_posts = s.validated_data["only_hidden_posts"]
 
         h4f_job = self.new_reindex_feed_job(feed_id)
         job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
+    
+    def reindex_queryset(self):
+        qs = super().reindex_queryset()
+        if self.only_hidden_posts:
+            qs = qs.filter(Q(obstracts_post=None) | Q(obstracts_post__processed=False))
+        return qs
 
 
 class RSSView(h4f_views.RSSView):

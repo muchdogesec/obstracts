@@ -4,6 +4,7 @@ import uuid
 from celery import shared_task, chain, current_task, Task as CeleryTask
 from django.db import transaction
 import typing
+from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
 import requests
@@ -96,9 +97,8 @@ def create_pdf_reindex_job(feed, files):
 
     return job
 
-
-@shared_task
-def start_processing(job_id):
+@shared_task(bind=True)
+def start_processing(self, job_id):
     job = Job.objects.get(pk=job_id)
     logging.info(
         f"processing {job_id=}, {job.feed_id=}, {current_task.request.root_id=}"
@@ -114,9 +114,10 @@ def start_processing(job_id):
     tasks = [wait_in_queue.si(job_id)] + [
         process_post.si(job_id, str(post_id)) for post_id in posts
     ]
-    tasks.append(job_completed_with_error.si(job_id))
-    return chain(tasks).apply_async()
-
+    t = chain(tasks)
+    t.stamp(obstracts_id=str(job.id))
+    t |= job_completed_with_error.si(job_id)
+    return self.replace(t)
 
 @shared_task(bind=True, default_retry_delay=10)
 def wait_in_queue(self: CeleryTask, job_id):
@@ -188,8 +189,8 @@ def add_pdf_to_post(job_id, post_id):
         job.save()
 
 
-@shared_task
-def process_post(job_id, post_id, *args):
+@shared_task(bind=True, soft_time_limit=settings.PROCESSING_TIMEOUT_SECONDS, time_limit=settings.PROCESSING_TIMEOUT_SECONDS + 20)
+def process_post(self, job_id, post_id, *args):
     from obstracts.server.views import PostOnlyView
 
     job = Job.objects.get(pk=job_id)
@@ -279,6 +280,11 @@ def process_post(job_id, post_id, *args):
         msg = f"job cancelled by user for post {post_id}"
         logging.error(msg, exc_info=True)
         job.errors.append(msg)
+    except (SoftTimeLimitExceeded, TimeLimitExceeded) as e:
+        msg= f"task timed out for post {post_id}: {str(e)}"
+        job.errors.append(msg)
+        logging.error(msg, exc_info=True)
+        job.failed_processes += 1
     except Exception as e:
         msg = f"processing failed for post {post_id}"
         logging.error(msg, exc_info=True)

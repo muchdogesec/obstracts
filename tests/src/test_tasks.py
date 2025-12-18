@@ -3,6 +3,7 @@ import io
 from unittest.mock import MagicMock, patch, call
 import pytest
 import uuid
+from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 from obstracts.cjob.tasks import (
     add_pdf_to_post,
     create_pdf_reindex_job,
@@ -74,6 +75,7 @@ def test_start_processing(obstracts_job):
         patch(
             "obstracts.cjob.tasks.job_completed_with_error.run"
         ) as mock_job_completed_with_error,
+        patch("celery.result.assert_will_not_block"),
     ):
         start_processing.si(obstracts_job.id).delay()
         mock_wait_in_queue.assert_called_once_with(obstracts_job.id)
@@ -112,6 +114,52 @@ def test_process_post_job__fails(obstracts_job):
             == "processing failed for post 72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
         )
         assert obstracts_job.failed_processes == 9
+
+
+@pytest.mark.django_db
+def test_process_post_job__soft_time_limit_exceeded(obstracts_job):
+    """Test that SoftTimeLimitExceeded is handled correctly"""
+    from django.conf import settings
+    
+    # Assert that soft_time_limit is set correctly
+    assert process_post.soft_time_limit == settings.PROCESSING_TIMEOUT_SECONDS
+    
+    obstracts_job.failed_processes = 3
+    obstracts_job.save()
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    
+    with patch(
+        "obstracts.cjob.tasks.StixifyProcessor", side_effect=SoftTimeLimitExceeded()
+    ):
+        process_post.si(obstracts_job.id, post_id).delay()
+        obstracts_job.refresh_from_db()
+        assert len(obstracts_job.errors) == 1
+        assert "task timed out" in obstracts_job.errors[0]
+        assert obstracts_job.failed_processes == 4
+        assert post_id in obstracts_job.errors[0]
+
+
+@pytest.mark.django_db
+def test_process_post_job__time_limit_exceeded(obstracts_job):
+    """Test that TimeLimitExceeded is handled correctly"""
+    from django.conf import settings
+    
+    # Assert that soft_time_limit is set correctly
+    assert process_post.time_limit == settings.PROCESSING_TIMEOUT_SECONDS + 20
+    
+    obstracts_job.failed_processes = 5
+    obstracts_job.save()
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    
+    with patch(
+        "obstracts.cjob.tasks.StixifyProcessor", side_effect=TimeLimitExceeded()
+    ):
+        process_post.si(obstracts_job.id, post_id).delay()
+        obstracts_job.refresh_from_db()
+        assert len(obstracts_job.errors) == 1
+        assert "task timed out" in obstracts_job.errors[0]
+        assert post_id in obstracts_job.errors[0]
+        assert obstracts_job.failed_processes == 6
 
 
 @pytest.fixture

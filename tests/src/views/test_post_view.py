@@ -362,7 +362,6 @@ def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile, api_s
         api_schema['/api/v1/feeds/{feed_id}/posts/reindex/']['PATCH'].validate_response(Transport.get_st_response(resp))
 
 
-
 @pytest.fixture
 def list_post_posts(feed_with_posts):
     posts = sorted(File.objects.filter(feed=feed_with_posts), key=lambda file: file.post.pubdate)
@@ -674,6 +673,70 @@ def test_reindex_pdf_for_post_not_found(client: APIClient, api_schema):
     path = "/api/v1/posts/{post_id}/reindex-pdf/"
     response = client.patch(path.format(post_id=non_existent_uuid))
     assert response.status_code == 404
+    api_schema[path][
+        "PATCH"
+    ].validate_response(Transport.get_st_response(response))
+
+
+
+@pytest.mark.django_db
+def test_reindex_queryset_only_hidden_posts(feed_with_posts):
+    """Test that reindex_queryset filters correctly when only_hidden_posts=True"""
+    from history4feed.app.models import Post
+    
+    # Mark some posts as processed and some as not processed
+    posts = list(Post.objects.filter(feed=feed_with_posts.feed))
+    File.objects.filter(post=posts[0]).update(processed=True)
+    File.objects.filter(post=posts[1]).update(processed=False)
+    File.objects.filter(post=posts[2]).update(processed=True)
+    # posts[3] has no File object (obstracts_post=None)
+    File.objects.filter(post=posts[3]).delete()
+    
+    view = FeedPostView()
+    view.only_hidden_posts = True
+    
+    view.kwargs = {'feed_id': str(feed_with_posts.feed_id)}
+    
+    qs = view.reindex_queryset()
+    
+    result_ids = set(qs.values_list('id', flat=True))
+    
+    # Should include posts[1] (processed=False) and posts[3] (no obstracts_post)
+    assert {posts[1].id, posts[3].id} == result_ids
+
+
+@pytest.mark.django_db
+def test_reindex_queryset_all_posts(feed_with_posts):
+    """Test that reindex_queryset returns all posts when only_hidden_posts=False"""
+    from history4feed.app.models import Post
+    
+    # Mark some posts as processed
+    posts = list(Post.objects.filter(feed=feed_with_posts.feed))
+    File.objects.filter(post=posts[0]).update(processed=True)
+    File.objects.filter(post=posts[1]).update(processed=False)
+    
+    view = FeedPostView()
+    view.only_hidden_posts = False
+    view.kwargs = {'feed_id': str(feed_with_posts.feed_id)}
+    
+    qs = view.reindex_queryset()
+    
+    result_ids = set(qs.values_list('id', flat=True))
+    
+    # Should include all posts
+    assert {post.id for post in posts} == result_ids
+
+@pytest.mark.django_db
+def test_reindex_feed_calls_reindex_queryset(client: APIClient, feed_with_posts, stixifier_profile_no_pdf, api_schema):
+    path = "/api/v1/feeds/{feed_id}/posts/reindex/"
+    url = path.format(feed_id=feed_with_posts.feed_id)
+
+    with patch.object(FeedPostView, 'reindex_queryset') as mock_reindex_queryset:        
+        response = client.patch(url, data={"profile_id": stixifier_profile_no_pdf.id}, content_type="application/json")
+
+    assert response.status_code == 201, response.content
+    mock_reindex_queryset.assert_called_once()
+
     api_schema[path][
         "PATCH"
     ].validate_response(Transport.get_st_response(response))
