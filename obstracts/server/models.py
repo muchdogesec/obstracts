@@ -23,6 +23,7 @@ from django.db.models.signals import post_save
 from django.contrib.postgres.fields import ArrayField
 from stix2arango.stix2arango import Stix2Arango
 from dogesec_commons.objects.db_view_creator import link_one_collection
+
 # Create your models here.
 if typing.TYPE_CHECKING:
     from .. import settings
@@ -263,9 +264,11 @@ class Job(models.Model):
         return obj.state in [JobState.CANCELLED, JobState.CANCELLING]
 
     def cancel(self):
-        self.history4feed_job and self.history4feed_job.cancel()
-        self.update_state(JobState.CANCELLING)        
+        if self.history4feed_job and not self.history4feed_job.is_cancelled():
+            self.history4feed_job.cancel()
+        self.update_state(JobState.CANCELLING)
 
+        
     @transaction.atomic
     def update_state(self, state):
         obj = self.__class__.objects.select_for_update().get(pk=self.pk)
@@ -298,3 +301,11 @@ class Job(models.Model):
     @property
     def history4feed_status(self) -> H4FState:
         return self.history4feed_job.state
+
+@receiver(post_save, sender=h4f_models.Job)
+def cancel_obstracts_job(sender, instance: h4f_models.Job, **kwargs):
+    if instance.is_cancelled():
+        job: Job = instance.obstracts_job
+        if job.state not in [JobState.CANCELLED, JobState.CANCELLING]:
+            job.cancel()
+            job.save()

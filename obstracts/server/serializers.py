@@ -50,6 +50,12 @@ class CreateTaskSerializer(serializers.Serializer):
         help_text="profile id to use", write_only=True, required=True
     )
 
+class ReindexFeedSerializer(CreateTaskSerializer):
+    only_hidden_posts = serializers.BooleanField(
+        write_only=True,
+        default=True,
+        help_text="default true; if true, only reindex posts that are have not been processed",
+    )
 
 class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
     count_of_posts = serializers.IntegerField(
@@ -73,7 +79,7 @@ class PatchFeedSerializer(h4fserializers.FeedPatchSerializer):
         fields = h4fserializers.FeedPatchSerializer.Meta.fields + ['pdfshift_cookie_settings']
 
 
-class FetchFeedSerializer(CreateTaskSerializer):
+class FetchFeedSerializer(CreateTaskSerializer, h4fserializers.FeedFetchSerializer):
     include_remote_blogs = serializers.BooleanField(write_only=True, default=False)
 
 

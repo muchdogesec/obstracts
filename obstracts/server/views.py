@@ -220,13 +220,12 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             The following key/values are accepted in the body of the request:
 
             * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and feed id. Changing this setting will only apply to posts after the `latest_item_pubdate`.
-            * `include_remote_blogs` (required): You get the last `include_remote_blogs` used for this feed using the Get Jobs endpoint and feed id. Changing this setting will only apply to posts after the `latest_item_pubdate`.
+            * `include_remote_blogs` (required): is a boolean setting and will ask history4feed to ignore any feeds not on the same domain as the URL of the feed. Some feeds include remote posts from other sites (e.g. for a paid promotion). This setting (set to `false` allows you to ignore remote posts that do not use the same domain as the `url` used). Generally you should set `include_remote_blogs` to `false`. The one exception is when things like feed aggregators (e.g. Feedburner) URLs are used, where the actual blog posts are not on the `feedburner.com` (or whatever) domain. In this case `include_remote_blogs` should be set to `true`.
+            * `force_full_fetch` (required, boolean): by default the behaviour (`false`) will check for new posts on this blog since the last post time. In some cases you might want to consider all posts. For example, setting to `false` can miss updates that have happened to currently indexed posts (where the RSS or ATOM feed or search results do not report the updated date correctly -- which is actually very common). To solve this, you can set this setting to `true`. This will then get all URLs available on the blog from the earliest search date (same as when adding a new feed), compare these URLs to those for posts indexed, and then fetch posts for URLs not already indexed.
 
             Each post ID is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used `<FEED_ID>+<POST_URL>+<POST_PUB_TIME (to .000000Z)>` (e.g. `d1d96b71-c687-50db-9d2b-d0092d1d163a+https://muchdogesec.github.io/fakeblog123///test3/2024/08/20/update-post.html+2024-08-20T10:00:00.000000Z` = `22173843-f008-5afa-a8fb-7fc7a4e3bfda`).
 
             **IMPORTANT:** this request will fail if run against a Skeleton type feed. Skeleton feeds can only be updated by adding posts to them manually using the Manually Add a Post to a Feed endpoint.
-
-            **IMPORTANT:** this endpoint can miss updates that have happened to currently indexed posts (where the RSS or ATOM feed or search results do not report the updated date correctly -- which is actually very common). To solve this issue for currently indexed blog posts, use the Update a Post in a Feed endpoint directly.
 
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
             """
@@ -336,7 +335,6 @@ class FeedView(h4f_views.FeedView):
             )
         )
         return qs
-
 
 @extend_schema_view(
     list=extend_schema(
@@ -901,6 +899,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
                 The following key/values are accepted in the body of the request:
 
                 * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on re-index.
+                * `only_hidden_posts` (required, boolean): when set to `false` this will only consider posts that have been successfully processed and hidden posts (useful when changing profiles). Sometimes posts can be in `visible=false` state, meaning extractions failed or it got stuck after being retrieved. By setting this to `true` it will ONLY include posts that are `visible=false` in the reindex of the posts (useful for when posts fail extraction step, and you don't want to reprocess already processed posts)
 
                 This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
 
@@ -918,7 +917,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
         },
-        request=serializers.CreateTaskSerializer,
+        request=serializers.ReindexFeedSerializer,
     ),
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
@@ -942,14 +941,21 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
 
     @decorators.action(methods=["PATCH"], detail=False, url_path="reindex")
     def reindex_feed(self, request, *args, feed_id=None, **kwargs):
-        s = serializers.CreateTaskSerializer(data=request.data)
+        s = serializers.ReindexFeedSerializer(data=request.data)
         s.is_valid(raise_exception=True)
+        self.only_hidden_posts = s.validated_data["only_hidden_posts"]
 
         h4f_job = self.new_reindex_feed_job(feed_id)
         job = tasks.create_job_entry(h4f_job, s.validated_data["profile_id"])
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
+    
+    def reindex_queryset(self):
+        qs = super().reindex_queryset()
+        if self.only_hidden_posts:
+            qs = qs.filter(Q(obstracts_post=None) | Q(obstracts_post__processed=False))
+        return qs
 
 
 class RSSView(h4f_views.RSSView):
