@@ -899,7 +899,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
                 The following key/values are accepted in the body of the request:
 
                 * `profile_id` (required - valid Profile ID): You get the last `profile_id` used for this feed using the Get Jobs endpoint and post ID. Changing the profile will potentially change data extracted from each post on re-index.
-                * `only_hidden_posts` (required, boolean): when set to `false` this will only consider posts that have been successfully processed. Sometimes posts can be in `visible=false` state, meaning extractions failed, but post was indexed. By setting this to `true` it will also include posts that are `visible=false` in the reindex of the posts.
+                * `only_hidden_posts` (required, boolean): when set to `false` this will only consider posts that have been successfully processed and hidden posts (useful when changing profiles). Sometimes posts can be in `visible=false` state, meaning extractions failed or it got stuck after being retrieved. By setting this to `true` it will ONLY include posts that are `visible=false` in the reindex of the posts (useful for when posts fail extraction step, and you don't want to reprocess already processed posts)
 
                 This update change the content (`description`) stored for the Post and rerun the extractions on the new content for the Post.
 
