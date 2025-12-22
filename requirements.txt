@@ -314,7 +314,7 @@ markdownify==1.2.2
     # via file2txt
 markupsafe==3.0.3
     # via jinja2
-marshmallow==3.26.1
+marshmallow==3.26.2
     # via dataclasses-json
 mistune==3.1.4
     # via
