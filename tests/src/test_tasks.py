@@ -17,6 +17,7 @@ from obstracts.server import models
 from history4feed.app import models as h4f_models
 
 from obstracts.server.views import PostOnlyView
+from tests.conftest import obstracts_job
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -259,6 +260,72 @@ def test_process_post_generate_pdf(
         file = models.File.objects.get(pk=post_id)
         assert file.processed == True
 
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "has_pdf_file,generate_pdf,expected",
+    [
+        (True, True, False),
+        (True, False, False),
+        (False, True, True),
+        (False, False, False),
+    ],
+)
+def test_process_post_generate_pdf_on_reprocess(
+    obstracts_job_reprocess, fake_stixifier_processor, has_pdf_file, generate_pdf, expected
+):
+    obstracts_job_reprocess.type = models.JobType.REPROCESS_POSTS
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    obstracts_job_reprocess.profile.generate_pdf = generate_pdf
+    obstracts_job_reprocess.profile.save()
+    file = models.File.objects.get(pk=post_id)
+    file.markdown_file.save("test.md", io.BytesIO(b"test content"))
+    if has_pdf_file:
+        file.pdf_file.save("existing.pdf", io.BytesIO(b"existing pdf content"))
+    file.save()
+    obstracts_job_reprocess.save()
+
+    with (
+        patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch(
+            "obstracts.cjob.tasks.add_pdf_to_post.run",
+        ) as mock_add_pdf_to_post,
+    ):
+        mock_stixify_processor_cls.return_value = fake_stixifier_processor
+        process_post.si(obstracts_job_reprocess.id, post_id).delay()
+        assert (
+            mock_add_pdf_to_post.called == expected
+        )  # should NOT be called on reprocess if pdf already exists
+        file.refresh_from_db()
+        assert file.processed == True
+        obstracts_job_reprocess.refresh_from_db()
+        fake_stixifier_processor.txt2stix.assert_called_once()
+        fake_stixifier_processor.upload_to_arango.assert_called_once()
+        fake_stixifier_processor.process.assert_not_called()
+        assert obstracts_job_reprocess.failed_processes == 0
+
+
+@pytest.mark.django_db
+def test_process_post_generate_pdf_on_reprocess__skip_extraction_no_existing_data(
+    obstracts_job_reprocess, fake_stixifier_processor
+):
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    obstracts_job_reprocess.extra['skip_extraction'] = True
+    obstracts_job_reprocess.profile.generate_pdf = False
+    obstracts_job_reprocess.profile.save()
+    file = models.File.objects.get(pk=post_id)
+    file.markdown_file.save("test.md", io.BytesIO(b"test content"))
+    file.txt2stix_data = None  # no existing extraction data
+    file.save()
+    obstracts_job_reprocess.save()
+
+    with (
+        patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+    ):
+        mock_stixify_processor_cls.return_value = fake_stixifier_processor
+        process_post.si(obstracts_job_reprocess.id, post_id).delay()
+        obstracts_job_reprocess.refresh_from_db()
+        assert obstracts_job_reprocess.failed_processes == 1
 
 @pytest.mark.django_db
 def test_process_post_with_incident(obstracts_job, fake_stixifier_processor):

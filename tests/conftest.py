@@ -83,6 +83,16 @@ def obstracts_job(feed_with_posts, stixifier_profile):
     job = create_job_entry(h4f_job, stixifier_profile.id)
     yield job
 
+@pytest.fixture
+def obstracts_job_reprocess(feed_with_posts, stixifier_profile):
+    job = models.Job.objects.create(
+        id="b5161fa5-e3d6-4648-982b-6675a1673abc",
+        feed=feed_with_posts,
+        profile_id=stixifier_profile.id,
+        type=models.JobType.REPROCESS_POSTS,
+        extra=dict(skip_extraction=False)
+    )
+    yield job
 
 @pytest.fixture
 def feed_with_posts(stixifier_profile):
