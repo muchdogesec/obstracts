@@ -28,22 +28,28 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
         ),
     ),
     list=extend_schema(
-        summary="Search identity objects",
+        summary="Search Feed Identity objects",
         description=textwrap.dedent(
             """
-            When a new feed is added, a STIX Identity object is created to represent it.
+            When a new feed (blog) is added, a STIX Identity object is created to represent it.
 
             That Identity ID is then used for all objects `created_by_ref` property for all STIX Objects belonging to that Feed.
 
-            This endpoint will allow you to search for all the Identities that exist.
+            Identity IDs are generated to match feed IDs in the format `identity--<FEED ID>`.
+
+            This endpoint will allow you to search for all the Identities that exist for Feeds.
+
+            This request will not return Identity objects that have been extracted from Posts in Feeds. Use the GET Objects endpoints to return these Identities.
             """
         ),
     ),
     retrieve=extend_schema(
-        summary="GET identity object by STIX ID",
+        summary="GET Feed Identity object by STIX ID",
         description=textwrap.dedent(
             """
             This endpoint will allow you to GET an Identity object by its STIX ID.
+
+            This request will not return Identity objects that have been extracted from Posts in Feeds. Use the GET Objects endpoints to return these Identities.
             """
         ),
     ),
