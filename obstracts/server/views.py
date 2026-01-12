@@ -169,9 +169,14 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             """
             Use this endpoint to delete a Feed using its ID.
 
-            This will delete all posts (items) that belong to the feed in the database and all STIX objects created for extractions belonging to this feed (this also includes the STIX Identity object representing this Feed).
+            In the backend this action will delete the Postgres entries and ArangoDB collections for this feed. This means the following things will be deleted:
 
-            BEWARE: this action cannot be reversed.
+            * all feed info in Postgres
+            * all posts (items) that belong to the feed in Postgres
+            * all STIX objects created for extractions belonging to this feed (this also includes the STIX Identity object representing this Feed)
+            * all files (inc if remote) that belong to posts in feed (e.g. PDF, markdown...)
+
+            **IMPORTANT**: this action cannot be reversed.
             """
         ),
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR},
@@ -364,9 +369,16 @@ class FeedView(h4f_views.FeedView):
         summary="Delete a post in a Feed",
         description=textwrap.dedent(
             """
-            Use this endpoint to delete a post using its `id`
+            Use this endpoint to delete a Post and all extractions linked to it.
 
-            IMPORTANT: this WILL delete the content of the post and any STIX objects directly linked to it. Any objects linked to other reports WILL NOT be deleted.
+            Some notes about how this works:
+
+            * the post entry in Postgres for the feed will be deleted
+            * all files (inc. if remote) that belong to the posts (e.g. PDF, markdown...)
+            * the STIX Report objects for Post
+            * all STIX objects created for extractions belonging to this feed that have the `created_by_ref` of the feed identity.
+
+            **IMPORTANT**: shared extractions (that belong to multiple posts, e.g. ATT&CK extractions) will not be deleted. This is because these objects do not use a `created_by_ref` that belongs to a feed.
             """
         ),
         responses={204: {}, 404: api_schema.DEFAULT_404_ERROR},
