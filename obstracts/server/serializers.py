@@ -69,7 +69,6 @@ class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
     pdfshift_cookie_settings = serializers.ChoiceField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js, source='obstracts_feed.pdfshift_cookie_settings')
 
 
-
 class PatchFeedSerializer(h4fserializers.FeedPatchSerializer):
     title = serializers.CharField(required=True, help_text="title of feed")
     description = serializers.CharField(required=True, help_text="description of feed")
@@ -85,6 +84,57 @@ class FetchFeedSerializer(CreateTaskSerializer, h4fserializers.FeedFetchSerializ
 
 class FetchPostSerializer(CreateTaskSerializer):
     pass
+
+
+class ReprocessSinglePostSerializer(serializers.Serializer):
+
+    profile_id = ProfileIDField(
+        help_text="profile id to use", write_only=True, required=False, allow_null=True
+    )
+    skip_extraction = serializers.BooleanField(
+        write_only=True,
+        default=True,
+        help_text="Default true. If false, the extraction process will be run again on the post.",
+    )
+
+    def validate(self, attrs):
+        profile_id = attrs.get("profile_id", None)
+        if profile_id and attrs["skip_extraction"]:
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": [
+                        "Cannot specify profile_id when skip_extraction is true (or not set)"
+                    ]
+                }
+            )
+        if not profile_id and not attrs["skip_extraction"]:
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": [
+                        "Must specify profile_id when skip_extraction is false"
+                    ]
+                }
+            )
+        return super().validate(attrs)
+
+
+class ReprocessFeedPostsSerializer(ReprocessSinglePostSerializer):
+    only_hidden_posts = serializers.BooleanField(
+        write_only=True,
+        default=True,
+        help_text="default true; if true, only reprocess posts that are not visible",
+    )
+
+    def validate(self, attrs):
+        if attrs["only_hidden_posts"] and not attrs.get("profile_id", None):
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": [
+                        "Must specify profile_id when only_hidden_posts is true"
+                    ]
+                }
+            )
+        return super().validate(attrs)
 
 
 class H4fPostCreateSerializer(serializers.Serializer):
@@ -250,7 +300,6 @@ class AttackNavigatorDomainSerializer(JSONSchemaSerializer):
     }
 
 
-
 class HealthCheckChoices(StrEnum):
     AUTHORIZED = auto()
     UNAUTHORIZED = auto()
@@ -263,7 +312,7 @@ class HealthCheckChoiceField(serializers.ChoiceField):
     def __init__(self, **kwargs):
         choices = [m.value for m in HealthCheckChoices]
         super().__init__(choices, **kwargs)
-        
+
 class HealthCheckLLMs(serializers.Serializer):
     openai = HealthCheckChoiceField()
     deepseek = HealthCheckChoiceField()
@@ -278,4 +327,3 @@ class HealthCheckSerializer(serializers.Serializer):
     binlist = HealthCheckChoiceField()
     pdfshift = HealthCheckChoiceField()
     llms = HealthCheckLLMs()
-

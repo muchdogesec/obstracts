@@ -7,6 +7,7 @@ import typing
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
+from txt2stix.txt2stix import Txt2StixData
 import requests
 
 from obstracts.cjob import helpers
@@ -95,6 +96,27 @@ def create_pdf_reindex_job(feed, files):
     pdf_tasks.append(job_completed_with_error.si(job.id))
     chain(pdf_tasks).apply_async()
 
+    return job
+
+def create_reprocessing_job(feed, posts: list[models.h4f_models.Post], options: dict = None):
+    job  = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.REPROCESS_POSTS,
+        feed_id=feed.id,
+        profile_id=options.pop('profile_id', None),
+        state=models.JobState.QUEUED,
+        extra=options,
+    )
+    tasks = [wait_in_queue.si(job.id)]
+    profile_id = job.profile_id
+    for post in posts:
+        if options['skip_extraction'] and getattr(post, 'obstracts_post', None):
+            profile_id = post.obstracts_post.profile_id
+        tasks.append(process_post.si(str(job.id), str(post.id), profile_id=str(profile_id)))
+    t = chain(tasks)
+    t.stamp(obstracts_id=str(job.id))
+    t |= job_completed_with_error.si(job.id)
+    t.apply_async()
     return job
 
 @shared_task(bind=True)
@@ -190,33 +212,48 @@ def add_pdf_to_post(job_id, post_id):
 
 
 @shared_task(bind=True, soft_time_limit=settings.PROCESSING_TIMEOUT_SECONDS, time_limit=settings.PROCESSING_TIMEOUT_SECONDS + 20)
-def process_post(self, job_id, post_id, *args):
+def process_post(self, job_id, post_id, profile_id=None, *args):
     from obstracts.server.views import PostOnlyView
 
     job = Job.objects.get(pk=job_id)
     post = h4f_models.Post.objects.get(pk=post_id)
+    profile = job.profile
+    if profile_id:
+        profile = models.Profile.objects.get(pk=profile_id)
     try:
         if job.is_cancelled():
             raise CancelledJob()
         file, _ = models.File.objects.update_or_create(
             post_id=post_id,
             defaults=dict(
-                feed_id=job.feed.id,
-                profile_id=job.profile.id,
-                profile=job.profile,
                 processed=False,
             ),
+            create_defaults=dict(
+                feed_id=job.feed.id,
+                profile_id=profile.id,
+            )
         )
-        if job.profile.generate_pdf:
+
+        print("ksajjhsjhs", file.pdf_file)
+        if profile.generate_pdf and (job.type != models.JobType.REPROCESS_POSTS or not file.pdf_file):
             add_pdf_to_post.delay(job_id, post_id)
+        
         PostOnlyView.remove_report_objects(file)
-        stream = io.BytesIO(post.description.encode())
-        stream.name = f"post-{post_id}.html"
+
+        mode = "html_article"
+        if job.type == models.JobType.REPROCESS_POSTS:
+            stream = file.markdown_file.open('rb')
+            mode = "md"
+            stream.name = f"post-{post_id}.html"
+        else:
+            stream = io.BytesIO(post.description.encode())
+            stream.name = f"post-{post_id}.html"
+
         processor = StixifyProcessor(
             stream,
-            job.profile,
+            profile,
             job_id=f"{post.id}+{job.id}",
-            file2txt_mode="html_article",
+            file2txt_mode=mode,
             report_id=post_id,
             base_url=post.link,
         )
@@ -234,7 +271,7 @@ def process_post(self, job_id, post_id, *args):
                     dict(source_name="obstracts_feed_id", external_id=str(job.feed.id)),
                     dict(
                         source_name="obstracts_profile_id",
-                        external_id=str(job.profile.id),
+                        external_id=str(profile.id),
                     ),
                 ]
             ),
@@ -243,7 +280,18 @@ def process_post(self, job_id, post_id, *args):
             properties,
             dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id),
         )
-        processor.process()
+        if job.type == models.JobType.REPROCESS_POSTS:
+            processor.output_md = file.markdown_file.open().read().decode()
+            txt2stix_data = None
+            if job.extra['skip_extraction']:
+                if not file.txt2stix_data:
+                    raise Exception("no existing extraction data to use for reprocess with skip_extraction=true")
+                txt2stix_data = Txt2StixData.model_validate(file.txt2stix_data)
+            processor.txt2stix(txt2stix_data)
+            processor.write_bundle(processor.bundler)
+            processor.upload_to_arango()
+        else:
+            processor.process()
 
         if processor.incident:
             file.ai_describes_incident = processor.incident.describes_incident
@@ -255,13 +303,14 @@ def process_post(self, job_id, post_id, *args):
         )
         file.summary = processor.summary
 
-        file.markdown_file.save("markdown.md", processor.md_file.open(), save=False)
-        models.FileImage.objects.filter(report=file).delete()  # remove old references
+        if job.type != models.JobType.REPROCESS_POSTS:
+            file.markdown_file.save("markdown.md", processor.md_file.open(), save=False)
+            models.FileImage.objects.filter(report=file).delete()  # remove old references
 
-        for image in processor.md_images:
-            models.FileImage.objects.create(
-                report=file, file=File(image, image.name), name=image.name
-            )
+            for image in processor.md_images:
+                models.FileImage.objects.create(
+                    report=file, file=File(image, image.name), name=image.name
+                )
 
         file.processed = True
         file.save(

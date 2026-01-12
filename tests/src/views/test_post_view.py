@@ -60,7 +60,9 @@ def test_list_posts(client, feed_with_posts, api_schema):
         assert resp.status_code == 200
         assert resp.data["total_results_count"] == 4, resp.data
         mock_serializer.assert_called_once()  # confirm that we use correct serializer
-        api_schema['/api/v1/posts/']['GET'].validate_response(Transport.get_st_response(resp))
+        api_schema["/api/v1/posts/"]["GET"].validate_response(
+            Transport.get_st_response(resp)
+        )
 
 
 @pytest.mark.django_db
@@ -75,7 +77,9 @@ def test_retrieve_posts(client, feed_with_posts, api_schema):
         assert resp.status_code == 200
         assert resp.data["id"] == "561ed102-7584-4b7d-a302-43d4bca5605b"
         mock_serializer.assert_called_once()  # confirm that we use correct serializer
-        api_schema['/api/v1/posts/{post_id}/']['GET'].validate_response(Transport.get_st_response(resp))
+        api_schema["/api/v1/posts/{post_id}/"]["GET"].validate_response(
+            Transport.get_st_response(resp)
+        )
 
 
 @pytest.mark.django_db
@@ -106,7 +110,9 @@ def test_reindex_post(client, feed_with_posts, stixifier_profile, api_schema):
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/posts/{post_id}/reindex/']['PATCH'].validate_response(Transport.get_st_response(resp))
+        api_schema["/api/v1/posts/{post_id}/reindex/"]["PATCH"].validate_response(
+            Transport.get_st_response(resp)
+        )
 
 
 @pytest.mark.django_db
@@ -129,9 +135,11 @@ def test_post_objects(client, feed_with_posts, api_schema):
             mock_get_post_objects.call_args[0][0],
             "561ed102-7584-4b7d-a302-43d4bca5605b",
         )
-        resp.headers['content-type'] = 'application/json'
-        
-        api_schema['/api/v1/posts/{post_id}/objects/']['GET'].validate_response(Transport.get_st_response(resp))
+        resp.headers["content-type"] = "application/json"
+
+        api_schema["/api/v1/posts/{post_id}/objects/"]["GET"].validate_response(
+            Transport.get_st_response(resp)
+        )
 
 
 @pytest.mark.django_db
@@ -150,7 +158,10 @@ def test_post_extractions__not_processed(client, feed_with_posts, api_schema):
         json.loads(resp.content)["details"]["error"]
         == "This post is in failed extraction state, please reindex to access"
     )
-    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(resp))
+    api_schema["/api/v1/posts/{post_id}/extractions/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
 
 @pytest.mark.django_db
 def test_post_extractions(client, feed_with_posts, api_schema):
@@ -173,7 +184,9 @@ def test_post_extractions(client, feed_with_posts, api_schema):
         assert resp.status_code == 200, resp.content
         mock_get_obstracts_file.assert_called_once()
         assert resp.data == post.txt2stix_data
-        api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(resp))
+        api_schema["/api/v1/posts/{post_id}/extractions/"]["GET"].validate_response(
+            Transport.get_st_response(resp)
+        )
 
 
 @pytest.mark.django_db
@@ -187,8 +200,9 @@ def test_post_extractions_no_data(client, feed_with_posts, api_schema):
     )
     assert resp.status_code == 200, resp.content
     assert resp.data == {}
-    api_schema['/api/v1/posts/{post_id}/extractions/']['GET'].validate_response(Transport.get_st_response(resp))
-
+    api_schema["/api/v1/posts/{post_id}/extractions/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
 
 
 @pytest.mark.django_db
@@ -241,7 +255,9 @@ def test_post_images(client, feed_with_posts, api_schema):
     assert resp.status_code == 200, resp.content
     assert "images" in resp.data
     assert len(resp.data["images"]) == 2
-    api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(resp))
+    api_schema["/api/v1/posts/{post_id}/images/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
 
 
 @pytest.mark.django_db
@@ -256,7 +272,10 @@ def test_post_images_no_images(client, feed_with_posts, api_schema):
     assert resp.status_code == 200, resp.content
     assert "images" in resp.data
     assert len(resp.data["images"]) == 0
-    api_schema['/api/v1/posts/{post_id}/images/']['GET'].validate_response(Transport.get_st_response(resp))
+    api_schema["/api/v1/posts/{post_id}/images/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
@@ -266,14 +285,28 @@ def test_post_images_no_images(client, feed_with_posts, api_schema):
         ["royalty", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
         ["king beautiful", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
         ["beauty royalty", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
-        ["random post", ["345c8d0b-c6ca-4419-b1f7-0daeb4e9278b", "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
-        ["-king", ["345c8d0b-c6ca-4419-b1f7-0daeb4e9278b", "42a5d042-26fa-41f3-8850-307be3f330cf", "561ed102-7584-4b7d-a302-43d4bca5605b"]],
-    ]
+        [
+            "random post",
+            [
+                "345c8d0b-c6ca-4419-b1f7-0daeb4e9278b",
+                "72e1ad04-8ce9-413d-b620-fe7c75dc0a39",
+            ],
+        ],
+        [
+            "-king",
+            [
+                "345c8d0b-c6ca-4419-b1f7-0daeb4e9278b",
+                "42a5d042-26fa-41f3-8850-307be3f330cf",
+                "561ed102-7584-4b7d-a302-43d4bca5605b",
+            ],
+        ],
+    ],
 )
 def test_search_text(client, feed_with_posts, api_schema, text, expected_ids):
     resp = client.get("/api/v1/posts/", query_params=dict(text=text))
     assert resp.status_code == 200
-    assert {r['id'] for r in resp.data['posts']} == set(expected_ids)
+    assert {r["id"] for r in resp.data["posts"]} == set(expected_ids)
+
 
 @pytest.mark.django_db
 def test_post_destroy(client, feed_with_posts, api_schema):
@@ -288,7 +321,9 @@ def test_post_destroy(client, feed_with_posts, api_schema):
         resp = client.get("/api/v1/posts/561ed102-7584-4b7d-a302-43d4bca5605b/")
         assert resp.status_code == 404
         mock_remove_report_objects.assert_called_once_with(post)
-        api_schema['/api/v1/posts/{post_id}/']['DELETE'].validate_response(Transport.get_st_response(resp))
+        api_schema["/api/v1/posts/{post_id}/"]["DELETE"].validate_response(
+            Transport.get_st_response(resp)
+        )
         with pytest.raises(File.DoesNotExist):
             File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
 
@@ -328,7 +363,9 @@ def test_create_post_in_feed(client, feed_with_posts, stixifier_profile, api_sch
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/feeds/{feed_id}/posts/']['POST'].validate_response(Transport.get_st_response(resp))
+        api_schema["/api/v1/feeds/{feed_id}/posts/"]["POST"].validate_response(
+            Transport.get_st_response(resp)
+        )
 
 
 @pytest.mark.django_db
@@ -359,12 +396,16 @@ def test_reindex_posts_in_feed(client, feed_with_posts, stixifier_profile, api_s
         mock_create_job_entry.assert_called_once_with(
             mocked_job, uuid.UUID(str(stixifier_profile.id))
         )
-        api_schema['/api/v1/feeds/{feed_id}/posts/reindex/']['PATCH'].validate_response(Transport.get_st_response(resp))
+        api_schema["/api/v1/feeds/{feed_id}/posts/reindex/"]["PATCH"].validate_response(
+            Transport.get_st_response(resp)
+        )
 
 
 @pytest.fixture
 def list_post_posts(feed_with_posts):
-    posts = sorted(File.objects.filter(feed=feed_with_posts), key=lambda file: file.post.pubdate)
+    posts = sorted(
+        File.objects.filter(feed=feed_with_posts), key=lambda file: file.post.pubdate
+    )
 
     post1 = posts[0]
     post1.ai_describes_incident = True
@@ -508,11 +549,11 @@ def test_list_attack_navigator__nothing(client, feed_with_posts, layer, api_sche
 
 
 @pytest.mark.django_db
-def test_list_attack_navigator__has_data(client, feed_with_posts, api_schema, navigator_data):
+def test_list_attack_navigator__has_data(
+    client, feed_with_posts, api_schema, navigator_data
+):
     post = File.objects.get(post_id="561ed102-7584-4b7d-a302-43d4bca5605b")
-    post.txt2stix_data = {
-        "navigator_layer": navigator_data
-    }
+    post.txt2stix_data = {"navigator_layer": navigator_data}
     post.save()
     with (
         patch.object(
@@ -641,20 +682,21 @@ def test_retrieve_attack_navigator__has_data(
         "GET"
     ].validate_response(Transport.get_st_response(resp))
 
+
 @pytest.mark.django_db
 def test_reindex_pdf_for_post(client: APIClient, feed_with_posts, api_schema):
     post_file = models.File.objects.first()
     path = "/api/v1/posts/{post_id}/reindex-pdf/"
     url = path.format(post_id=post_file.pk)
 
-    with patch('obstracts.cjob.tasks.create_pdf_reindex_job') as mock_create_reindex_task:
+    with patch(
+        "obstracts.cjob.tasks.create_pdf_reindex_job"
+    ) as mock_create_reindex_task:
         mock_create_reindex_task.return_value = models.Job.objects.create(
-            id=uuid.uuid4(),
-            type=models.JobType.PDF_INDEX,
-            feed=feed_with_posts
+            id=uuid.uuid4(), type=models.JobType.PDF_INDEX, feed=feed_with_posts
         )
         response = client.patch(url)
-    
+
     mock_create_reindex_task.assert_called_once()
     assert str(mock_create_reindex_task.call_args[0][0].id) == feed_with_posts.id
     assert mock_create_reindex_task.call_args[0][1][0].pk == post_file.pk
@@ -663,9 +705,8 @@ def test_reindex_pdf_for_post(client: APIClient, feed_with_posts, api_schema):
     job = models.Job.objects.get(id=response.data["id"])
     assert mock_create_reindex_task.return_value.id == job.id
 
-    api_schema[path][
-        "PATCH"
-    ].validate_response(Transport.get_st_response(response))
+    api_schema[path]["PATCH"].validate_response(Transport.get_st_response(response))
+
 
 @pytest.mark.django_db
 def test_reindex_pdf_for_post_not_found(client: APIClient, api_schema):
@@ -673,17 +714,14 @@ def test_reindex_pdf_for_post_not_found(client: APIClient, api_schema):
     path = "/api/v1/posts/{post_id}/reindex-pdf/"
     response = client.patch(path.format(post_id=non_existent_uuid))
     assert response.status_code == 404
-    api_schema[path][
-        "PATCH"
-    ].validate_response(Transport.get_st_response(response))
-
+    api_schema[path]["PATCH"].validate_response(Transport.get_st_response(response))
 
 
 @pytest.mark.django_db
 def test_reindex_queryset_only_hidden_posts(feed_with_posts):
     """Test that reindex_queryset filters correctly when only_hidden_posts=True"""
     from history4feed.app.models import Post
-    
+
     # Mark some posts as processed and some as not processed
     posts = list(Post.objects.filter(feed=feed_with_posts.feed))
     File.objects.filter(post=posts[0]).update(processed=True)
@@ -691,16 +729,16 @@ def test_reindex_queryset_only_hidden_posts(feed_with_posts):
     File.objects.filter(post=posts[2]).update(processed=True)
     # posts[3] has no File object (obstracts_post=None)
     File.objects.filter(post=posts[3]).delete()
-    
+
     view = FeedPostView()
     view.only_hidden_posts = True
-    
-    view.kwargs = {'feed_id': str(feed_with_posts.feed_id)}
-    
+
+    view.kwargs = {"feed_id": str(feed_with_posts.feed_id)}
+
     qs = view.reindex_queryset()
-    
-    result_ids = set(qs.values_list('id', flat=True))
-    
+
+    result_ids = set(qs.values_list("id", flat=True))
+
     # Should include posts[1] (processed=False) and posts[3] (no obstracts_post)
     assert {posts[1].id, posts[3].id} == result_ids
 
@@ -709,34 +747,80 @@ def test_reindex_queryset_only_hidden_posts(feed_with_posts):
 def test_reindex_queryset_all_posts(feed_with_posts):
     """Test that reindex_queryset returns all posts when only_hidden_posts=False"""
     from history4feed.app.models import Post
-    
+
     # Mark some posts as processed
     posts = list(Post.objects.filter(feed=feed_with_posts.feed))
     File.objects.filter(post=posts[0]).update(processed=True)
     File.objects.filter(post=posts[1]).update(processed=False)
-    
+
     view = FeedPostView()
     view.only_hidden_posts = False
-    view.kwargs = {'feed_id': str(feed_with_posts.feed_id)}
-    
+    view.kwargs = {"feed_id": str(feed_with_posts.feed_id)}
+
     qs = view.reindex_queryset()
-    
-    result_ids = set(qs.values_list('id', flat=True))
-    
+
+    result_ids = set(qs.values_list("id", flat=True))
+
     # Should include all posts
     assert {post.id for post in posts} == result_ids
 
+
 @pytest.mark.django_db
-def test_reindex_feed_calls_reindex_queryset(client: APIClient, feed_with_posts, stixifier_profile_no_pdf, api_schema):
+def test_reindex_feed_calls_reindex_queryset(
+    client: APIClient, feed_with_posts, stixifier_profile_no_pdf, api_schema
+):
     path = "/api/v1/feeds/{feed_id}/posts/reindex/"
     url = path.format(feed_id=feed_with_posts.feed_id)
 
-    with patch.object(FeedPostView, 'reindex_queryset') as mock_reindex_queryset:        
-        response = client.patch(url, data={"profile_id": stixifier_profile_no_pdf.id}, content_type="application/json")
+    with patch.object(FeedPostView, "reindex_queryset") as mock_reindex_queryset:
+        response = client.patch(
+            url,
+            data={"profile_id": stixifier_profile_no_pdf.id},
+            content_type="application/json",
+        )
 
     assert response.status_code == 201, response.content
     mock_reindex_queryset.assert_called_once()
 
-    api_schema[path][
-        "PATCH"
-    ].validate_response(Transport.get_st_response(response))
+    api_schema[path]["PATCH"].validate_response(Transport.get_st_response(response))
+
+
+@pytest.mark.django_db
+def test_reprocess_posts_feed_view_variables(
+    client, feed_with_posts, stixifier_profile
+):
+    post: models.h4f_models.Post = feed_with_posts.feed.posts.first()
+    resp = client.patch(
+        f"/api/v1/posts/{post.id}/reprocess/",
+        data={"profile_id": stixifier_profile.id, "skip_extraction": False},
+        content_type="application/json",
+    )
+    assert resp.status_code == 201, resp.content
+    data = resp.json()
+    assert data["type"] == models.JobType.REPROCESS_POSTS
+    assert data['extra'] == {
+        "skip_extraction": False,
+        "posts": ["345c8d0b-c6ca-4419-b1f7-0daeb4e9278b"],
+    }
+    assert data["profile_id"] == str(stixifier_profile.id)
+
+
+
+@pytest.mark.django_db
+def test_reprocess_posts_in_feed_posts(
+    client, feed_with_posts, stixifier_profile
+):
+    post: models.h4f_models.Post = feed_with_posts.feed.posts.first()
+    resp = client.patch(
+        f"/api/v1/feeds/{feed_with_posts.feed_id}/posts/{post.id}/reprocess/",
+        data={"profile_id": stixifier_profile.id, "skip_extraction": False},
+        content_type="application/json",
+    )
+    assert resp.status_code == 201, resp.content
+    data = resp.json()
+    assert data["type"] == models.JobType.REPROCESS_POSTS
+    assert data['extra'] == {
+        "skip_extraction": False,
+        "posts": ["345c8d0b-c6ca-4419-b1f7-0daeb4e9278b"],
+    }
+    assert data["profile_id"] == str(stixifier_profile.id)

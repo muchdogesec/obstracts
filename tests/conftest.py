@@ -83,6 +83,16 @@ def obstracts_job(feed_with_posts, stixifier_profile):
     job = create_job_entry(h4f_job, stixifier_profile.id)
     yield job
 
+@pytest.fixture
+def obstracts_job_reprocess(feed_with_posts, stixifier_profile):
+    job = models.Job.objects.create(
+        id="b5161fa5-e3d6-4648-982b-6675a1673abc",
+        feed=feed_with_posts,
+        profile_id=stixifier_profile.id,
+        type=models.JobType.REPROCESS_POSTS,
+        extra=dict(skip_extraction=False)
+    )
+    yield job
 
 @pytest.fixture
 def feed_with_posts(stixifier_profile):
@@ -105,6 +115,7 @@ def make_feed(feed_id, profile=None):
         pubdate=datetime(2020, 1, 1, tzinfo=UTC),
         id="561ed102-7584-4b7d-a302-43d4bca5605b",
         link="https://example.blog/1",
+        is_full_text=True,
     )
     post2 = h4f_models.Post.objects.create(
         feed=h4f_feed,
@@ -127,7 +138,8 @@ def make_feed(feed_id, profile=None):
         pubdate=datetime(2020, 1, 4, tzinfo=UTC),
         id="42a5d042-26fa-41f3-8850-307be3f330cf",
         link="https://example.blog/4",
-        description="The execution was so beautiful and royal."
+        description="The execution was so beautiful and royal.",
+        is_full_text=True,
     )
     for post, summary in [(post1, "blank"), (post2, "something very random"), (post3, "this is not so random"), (post4, "die die die, fascists must die")]:
         models.File.objects.create(feed=feed, processed=True, post=post, summary=summary, profile=profile)

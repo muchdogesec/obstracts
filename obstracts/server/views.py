@@ -4,6 +4,7 @@ import operator
 import typing
 import uuid
 from django.http import FileResponse
+from django.shortcuts import get_object_or_404
 from django.urls import resolve
 import requests
 from rest_framework import viewsets, decorators, exceptions, status, renderers, mixins
@@ -481,6 +482,16 @@ class FeedView(h4f_views.FeedView):
             """
         ),
     ),
+    reprocess=extend_schema(
+        summary="Reprocess post",
+        description="",
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+        request=serializers.ReprocessSinglePostSerializer,
+    ),
 )
 class PostOnlyView(h4f_views.PostOnlyView):
     serializer_class = serializers.PostWithFeedIDSerializer
@@ -682,6 +693,17 @@ class PostOnlyView(h4f_views.PostOnlyView):
         )
         s.is_valid()
         return Response(s.data)
+    
+        
+    @decorators.action(methods=["PATCH"], detail=True)
+    def reprocess(self, request, feed_id=None, **kwargs):
+        post = self.get_object()
+        feed: models.FeedProfile = post.feed
+        s = serializers.ReprocessSinglePostSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        if s.validated_data['skip_extraction'] and not post.obstracts_post.txt2stix_data:
+            raise exceptions.ValidationError({"error": "Cannot skip extraction on unprocessed post"})
+        return FeedPostView.reprocess_posts(feed, [post], s.validated_data)
 
     @decorators.action(
         detail=True,
@@ -934,6 +956,20 @@ class PostOnlyView(h4f_views.PostOnlyView):
         },
         request=serializers.ReindexFeedSerializer,
     ),
+    reprocess_posts_for_feed=extend_schema(
+        summary="Reprocess Posts in a Feed",
+        description="",
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+        request=serializers.ReprocessFeedPostsSerializer,
+    ),
+    reprocess=extend_schema(
+        summary="Reprocess a Post in a Feed",
+        description="",
+    ),
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
@@ -971,6 +1007,25 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
         if self.only_hidden_posts:
             qs = qs.filter(Q(obstracts_post=None) | Q(obstracts_post__processed=False))
         return qs
+    
+    @staticmethod
+    def reprocess_posts(feed: models.FeedProfile, posts: list[models.h4f_models.Post], options: dict):
+        options = options.copy()
+        options['posts'] = [str(p.id) for p in posts]
+        job = tasks.create_reprocessing_job(feed, posts, options)
+        return Response(
+            serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
+        )
+    
+    @decorators.action(methods=["PATCH"], detail=False, url_path="reprocess-posts")
+    def reprocess_posts_for_feed(self, request, feed_id=None, **kwargs):
+        feed: models.FeedProfile = get_object_or_404(models.FeedProfile, pk=feed_id)
+        posts = models.h4f_models.Post.objects.filter(feed_id=feed.pk, is_full_text=True)
+        s = serializers.ReprocessFeedPostsSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        if s.validated_data['only_hidden_posts']:
+            posts = posts.filter(Q(obstracts_post=None) | Q(obstracts_post__processed=False))
+        return FeedPostView.reprocess_posts(feed, list(posts), s.validated_data)
 
 
 class RSSView(h4f_views.RSSView):
