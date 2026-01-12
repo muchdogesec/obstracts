@@ -29,6 +29,7 @@ def test_class_variables():
 
     assert history4feed_views.FeedView in FeedView.mro()
 
+
 @pytest.mark.parametrize(
     "pdfshift_cookie_settings",
     [
@@ -37,7 +38,9 @@ def test_class_variables():
     ],
 )
 @pytest.mark.django_db
-def test_create(client, feed_with_posts, stixifier_profile, pdfshift_cookie_settings, api_schema):
+def test_create(
+    client, feed_with_posts, stixifier_profile, pdfshift_cookie_settings, api_schema
+):
     job = make_h4f_job(feed_with_posts)
 
     payload = {
@@ -70,7 +73,9 @@ def test_create(client, feed_with_posts, stixifier_profile, pdfshift_cookie_sett
         mock_start_h4f_task.assert_called_once_with(request)
         mock_request_s_class_is_valid.assert_called_once()
         mock_create_job_entry.assert_called_once_with(
-            mocked_job, uuid.UUID(str(stixifier_profile.id)), pdfshift_cookie_settings=pdfshift_cookie_settings
+            mocked_job,
+            uuid.UUID(str(stixifier_profile.id)),
+            pdfshift_cookie_settings=pdfshift_cookie_settings,
         )
         assert resp.data["id"] == str(mocked_job.id)
         api_schema["/api/v1/feeds/"]["POST"].validate_response(
@@ -79,7 +84,6 @@ def test_create(client, feed_with_posts, stixifier_profile, pdfshift_cookie_sett
         feed_obj = models.FeedProfile.objects.get(pk=resp.data["feed_id"])
         if pdfshift_cookie_settings:
             assert feed_obj.pdfshift_cookie_settings == pdfshift_cookie_settings
-
 
 
 @pytest.mark.parametrize(
@@ -93,7 +97,9 @@ def test_create(client, feed_with_posts, stixifier_profile, pdfshift_cookie_sett
 def test_update_feed_metadata_view(
     client, feed_with_posts, pdfshift_cookie_settings, api_schema
 ):
-    payload = dict(title="very new title", pdfshift_cookie_settings=pdfshift_cookie_settings)
+    payload = dict(
+        title="very new title", pdfshift_cookie_settings=pdfshift_cookie_settings
+    )
     resp = client.patch(
         f"/api/v1/feeds/{feed_with_posts.id}/",
         data=payload,
@@ -228,3 +234,46 @@ def test_reindex_pdfs_for_feed(
     assert (
         len(mock_create_reindex_task.call_args[0][1]) == 2
     )  # 4 items originally, two removed by the processed==True and generate_pdf==True filters
+
+
+@pytest.mark.django_db
+def test_reprocess_posts(client, feed_with_posts, stixifier_profile):
+    resp = client.patch(
+        f"/api/v1/feeds/{feed_with_posts.feed_id}/posts/reprocess-posts/",
+        data={"profile_id": stixifier_profile.id, "skip_extraction": False},
+        content_type="application/json",
+    )
+    assert resp.status_code == 201, resp.content
+    data = resp.json()
+    assert data["type"] == models.JobType.REPROCESS_POSTS
+    assert data['extra'] == {
+        "skip_extraction": False,
+        "only_hidden_posts": True,
+        "posts": [],
+    }
+    assert data["profile_id"] == str(stixifier_profile.id)
+
+
+@pytest.mark.django_db
+def test_reprocess_posts__with_hidden_posts(client, feed_with_posts, stixifier_profile):
+    resp = client.patch(
+        f"/api/v1/feeds/{feed_with_posts.feed_id}/posts/reprocess-posts/",
+        data={
+            "profile_id": stixifier_profile.id,
+            "skip_extraction": False,
+            "only_hidden_posts": False,
+        },
+        content_type="application/json",
+    )
+    assert resp.status_code == 201, resp.content
+    data = resp.json()
+    assert data["type"] == models.JobType.REPROCESS_POSTS
+    assert data['extra'] == {
+        "skip_extraction": False,
+        "only_hidden_posts": False,
+        "posts": [
+            "561ed102-7584-4b7d-a302-43d4bca5605b",
+            "42a5d042-26fa-41f3-8850-307be3f330cf",
+        ],
+    }
+    assert data["profile_id"] == str(stixifier_profile.id)
