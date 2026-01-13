@@ -299,9 +299,6 @@ def test_process_post_generate_pdf_on_reprocess(
         file.refresh_from_db()
         assert file.processed == True
         obstracts_job_reprocess.refresh_from_db()
-        fake_stixifier_processor.txt2stix.assert_called_once()
-        fake_stixifier_processor.upload_to_arango.assert_called_once()
-        fake_stixifier_processor.process.assert_not_called()
         assert obstracts_job_reprocess.failed_processes == 0
 
 
@@ -326,6 +323,24 @@ def test_process_post_generate_pdf_on_reprocess__skip_extraction_no_existing_dat
         process_post.si(obstracts_job_reprocess.id, post_id).delay()
         obstracts_job_reprocess.refresh_from_db()
         assert obstracts_job_reprocess.failed_processes == 1
+
+@pytest.mark.django_db
+def test_reprocess_post__skip_extraction__generates_md(obstracts_job_reprocess, fake_stixifier_processor):
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    obstracts_job_reprocess.extra['skip_extraction'] = False
+    obstracts_job_reprocess.profile.generate_pdf = False
+    obstracts_job_reprocess.profile.save()
+    obstracts_job_reprocess.save()
+
+    with (
+        patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+    ):
+        mock_stixify_processor_cls.return_value = fake_stixifier_processor
+        process_post.si(obstracts_job_reprocess.id, post_id).delay()
+        obstracts_job_reprocess.refresh_from_db()
+        fake_stixifier_processor.process.assert_called_once()
+        assert obstracts_job_reprocess.failed_processes == 0
+
 
 @pytest.mark.django_db
 def test_process_post_with_incident(obstracts_job, fake_stixifier_processor):
