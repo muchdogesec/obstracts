@@ -241,13 +241,8 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
         PostOnlyView.remove_report_objects(file)
 
         mode = "html_article"
-        if job.type == models.JobType.REPROCESS_POSTS:
-            stream = file.markdown_file.open('rb')
-            mode = "md"
-            stream.name = f"post-{post_id}.html"
-        else:
-            stream = io.BytesIO(post.description.encode())
-            stream.name = f"post-{post_id}.html"
+        stream = io.BytesIO(post.description.encode())
+        stream.name = f"post-{post_id}.html"
 
         processor = StixifyProcessor(
             stream,
@@ -280,7 +275,7 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
             properties,
             dict(_obstracts_feed_id=str(job.feed.id), _obstracts_post_id=post_id),
         )
-        if job.type == models.JobType.REPROCESS_POSTS:
+        if job.type == models.JobType.REPROCESS_POSTS and job.extra['skip_extraction']:
             processor.output_md = file.markdown_file.open().read().decode()
             txt2stix_data = None
             if job.extra['skip_extraction']:
@@ -303,7 +298,7 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
         )
         file.summary = processor.summary
 
-        if job.type != models.JobType.REPROCESS_POSTS:
+        if getattr(processor, "md_file", None):
             file.markdown_file.save("markdown.md", processor.md_file.open(), save=False)
             models.FileImage.objects.filter(report=file).delete()  # remove old references
 
