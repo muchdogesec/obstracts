@@ -260,6 +260,28 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             """
         ),
     ),
+    reprocess_posts_for_feed=extend_schema(
+        summary="Reprocess all Posts",
+        description=textwrap.dedent(
+            """
+            Reprocessing a Post allows you to regenerate extractions from it.
+
+            You can read the full logic (and use-cases) as to how this works on the PATCH Reprocess a Post endpoint.
+
+            The body of this request accepts the following:
+
+            * `profile_id`: a valid Profile ID that will be used to reprocess extractions. Note, this will only be used if `skip_extraction` is set to `false`.
+            * `skip_extraction`: boolean. Setting to `false` will reprocess the document for new extractions. Setting to `true` will use the existing extractions data file, and simply regenerate the STIX objects (why `profile_id` is not used when this is set to `true`)
+            * `only_hidden_posts` boolean. If set to `true` will only consider posts marked as hidden. Generally you want to set this to `true` when you want to process extractions for posts indexed by h4f, but failed before the extraction generation on a previous job (for this use case `skip_extraction` should be set to `false`). Set this to `false` if you want to reprocess posts marked hidden is true AND false.
+            """
+        ),
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+        request=serializers.ReprocessFeedPostsSerializer,
+    ),
 )
 class FeedView(h4f_views.FeedView):
     lookup_url_kwarg = "feed_id"
@@ -344,6 +366,16 @@ class FeedView(h4f_views.FeedView):
             )
         )
         return qs
+    
+    @decorators.action(methods=["PATCH"], detail=True, url_path="reprocess-posts")
+    def reprocess_posts_for_feed(self, request, feed_id=None, **kwargs):
+        feed: models.FeedProfile = get_object_or_404(models.FeedProfile, pk=feed_id)
+        posts = models.h4f_models.Post.objects.filter(feed_id=feed.pk, is_full_text=True)
+        s = serializers.ReprocessFeedPostsSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        if s.validated_data['only_hidden_posts']:
+            posts = posts.filter(Q(obstracts_post=None) | Q(obstracts_post__processed=False))
+        return FeedPostView.reprocess_posts(feed, list(posts), s.validated_data)
 
 @extend_schema_view(
     list=extend_schema(
@@ -956,19 +988,28 @@ class PostOnlyView(h4f_views.PostOnlyView):
         },
         request=serializers.ReindexFeedSerializer,
     ),
-    reprocess_posts_for_feed=extend_schema(
-        summary="Reprocess Posts in a Feed",
-        description="",
-        responses={
-            201: ObstractsJobSerializer,
-            404: api_schema.DEFAULT_404_ERROR,
-            400: api_schema.DEFAULT_400_ERROR,
-        },
-        request=serializers.ReprocessFeedPostsSerializer,
-    ),
     reprocess=extend_schema(
-        summary="Reprocess a Post in a Feed",
-        description="",
+        summary="Reprocess a Post",
+        description=textwrap.dedent(
+            """
+            Reprocessing a Post allows you to regenerate extractions from it.
+
+            The body of this request accepts the following:
+
+            * `profile_id`: a valid Profile ID that will be used to reprocess extractions. Note, this will only be used if `skip_extraction` is set to `false`.
+            * `skip_extraction`: boolean. Setting to `false` will reprocess the document for new extractions. Setting to `true` will use the existing extractions data file, and simply regenerate the STIX objects (why `profile_id` is not used when this is set to `true`)
+
+            As a guide, `skip_extractions=false` is more common and typically used when post content has been indexed, but extractions have not been processed for whatever reason (here the post will be marked as hidden) OR you want to change the profile ID used to perform the extractions
+
+            `skip_extractions=true` is used mainly for migrations. For example, when STIX creation logic changes on update, and you want to ensure the STIX objects stored reflect those changes.
+
+            Logically this request:
+
+            * does not change the post content in anyway
+            * will delete all STIX objects specific to this post before reprocessing extractions
+            * if `skip_extraction=false` the data file will also be deleted before reprocessing. This request can also incur AI costs as will go back to AI for extractions, relationship, Attack Flow, etc generation.
+            """
+        ),
     ),
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
@@ -1016,16 +1057,6 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
         return Response(
             serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
-    
-    @decorators.action(methods=["PATCH"], detail=False, url_path="reprocess-posts")
-    def reprocess_posts_for_feed(self, request, feed_id=None, **kwargs):
-        feed: models.FeedProfile = get_object_or_404(models.FeedProfile, pk=feed_id)
-        posts = models.h4f_models.Post.objects.filter(feed_id=feed.pk, is_full_text=True)
-        s = serializers.ReprocessFeedPostsSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
-        if s.validated_data['only_hidden_posts']:
-            posts = posts.filter(Q(obstracts_post=None) | Q(obstracts_post__processed=False))
-        return FeedPostView.reprocess_posts(feed, list(posts), s.validated_data)
 
 
 class RSSView(h4f_views.RSSView):
