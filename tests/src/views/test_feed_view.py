@@ -239,7 +239,7 @@ def test_reindex_pdfs_for_feed(
 @pytest.mark.django_db
 def test_reprocess_posts(client, feed_with_posts, stixifier_profile):
     resp = client.patch(
-        f"/api/v1/feeds/{feed_with_posts.feed_id}/posts/reprocess-posts/",
+        f"/api/v1/feeds/{feed_with_posts.feed_id}/reprocess-posts/",
         data={"profile_id": stixifier_profile.id, "skip_extraction": False},
         content_type="application/json",
     )
@@ -257,7 +257,7 @@ def test_reprocess_posts(client, feed_with_posts, stixifier_profile):
 @pytest.mark.django_db
 def test_reprocess_posts__with_hidden_posts(client, feed_with_posts, stixifier_profile):
     resp = client.patch(
-        f"/api/v1/feeds/{feed_with_posts.feed_id}/posts/reprocess-posts/",
+        f"/api/v1/feeds/{feed_with_posts.feed_id}/reprocess-posts/",
         data={
             "profile_id": stixifier_profile.id,
             "skip_extraction": False,
