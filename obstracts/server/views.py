@@ -302,7 +302,10 @@ class FeedView(h4f_views.FeedView):
             queryset = queryset.annotate(
                 text=SearchVector("title", "description"),
             )
-            return queryset.filter(text=SearchQuery(text, search_type="websearch"))
+            return queryset.filter(
+                Q(text=SearchQuery(text, search_type="websearch"))
+                | Q(title__icontains=text)
+            )
 
     def create(self, request, *args, **kwargs):
         request_body = request.body
@@ -366,16 +369,21 @@ class FeedView(h4f_views.FeedView):
             )
         )
         return qs
-    
+
     @decorators.action(methods=["PATCH"], detail=True, url_path="reprocess-posts")
     def reprocess_posts_for_feed(self, request, feed_id=None, **kwargs):
         feed: models.FeedProfile = get_object_or_404(models.FeedProfile, pk=feed_id)
-        posts = models.h4f_models.Post.objects.filter(feed_id=feed.pk, is_full_text=True)
+        posts = models.h4f_models.Post.objects.filter(
+            feed_id=feed.pk, is_full_text=True
+        )
         s = serializers.ReprocessFeedPostsSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        if s.validated_data['only_hidden_posts']:
-            posts = posts.filter(Q(obstracts_post=None) | Q(obstracts_post__processed=False))
+        if s.validated_data["only_hidden_posts"]:
+            posts = posts.filter(
+                Q(obstracts_post=None) | Q(obstracts_post__processed=False)
+            )
         return FeedPostView.reprocess_posts(feed, list(posts), s.validated_data)
+
 
 @extend_schema_view(
     list=extend_schema(
@@ -587,7 +595,10 @@ class PostOnlyView(h4f_views.PostOnlyView):
                     "obstracts_post__ai_incident_summary",
                 ),
             )
-            return queryset.filter(text=SearchQuery(text, search_type="websearch"))
+            return queryset.filter(
+                Q(text=SearchQuery(text, search_type="websearch"))
+                | Q(title__icontains=text)
+            )
 
         def ai_describes_incident_filter(self, queryset, name, value):
             fv = None
@@ -725,16 +736,20 @@ class PostOnlyView(h4f_views.PostOnlyView):
         )
         s.is_valid()
         return Response(s.data)
-    
-        
+
     @decorators.action(methods=["PATCH"], detail=True)
     def reprocess(self, request, feed_id=None, **kwargs):
         post = self.get_object()
         feed: models.FeedProfile = post.feed
         s = serializers.ReprocessSinglePostSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        if s.validated_data['skip_extraction'] and not post.obstracts_post.txt2stix_data:
-            raise exceptions.ValidationError({"error": "Cannot skip extraction on unprocessed post"})
+        if (
+            s.validated_data["skip_extraction"]
+            and not post.obstracts_post.txt2stix_data
+        ):
+            raise exceptions.ValidationError(
+                {"error": "Cannot skip extraction on unprocessed post"}
+            )
         return FeedPostView.reprocess_posts(feed, [post], s.validated_data)
 
     @decorators.action(
@@ -900,11 +915,10 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
         if q := helper.query_as_bool("ignore_embedded_sro", default=False):
             filters.append("FILTER doc._is_ref != TRUE")
-        
+
         if types:
             filters.append("FILTER doc.type IN @types")
             bind_vars["types"] = list(OBJECT_TYPES.intersection(types.split(",")))
-
 
         query = """
 
@@ -1042,17 +1056,19 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
         return Response(
             ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )
-    
+
     def reindex_queryset(self):
         qs = super().reindex_queryset()
         if self.only_hidden_posts:
             qs = qs.filter(Q(obstracts_post=None) | Q(obstracts_post__processed=False))
         return qs
-    
+
     @staticmethod
-    def reprocess_posts(feed: models.FeedProfile, posts: list[models.h4f_models.Post], options: dict):
+    def reprocess_posts(
+        feed: models.FeedProfile, posts: list[models.h4f_models.Post], options: dict
+    ):
         options = options.copy()
-        options['posts'] = [str(p.id) for p in posts]
+        options["posts"] = [str(p.id) for p in posts]
         job = tasks.create_reprocessing_job(feed, posts, options)
         return Response(
             serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED

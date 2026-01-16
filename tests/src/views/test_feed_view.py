@@ -177,6 +177,7 @@ def test_feed_destroy(client, feed_with_posts, api_schema):
                 "dd3ea54c-3a9d-4f9f-a690-983e2fd8f235",
             ],
         ],
+        ["ompromi", ["dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"]], # partial (icontains) word match
     ],
 )
 def test_search_text(client, feeds, api_schema, text, expected_ids):
