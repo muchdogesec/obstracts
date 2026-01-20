@@ -142,7 +142,7 @@ djangorestframework==3.16.1
     #   obstracts (pyproject.toml)
 docstring-parser==0.17.0
     # via anthropic
-dogesec-commons[stixifier]==1.3.2
+dogesec-commons[stixifier]==1.3.3
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
@@ -384,7 +384,7 @@ psycopg2-binary==2.9.11
     #   dogesec-commons
     #   history4feed
     #   obstracts (pyproject.toml)
-pyasn1==0.6.1
+pyasn1==0.6.2
     # via
     #   pyasn1-modules
     #   rsa
