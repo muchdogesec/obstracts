@@ -372,7 +372,7 @@ proto-plus==1.26.1
     # via
     #   google-api-core
     #   google-cloud-vision
-protobuf==6.33.1
+protobuf==6.33.5
     # via
     #   google-api-core
     #   google-cloud-vision
