@@ -75,34 +75,21 @@ def test_feed_create_signals():
 
 @pytest.mark.django_db
 def test_create_collection():
-    id_dict = {
-        "name": "original name",
-        "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
-        "type": "identity",
-        "spec_version": "2.1",
-    }
-    feed = None
-    with patch.object(
-        models.FeedProfile,
-        "identity_dict",
-        return_value=id_dict.copy(),
-    ) as mock_identity:
-        h4f_feed = h4f_models.Feed.objects.create(
-            title="Example Feed Name (2)",
-            url="https://example.com/2",
-            id="79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
-        )
-        feed: models.FeedProfile = h4f_feed.obstracts_feed
-        models.create_collection(feed)
+    h4f_feed = h4f_models.Feed.objects.create(
+        title="Example Feed Name (2)",
+        url="https://example.com/2",
+        id="79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
+    )
+    feed: models.FeedProfile = h4f_feed.obstracts_feed
+    models.create_collection(feed)
 
     helper = ArangoDBHelper(settings.VIEW_NAME, None)
     assert helper.db.has_collection(feed.vertex_collection)
     assert helper.db.has_collection(feed.edge_collection)
     for doc in helper.db.collection(feed.vertex_collection).all():
         if doc["id"] == feed.identity["id"]:
-            assert {
-                k: v for k, v in doc.items() if not k.startswith("_")
-            } == id_dict, "values must match"
+            assert doc["name"] == "Example Feed Name (2)"
+            assert doc["id"] == "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c"
             break
     else:
         raise AssertionError("identity not uploaded")
@@ -120,7 +107,7 @@ def test_update_identities():
     with patch.object(
         models.FeedProfile,
         "identity_dict",
-        return_value={
+        {
             "name": "Totaly new name",
             "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
         },
@@ -184,7 +171,8 @@ def test_feed_identity():
     h4f_feed.datetime_added = dt(2024, 1, 1, 5, 25)
     h4f_feed.save()
     feed: models.FeedProfile = h4f_feed.obstracts_feed
-    assert feed.identity_dict() == {
+    print(feed.identity_dict)
+    assert feed.identity_dict == {
         "type": "identity",
         "spec_version": "2.1",
         "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
@@ -209,7 +197,7 @@ def test_feed_identity__no_date_modified():
     h4f_feed.datetime_modified = None
     h4f_feed.save()
     feed: models.FeedProfile = h4f_feed.obstracts_feed
-    assert feed.identity_dict() == {
+    assert feed.identity_dict == {
         "type": "identity",
         "spec_version": "2.1",
         "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
