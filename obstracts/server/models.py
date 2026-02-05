@@ -125,7 +125,6 @@ class FeedProfile(models.Model):
             contact_information=self.feed.url,
         )
     
-    @property
     def identity_dict(self):
         return json.loads(self.identity.serialize())
 
@@ -144,13 +143,13 @@ def auto_update_identity(sender, instance: h4f_models.Feed, created, **kwargs):
 
 def create_collection(feed: FeedProfile):
     s2a = Stix2Arango(database=settings.ARANGODB_DATABASE, collection=feed.collection_name, file='', host_url=settings.ARANGODB_HOST_URL, create_collection=True)
-    s2a.run(data=dict(type="bundle", id="bundle--"+str(feed.id), objects=[feed.identity_dict]))
+    s2a.run(data=dict(type="bundle", id="bundle--"+str(feed.id), objects=[feed.identity_dict()]))
     link_one_collection(s2a.arango.db, settings.ARANGODB_DATABASE_VIEW, feed.vertex_collection)
     link_one_collection(s2a.arango.db, settings.ARANGODB_DATABASE_VIEW, feed.edge_collection)
 
 
 def update_identities(feed: FeedProfile):
-    identity = feed.identity_dict
+    identity = feed.identity_dict()
     identity['_record_modified'] = timezone.now().isoformat().replace('+00:00', 'Z')
     query = """
     FOR doc IN @@vertex_collection

@@ -85,7 +85,7 @@ def test_create_collection():
     with patch.object(
         models.FeedProfile,
         "identity_dict",
-        id_dict.copy(),
+        return_value=id_dict.copy(),
     ) as mock_identity:
         h4f_feed = h4f_models.Feed.objects.create(
             title="Example Feed Name (2)",
@@ -120,7 +120,7 @@ def test_update_identities():
     with patch.object(
         models.FeedProfile,
         "identity_dict",
-        {
+        return_value={
             "name": "Totaly new name",
             "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
         },
@@ -184,8 +184,7 @@ def test_feed_identity():
     h4f_feed.datetime_added = dt(2024, 1, 1, 5, 25)
     h4f_feed.save()
     feed: models.FeedProfile = h4f_feed.obstracts_feed
-    print(feed.identity_dict)
-    assert feed.identity_dict == {
+    assert feed.identity_dict() == {
         "type": "identity",
         "spec_version": "2.1",
         "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
@@ -210,7 +209,7 @@ def test_feed_identity__no_date_modified():
     h4f_feed.datetime_modified = None
     h4f_feed.save()
     feed: models.FeedProfile = h4f_feed.obstracts_feed
-    assert feed.identity_dict == {
+    assert feed.identity_dict() == {
         "type": "identity",
         "spec_version": "2.1",
         "id": "identity--79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
