@@ -281,7 +281,7 @@ def test_post_images_no_images(client, feed_with_posts, api_schema):
 @pytest.mark.parametrize(
     ["text", "expected_ids"],
     [
-        ["royal", ["42a5d042-26fa-41f3-8850-307be3f330cf"]],
+        ["royal", ["42a5d042-26fa-41f3-8850-307be3f330cf", "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
         ["royalty", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
         ["king beautiful", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
         ["beauty royalty", ["72e1ad04-8ce9-413d-b620-fe7c75dc0a39"]],
