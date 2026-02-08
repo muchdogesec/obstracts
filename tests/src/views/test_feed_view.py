@@ -269,12 +269,13 @@ def test_reprocess_posts__with_hidden_posts(client, feed_with_posts, stixifier_p
     assert resp.status_code == 201, resp.content
     data = resp.json()
     assert data["type"] == models.JobType.REPROCESS_POSTS
+    data['extra']['posts'].sort()
     assert data['extra'] == {
         "skip_extraction": False,
         "only_hidden_posts": False,
         "posts": [
-            "561ed102-7584-4b7d-a302-43d4bca5605b",
             "42a5d042-26fa-41f3-8850-307be3f330cf",
+            "561ed102-7584-4b7d-a302-43d4bca5605b",
         ],
     }
     assert data["profile_id"] == str(stixifier_profile.id)
