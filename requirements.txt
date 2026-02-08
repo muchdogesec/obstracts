@@ -211,7 +211,7 @@ h11==0.16.0
     # via httpcore
 hf-xet==1.2.0
     # via huggingface-hub
-history4feed==1.1.4
+history4feed==1.1.5
     # via obstracts (pyproject.toml)
 httpcore==1.0.9
     # via httpx

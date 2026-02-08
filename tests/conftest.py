@@ -165,7 +165,7 @@ def feeds():
         ),
         h4f_models.Feed.objects.create(
             url="https://example.com/rss3.xml",
-            title="Indicators of Compromise in Financial Sector Attacks",
+            title="Indicators of Compromise",
             feed_type="skeleton",
             id=uuid.UUID("dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"),
             description="Analysis of IOCs observed in recent phishing and ransomware campaigns targeting banks and fintech firms."
