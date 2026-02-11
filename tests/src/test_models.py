@@ -42,6 +42,21 @@ def test_feed_generate_collection_name():
         == "example_feed_name_2_79c488e3b1c840f18b8f2d90e660e47c"
     )
 
+
+@pytest.mark.django_db
+def test_feed_generate_collection_name__too_long__truncates():
+    h4f_feed = h4f_models.Feed.objects.create(
+        title="Example Feed Name with a very long title that should be truncated to fit within the maximum length allowed for collection names in ArangoDB",
+        url="https://example.com/2",
+        id="79c488e3-b1c8-40f1-8b8f-2d90e660e47c",
+    )
+    feed: models.FeedProfile = h4f_feed.obstracts_feed
+    assert (
+        feed.generate_collection_name()
+        == "example_feed_name_with_a_very_lo_79c488e3b1c840f18b8f2d90e660e47c"
+    ), "collection name should be truncated to fit within limits"
+
+
 @pytest.mark.django_db
 def test_feed_generate_collection_name__starts_with_number():
     h4f_feed = h4f_models.Feed.objects.create(
@@ -54,6 +69,7 @@ def test_feed_generate_collection_name__starts_with_number():
         feed.generate_collection_name()
         == "obs_2example_feed_name_2_79c488e3b1c840f18b8f2d90e660e47c"
     )
+
 
 @pytest.mark.django_db
 def test_feed_create_signals():
@@ -231,7 +247,6 @@ def test_upload_to(feed_with_posts):
     )
 
 
-
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "original_state, new_state, expected_state, has_completion_time",
@@ -245,9 +260,11 @@ def test_upload_to(feed_with_posts):
         (JobState.CANCELLING, JobState.CANCELLED, JobState.CANCELLED, True),
         (JobState.QUEUED, JobState.PROCESSING, JobState.PROCESSING, False),
         (JobState.RETRIEVING, JobState.PROCESSING, JobState.PROCESSING, False),
-    ]
+    ],
 )
-def test_update_state_behavior(obstracts_job, original_state, new_state, expected_state, has_completion_time):
+def test_update_state_behavior(
+    obstracts_job, original_state, new_state, expected_state, has_completion_time
+):
     obstracts_job.state = original_state
     obstracts_job.save()
 

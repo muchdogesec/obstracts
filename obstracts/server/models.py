@@ -90,6 +90,7 @@ class FeedProfile(models.Model):
             return self.collection_name
         title = self.title.strip() or 'blog'
         slug = slugify(title).replace('-', '_')
+        slug = slug[:32]
         name = f"{slug}_{self.id}".strip("_").replace('-', '')
         if not name[0].isalpha():
             name = 'obs_'+name
