@@ -104,7 +104,7 @@ def test_get_vulnerabilities(obstracts_db, feeds, fake_retriever):
         },
     ]
     r2 = helpers.get_vulnerabilities(
-        "indicators_of_compromise_in_financial_sector_attacks_dd3ea54c3a9d4f9fa690983e2fd8f235_vertex_collection",
+        "indicators_of_compromise_dd3ea54c3a9d4f9fa690983e2fd8f235_vertex_collection",
         2764,
     )
     assert r2 == [
