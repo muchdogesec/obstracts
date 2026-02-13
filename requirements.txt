@@ -519,7 +519,7 @@ soupsieve==2.8
     # via beautifulsoup4
 sqlalchemy[asyncio]==2.0.44
     # via llama-index-core
-sqlparse==0.5.3
+sqlparse==0.5.4
     # via django
 stix2==3.0.1
     # via
