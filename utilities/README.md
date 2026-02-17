@@ -1,4 +1,4 @@
-## Reindex posts
+## Reindex posts (web only)
 
 Sometimes if posts fail processing, you can run the following script to update them so that they show properly.
 
@@ -8,13 +8,5 @@ source obstracts-venv/bin/activate
 ```
 
 ```shell
-python3 utilities/reindex_missing_posts.py \
-  --base-url hhttp://127.0.0.1:8001/api/v1 \
-  --feed-id abc123 \
-  --profile-id abc123 \
-  --api-key SECRET \
-  --max-in-queue 5 \
-  --status-file jobs_status.txt \
-  --poll-interval 5 \
-  --max-wait 3600
+python reprocess_posts_on_feeds.py --base-url '<MANAGEMENT API UP TO AND INCLUDING API>' --api-key '[TOKEN]' --max-in-queue 5 --dry-run
 ```
