@@ -177,7 +177,10 @@ def test_feed_destroy(client, feed_with_posts, api_schema):
                 "dd3ea54c-3a9d-4f9f-a690-983e2fd8f235",
             ],
         ],
-        ["ompromi", ["dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"]], # partial (icontains) word match
+        [
+            "ompromi",
+            ["dd3ea54c-3a9d-4f9f-a690-983e2fd8f235"],
+        ],  # partial (icontains) word match
     ],
 )
 def test_search_text(client, feeds, api_schema, text, expected_ids):
@@ -201,7 +204,7 @@ def test_count_of_post_considers_processed(client, feed_with_posts, rf):
 
 
 @pytest.mark.django_db
-def test_reindex_pdfs_for_feed(
+def test_reindex_pdfs_for_feed__empty_payload(
     client: APIClient, feed_with_posts, stixifier_profile_no_pdf
 ):
     # Setup: one post with generate_pdf=True, one with False, one not processed
@@ -238,6 +241,190 @@ def test_reindex_pdfs_for_feed(
 
 
 @pytest.mark.django_db
+def test_reindex_pdfs_for_feed_with_specific_posts(
+    client: APIClient, feed_with_posts, stixifier_profile_no_pdf
+):
+    """Test reindexing PDFs for specific posts only"""
+    all_files = models.File.objects.filter(feed_id=feed_with_posts.id).order_by("pk")
+
+    # Get post IDs
+    post_id_1 = str(all_files[0].post_id)
+    post_id_2 = str(all_files[1].post_id)
+
+    # Setup: second post has no PDF generation
+    post_file_2 = all_files[1]
+    post_file_2.profile = stixifier_profile_no_pdf
+    post_file_2.save()
+
+    path = "/api/v1/feeds/{feed_id}/reindex-pdfs/"
+    url = path.format(feed_id=feed_with_posts.id)
+
+    with patch(
+        "obstracts.cjob.tasks.create_pdf_reindex_job"
+    ) as mock_create_reindex_task:
+        mock_create_reindex_task.return_value = models.Job.objects.create(
+            id=uuid.uuid4(), type=models.JobType.PDF_INDEX, feed=feed_with_posts
+        )
+        response = client.patch(
+            url,
+            data={"posts": [post_id_1, post_id_2]},
+            content_type="application/json",
+        )
+
+    assert response.status_code == 201
+    mock_create_reindex_task.assert_called_once()
+
+    # Only post_id_1 should be reindexed (post_id_2 has no PDF generation)
+    files_to_reindex = mock_create_reindex_task.call_args[0][1]
+    assert len(files_to_reindex) == 1
+    assert str(files_to_reindex[0].post_id) == post_id_1
+
+
+@pytest.mark.django_db
+def test_reindex_pdfs_for_feed_missing_pdfs_only(
+    client: APIClient, feed_with_posts, stixifier_profile_no_pdf
+):
+    """Test reindexing only posts with missing PDFs"""
+    all_files = models.File.objects.filter(feed_id=feed_with_posts.id).order_by("pk")
+
+    # Setup: first post has PDF, second doesn't, third not processed
+    post_file_1 = all_files[0]
+    post_file_1.pdf_file = "some/path/to.pdf"
+    post_file_1.save()
+
+    post_file_3 = all_files[2]
+    post_file_3.processed = False
+    post_file_3.save()
+
+    post2 = all_files[1]  # this post has no PDF and should be reindexed
+
+    post4 = all_files[3]
+    post4.processed = True
+    post4.profile = stixifier_profile_no_pdf
+    post4.save()
+
+    path = "/api/v1/feeds/{feed_id}/reindex-pdfs/"
+    url = path.format(feed_id=feed_with_posts.id)
+
+    with patch(
+        "obstracts.cjob.tasks.create_pdf_reindex_job"
+    ) as mock_create_reindex_task:
+        mock_create_reindex_task.return_value = models.Job.objects.create(
+            id=uuid.uuid4(), type=models.JobType.PDF_INDEX, feed=feed_with_posts
+        )
+        response = client.patch(
+            url,
+            data={"missing_pdfs_only": True},
+            content_type="application/json",
+        )
+
+    assert response.status_code == 201
+    mock_create_reindex_task.assert_called_once()
+
+    # Only post_file_2 should be reindexed (has no PDF, is processed, and has PDF generation enabled)
+    files_to_reindex = mock_create_reindex_task.call_args[0][1]
+    assert len(files_to_reindex) == 1
+    assert files_to_reindex[0].post_id == post2.post_id
+
+
+@pytest.mark.django_db
+def test_reindex_pdfs_for_feed_combined_filters(
+    client: APIClient, feed_with_posts, stixifier_profile_no_pdf
+):
+    """Test combining posts filter with missing_pdfs_only"""
+    all_files = models.File.objects.filter(feed_id=feed_with_posts.id).order_by("pk")
+
+    post_id_1 = str(all_files[0].post_id)
+    post_id_2 = str(all_files[1].post_id)
+
+    # Setup: first post has PDF, second doesn't
+    post_file_1 = all_files[0]
+    post_file_1.pdf_file = "some/path/to.pdf"
+    post_file_1.save()
+
+    post_file_2 = all_files[1]
+    post_file_2.pdf_file = None  # Missing PDF
+    post_file_2.save()
+
+    path = "/api/v1/feeds/{feed_id}/reindex-pdfs/"
+    url = path.format(feed_id=feed_with_posts.id)
+
+    with patch(
+        "obstracts.cjob.tasks.create_pdf_reindex_job"
+    ) as mock_create_reindex_task:
+        mock_create_reindex_task.return_value = models.Job.objects.create(
+            id=uuid.uuid4(), type=models.JobType.PDF_INDEX, feed=feed_with_posts
+        )
+        response = client.patch(
+            url,
+            data={"posts": [post_id_1, post_id_2], "missing_pdfs_only": True},
+            content_type="application/json",
+        )
+
+    assert response.status_code == 201
+    mock_create_reindex_task.assert_called_once()
+
+    # Only post_file_2 should be reindexed (in posts list AND has no PDF)
+    files_to_reindex = mock_create_reindex_task.call_args[0][1]
+    assert len(files_to_reindex) == 1
+    assert files_to_reindex[0].post_id == post_file_2.post_id
+
+
+@pytest.mark.django_db
+def test_reindex_pdfs_for_feed_invalid_post_id(client: APIClient, feed_with_posts):
+    """Test validation fails with non-UUID post ID"""
+    path = "/api/v1/feeds/{feed_id}/reindex-pdfs/"
+    url = path.format(feed_id=feed_with_posts.id)
+
+    response = client.patch(
+        url,
+        data={"posts": ["not-a-uuid"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    response_data = response.json()
+    # Check that the error is about the posts field
+    assert "posts" in response_data or "details" in response_data
+
+
+@pytest.mark.django_db
+def test_reindex_pdfs_for_feed_nonexistent_post_id(client: APIClient, feed_with_posts):
+    """Test validation fails with non-existent post ID"""
+    path = "/api/v1/feeds/{feed_id}/reindex-pdfs/"
+    url = path.format(feed_id=feed_with_posts.id)
+
+    response = client.patch(
+        url,
+        data={
+            "posts": [
+                "00000000-0000-0000-0000-000000000000", # non-existent post ID
+                "345c8d0b-c6ca-4419-b1f7-0daeb4e9278b",
+                "ee9eea3b-ba79-45b1-8534-04a0e3604486", # another non-existent post ID
+            ]
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    response_data = response.json()
+    assert response_data == {
+        "code": 400,
+        "details": {
+            "posts": {
+                "0": [
+                    'Invalid post with id "00000000-0000-0000-0000-000000000000" - object does not exist.'
+                ],
+                "2": [
+                    'Invalid post with id "ee9eea3b-ba79-45b1-8534-04a0e3604486" - object does not exist.'
+                ],
+            }
+        },
+        "message": "Bad Request",
+    }
+
+
+@pytest.mark.django_db
 def test_reprocess_posts(client, feed_with_posts, stixifier_profile):
     resp = client.patch(
         f"/api/v1/feeds/{feed_with_posts.feed_id}/reprocess-posts/",
@@ -247,7 +434,7 @@ def test_reprocess_posts(client, feed_with_posts, stixifier_profile):
     assert resp.status_code == 201, resp.content
     data = resp.json()
     assert data["type"] == models.JobType.REPROCESS_POSTS
-    assert data['extra'] == {
+    assert data["extra"] == {
         "skip_extraction": False,
         "only_hidden_posts": True,
         "posts": [],
@@ -269,8 +456,8 @@ def test_reprocess_posts__with_hidden_posts(client, feed_with_posts, stixifier_p
     assert resp.status_code == 201, resp.content
     data = resp.json()
     assert data["type"] == models.JobType.REPROCESS_POSTS
-    data['extra']['posts'].sort()
-    assert data['extra'] == {
+    data["extra"]["posts"].sort()
+    assert data["extra"] == {
         "skip_extraction": False,
         "only_hidden_posts": False,
         "posts": [

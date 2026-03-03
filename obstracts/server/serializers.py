@@ -11,8 +11,12 @@ from django.utils.translation import gettext_lazy as _
 
 class ObstractsJobSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField()
-    feed_id = serializers.PrimaryKeyRelatedField(read_only=True, source="feed", required=False, allow_null=True)
-    profile_id = serializers.PrimaryKeyRelatedField(read_only=True, source="profile", required=False, allow_null=True)
+    feed_id = serializers.PrimaryKeyRelatedField(
+        read_only=True, source="feed", required=False, allow_null=True
+    )
+    profile_id = serializers.PrimaryKeyRelatedField(
+        read_only=True, source="profile", required=False, allow_null=True
+    )
 
     class Meta:
         model = Job
@@ -45,10 +49,31 @@ class ProfileIDField(serializers.PrimaryKeyRelatedField):
         return super().to_representation(value)
 
 
+class FileIDField(serializers.PrimaryKeyRelatedField):
+    def __init__(self, **kwargs):
+        kwargs['pk_field'] = serializers.UUIDField()
+        super().__init__(
+            error_messages={
+                "required": _("This field is required."),
+                "does_not_exist": _(
+                    'Invalid post with id "{pk_value}" - object does not exist.'
+                ),
+                "incorrect_type": _(
+                    "Incorrect type. Expected post id (uuid), received {data_type}."
+                ),
+            },
+            **kwargs,
+        )
+
+    def get_queryset(self):
+        return File.objects.filter(feed_id=self.context['feed'].pk)
+
+
 class CreateTaskSerializer(serializers.Serializer):
     profile_id = ProfileIDField(
         help_text="profile id to use", write_only=True, required=True
     )
+
 
 class ReindexFeedSerializer(CreateTaskSerializer):
     only_hidden_posts = serializers.BooleanField(
@@ -57,25 +82,39 @@ class ReindexFeedSerializer(CreateTaskSerializer):
         help_text="default true; if true, only reindex posts that are have not been processed",
     )
 
+
 class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
     count_of_posts = serializers.IntegerField(
         read_only=True,
         help_text="Number of posts in feed",
     )
-    pdfshift_cookie_settings = serializers.ChoiceField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js, source='obstracts_feed.pdfshift_cookie_settings')
+    pdfshift_cookie_settings = serializers.ChoiceField(
+        choices=PDFCookieConsentMode.choices,
+        default=PDFCookieConsentMode.disable_all_js,
+        source="obstracts_feed.pdfshift_cookie_settings",
+    )
 
 
 class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
-    pdfshift_cookie_settings = serializers.ChoiceField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js, source='obstracts_feed.pdfshift_cookie_settings')
+    pdfshift_cookie_settings = serializers.ChoiceField(
+        choices=PDFCookieConsentMode.choices,
+        default=PDFCookieConsentMode.disable_all_js,
+        source="obstracts_feed.pdfshift_cookie_settings",
+    )
 
 
 class PatchFeedSerializer(h4fserializers.FeedPatchSerializer):
     title = serializers.CharField(required=True, help_text="title of feed")
     description = serializers.CharField(required=True, help_text="description of feed")
-    pdfshift_cookie_settings = serializers.ChoiceField(choices=PDFCookieConsentMode.choices, default=PDFCookieConsentMode.disable_all_js)
+    pdfshift_cookie_settings = serializers.ChoiceField(
+        choices=PDFCookieConsentMode.choices,
+        default=PDFCookieConsentMode.disable_all_js,
+    )
 
     class Meta(h4fserializers.FeedPatchSerializer.Meta):
-        fields = h4fserializers.FeedPatchSerializer.Meta.fields + ['pdfshift_cookie_settings']
+        fields = h4fserializers.FeedPatchSerializer.Meta.fields + [
+            "pdfshift_cookie_settings"
+        ]
 
 
 class FetchFeedSerializer(CreateTaskSerializer, h4fserializers.FeedFetchSerializer):
@@ -135,6 +174,21 @@ class ReprocessFeedPostsSerializer(ReprocessSinglePostSerializer):
                 }
             )
         return super().validate(attrs)
+
+
+class ReindexPDFsSerializer(serializers.Serializer):
+    posts = serializers.ListField(
+        child=FileIDField(
+            help_text="post id", write_only=True, required=False, allow_null=False
+        ),
+        required=False,
+        allow_empty=False,
+        help_text="List of post IDs to reindex PDFs for. If not provided, all eligible posts will be reindexed.",
+    )
+    missing_pdfs_only = serializers.BooleanField(
+        default=False,
+        help_text="If true, only reindex posts that are missing PDF files. If false, reindex all eligible posts.",
+    )
 
 
 class H4fPostCreateSerializer(serializers.Serializer):
@@ -308,10 +362,12 @@ class HealthCheckChoices(StrEnum):
     UNKNOWN = auto()
     OFFLINE = auto()
 
+
 class HealthCheckChoiceField(serializers.ChoiceField):
     def __init__(self, **kwargs):
         choices = [m.value for m in HealthCheckChoices]
         super().__init__(choices, **kwargs)
+
 
 class HealthCheckLLMs(serializers.Serializer):
     openai = HealthCheckChoiceField()
@@ -319,6 +375,7 @@ class HealthCheckLLMs(serializers.Serializer):
     anthropic = HealthCheckChoiceField()
     gemini = HealthCheckChoiceField()
     openrouter = HealthCheckChoiceField()
+
 
 class HealthCheckSerializer(serializers.Serializer):
     ctibutler = HealthCheckChoiceField()
