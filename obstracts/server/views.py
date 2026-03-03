@@ -241,7 +241,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
         ),
     ),
     reindex_pdfs_for_feed=extend_schema(
-        request=None,
+        request=serializers.ReindexPDFsSerializer,
         responses={
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
@@ -251,6 +251,11 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
         description=textwrap.dedent(
             """
             Sometime PDF generation can provide inconsistent results, this request will regenerate all the PDF files for posts in this feed.
+
+            The following key/values are accepted in the body of the request:
+
+            * `posts` (optional): A list of post IDs to reindex PDFs for. If not provided, all eligible posts will be reindexed.
+            * `missing_pdfs_only` (optional, default `false`): If set to `true`, only reindex posts that are missing PDF files. If set to `false`, reindex all eligible posts (or those specified in the `posts` list).
 
             Beware, if a post has changed since the original indexing, this request will only update the PDF, and not the post content.
 
@@ -346,9 +351,25 @@ class FeedView(h4f_views.FeedView):
     @decorators.action(methods=["PATCH"], detail=True, url_path="reindex-pdfs")
     def reindex_pdfs_for_feed(self, request, feed_id=None, **kwargs):
         feed: models.FeedProfile = self.get_object()
+        
+        # Validate and parse request data
+        s = serializers.ReindexPDFsSerializer(data=request.data, context={'feed': feed})
+        s.is_valid(raise_exception=True)
+        
+        # Start with base query: processed posts with PDF generation enabled
         files = models.File.objects.filter(
             feed_id=feed.pk, profile__generate_pdf=True, processed=True
         )
+        
+        # Filter by specific post IDs if provided
+        if s.validated_data.get("posts"):
+            files = files.filter(post_id__in=s.validated_data["posts"])
+        
+        # Filter to only missing PDFs if requested
+        if s.validated_data.get("missing_pdfs_only", False):
+            from django.db.models import Q
+            files = files.filter(Q(pdf_file__isnull=True) | Q(pdf_file=""))
+        
         return FeedView.reindex_pdfs(feed, list(files))
 
     @decorators.action(methods=["PATCH"], detail=True)
