@@ -271,8 +271,10 @@ class File(models.Model):
 
     def set_txt2stix_data(self, txt2stix_data):
         from txt2stix.txt2stix import Txt2StixData
+        if txt2stix_data is None:
+            return
 
-        assert isinstance(txt2stix_data, Txt2StixData)
+        assert isinstance(txt2stix_data, Txt2StixData), "txt2stix_data must be an instance of Txt2StixData, got " + str(type(txt2stix_data))
         self.txt2stix_data = txt2stix_data.model_dump(
             mode="json", exclude_unset=True, exclude_none=True
         )
