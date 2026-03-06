@@ -246,6 +246,12 @@ class ObstractsPostSerializer(h4fserializers.PostSerializer):
         required=False,
         allow_null=True,
     )
+    ai_threat_score = serializers.IntegerField(
+        source="threat_score",
+        read_only=True,
+        required=False,
+        allow_null=True,
+    )
 
 
 class PostWithFeedIDSerializer(ObstractsPostSerializer):
