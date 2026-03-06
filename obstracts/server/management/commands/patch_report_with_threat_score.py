@@ -1,8 +1,7 @@
 # this script is designed to patch posts with new AI content check data
 # docker exec -it container_name bash
-# python manage.py patch_post_with_new_data --help #this will show the help
+# python manage.py patch_report_with_threat_score --help #this will show the help
 
-import io
 import logging
 from django.core.management.base import BaseCommand
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -11,7 +10,6 @@ from threading import Lock
 from obstracts.server import models as ob_models
 from txt2stix.txt2stix import Txt2StixData
 from txt2stix.txt2stix import parse_model
-from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
 from dogesec_commons.objects.helpers import ArangoDBHelper
 
 
@@ -48,18 +46,7 @@ class Command(BaseCommand):
             default=None,
         )
         parser.add_argument("--post_id", help="Only run for these post_ids", nargs="+")
-        parser.add_argument(
-            "--has-incident",
-            dest="has_incident",
-            action="store_true",
-            help="Only process posts that describe incidents (will run AI check)",
-        )
-        parser.add_argument(
-            "--no-incident",
-            dest="no_incident",
-            action="store_true",
-            help="Only process posts that do NOT describe incidents (will set threat_score to 0)",
-        )
+        parser.add_argument("--force", help="Force update all posts even if they already have a threat_score", action="store_true")
 
     def process_file_no_incident(self, file_obj: ob_models.File):
         """Process files that do not describe incident - only update threat_score to 0"""
@@ -129,14 +116,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         limit = options.get("limit")
         dry_run = options.get("dry_run")
-        has_incident = options.get("has_incident", False)
-        no_incident = options.get("no_incident", False)
-
-        if has_incident and no_incident:
-            self.stdout.write(
-                self.style.ERROR("Cannot specify both --has-incident and --no-incident")
-            )
-            return
 
         # Build query
         kwargs = {}
@@ -150,17 +129,16 @@ class Command(BaseCommand):
             **kwargs
         ).order_by("feed_id", "post__datetime_added")  # order by feed_id and post_id for more consistent processing order
         self.stdout.write(f"Found {qs.count()} files matching feed_id and post_id filters")
-        qs = qs.filter(
-            txt2stix_data__content_check__threat_score__isnull=True,
-        )
-        self.stdout.write(f"Found {qs.count()} files with no prior threat_score (eligible for processing)")
-        if has_incident:
-            qs = qs.filter(txt2stix_data__content_check__describes_incident=True)
-            self.stdout.write(f"Found {qs.count()} files that describe incidents (will run AI check)")
-        if no_incident:
-            qs = qs.filter(txt2stix_data__content_check__describes_incident=False)
-            self.stdout.write(f"Found {qs.count()} files that do NOT describe incidents (will set threat_score to 0)")
-        f = qs.first()
+        if not options.get("force"):
+            qs = qs.filter(
+                txt2stix_data__content_check__threat_score__isnull=True,
+            )
+            self.stdout.write(f"Found {qs.count()} files with no prior threat_score (eligible for processing)")
+        if qs.count() == 0:
+            if not options.get("force"):
+                self.stdout.write(self.style.WARNING("No posts to process. use --force to reprocess all posts regardless of existing threat_score"))
+            self.stdout.write(self.style.SUCCESS("No posts to process. Exiting."))
+            return
         matches = list(qs)
 
         if limit:
@@ -192,7 +170,7 @@ class Command(BaseCommand):
                     logging.exception("Error processing file %s", file_obj.post_id)
                     with self.stats_lock:
                         self.failed += 1
-        self.stdout.write(f"Done. processed={self.processed} failed={self.failed}")
+        self.stdout.write(self.style.SUCCESS(f"Done. processed={self.processed} failed={self.failed}"))
 
     def update_report_confidence(self, file_obj: ob_models.File, confidence):
         arango_helper = ArangoDBHelper(None, None)
