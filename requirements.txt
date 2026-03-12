@@ -570,7 +570,7 @@ tqdm==4.67.3
     #   transformers
 transformers==4.57.6
     # via llama-index-llms-openai-like
-txt2stix[llms]==1.2.5
+txt2stix[llms]==1.4.0
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)

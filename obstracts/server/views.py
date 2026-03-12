@@ -3,6 +3,7 @@ import logging
 import operator
 import typing
 import uuid
+from django import forms
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import resolve
@@ -17,7 +18,7 @@ from stix2arango.services import ArangoDBService
 from obstracts.server.md_helper import MarkdownImageReplacer
 from . import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
-from django.db.models import OuterRef, Subquery, Q, Count
+from django.db.models import OuterRef, Subquery, Q, Count, F
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from .utils import (
     FEED_406_ERROR,
@@ -405,6 +406,8 @@ class FeedView(h4f_views.FeedView):
             )
         return FeedPostView.reprocess_posts(feed, list(posts), s.validated_data)
 
+class IntegerFilter(filters.NumberFilter):
+    field_class = forms.IntegerField
 
 @extend_schema_view(
     list=extend_schema(
@@ -600,6 +603,11 @@ class PostOnlyView(h4f_views.PostOnlyView):
             method="ai_incident_classification_filter",
             choices=[(c, c) for c in incident_classification_types],
         )
+        min_confidence = IntegerFilter(
+            field_name="threat_score",
+            lookup_expr="gte",
+            help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also assign a confidence score between 0 and 1. Use this filter to only include posts where the confidence score is above a certain threshold.",
+        )
         text = filters.CharFilter(
             method="semantic_search",
             help_text="Search in a Posts Title, Description and Summary. Similar to `title` and `description` filters, but allows you to run in one query and includes Summary search to.",
@@ -669,7 +677,8 @@ class PostOnlyView(h4f_views.PostOnlyView):
                 models.Job.objects.filter(
                     history4feed_job_id=OuterRef("last_job_id")
                 ).values("state")[:1]
-            )
+            ),
+            threat_score=F("obstracts_post__txt2stix_data__content_check__threat_score")
         )
         return super().filter_queryset(queryset)
 
