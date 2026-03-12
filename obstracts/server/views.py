@@ -884,6 +884,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
     @staticmethod
     def remove_report_objects(instance: models.File):
         instance = models.File.objects.get(pk=instance.post_id)
+        instance.object_values.all().delete()
         db_service = ArangoDBService(
             settings.ARANGODB_DATABASE,
             [],

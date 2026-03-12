@@ -540,7 +540,7 @@ stix2-patterns==2.1.2
     #   stix2-validator
 stix2-validator==3.2.0
     # via txt2stix
-stix2arango==1.1.13
+stix2arango==1.2.0
     # via dogesec-commons
 stix2extensions==2.1.3
     # via txt2stix

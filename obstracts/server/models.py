@@ -326,6 +326,27 @@ class FileImage(models.Model):
     def post_id(self):
         return self.report.post_id
 
+class ObjectValue(models.Model):
+    """
+    Stores extracted values from STIX objects for efficient querying and filtering.
+    """
+    stix_id = models.CharField(max_length=256, db_index=True)
+    type = models.CharField(max_length=256, db_index=True)
+    ttp_type = models.CharField(max_length=64, null=True, blank=True, db_index=True)
+    values = models.JSONField()
+    file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='object_values')
+    created = models.DateTimeField(default=None, null=True)
+    modified = models.DateTimeField(default=None, null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['stix_id', 'type'], name='obstracts_s_stix_id_type_idx'),
+        ]
+        unique_together = [['stix_id', 'file']]
+
+    def __str__(self):
+        return f'ObjectValue(stix_id={self.stix_id}, ttp_type={self.ttp_type})'
+
 
 class Job(models.Model):
     id = models.UUIDField(primary_key=True, editable=False)

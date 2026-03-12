@@ -26,6 +26,7 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "redis",
     "history4feed",
+    "stix2arango>=1.2.0",
     "dogesec-commons[stixifier]",
     "txt2stix[llms]",
     "hyperlink",

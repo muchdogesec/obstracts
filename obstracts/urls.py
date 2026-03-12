@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf.urls.static import static
 
+from obstracts.server import values
 from obstracts.server.identities import IdentityView
 from .server import views
 from rest_framework import routers, response
@@ -58,6 +59,10 @@ regex_router.register('objects/smos', arango_views.SMOView, "object-view-smo")
 regex_router.register('objects/scos', arango_views.SCOView, "object-view-sco")
 regex_router.register('objects/sros', arango_views.SROView, "object-view-sro")
 regex_router.register('objects/sdos', arango_views.SDOView, "object-view-sdo")
+
+## values
+regex_router.register('values/scos', values.SCOValueView, "value-view-sco")
+regex_router.register('values/sdos', values.SDOValueView, "value-view-sdo")
 
 # txt2stix views
 router.register('extractors', ExtractorsView, "extractors-view")
