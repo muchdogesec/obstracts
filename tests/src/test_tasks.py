@@ -1,4 +1,3 @@
-import copy
 import io
 from unittest.mock import MagicMock, patch, call
 import pytest
@@ -17,7 +16,7 @@ from obstracts.server import models
 from history4feed.app import models as h4f_models
 
 from obstracts.server.views import PostOnlyView
-from tests.conftest import obstracts_job
+from txt2stix.txt2stix import Txt2StixData
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -121,14 +120,14 @@ def test_process_post_job__fails(obstracts_job):
 def test_process_post_job__soft_time_limit_exceeded(obstracts_job):
     """Test that SoftTimeLimitExceeded is handled correctly"""
     from django.conf import settings
-    
+
     # Assert that soft_time_limit is set correctly
     assert process_post.soft_time_limit == settings.PROCESSING_TIMEOUT_SECONDS
-    
+
     obstracts_job.failed_processes = 3
     obstracts_job.save()
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
-    
+
     with patch(
         "obstracts.cjob.tasks.StixifyProcessor", side_effect=SoftTimeLimitExceeded()
     ):
@@ -144,14 +143,14 @@ def test_process_post_job__soft_time_limit_exceeded(obstracts_job):
 def test_process_post_job__time_limit_exceeded(obstracts_job):
     """Test that TimeLimitExceeded is handled correctly"""
     from django.conf import settings
-    
+
     # Assert that soft_time_limit is set correctly
     assert process_post.time_limit == settings.PROCESSING_TIMEOUT_SECONDS + 20
-    
+
     obstracts_job.failed_processes = 5
     obstracts_job.save()
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
-    
+
     with patch(
         "obstracts.cjob.tasks.StixifyProcessor", side_effect=TimeLimitExceeded()
     ):
@@ -166,10 +165,20 @@ def test_process_post_job__time_limit_exceeded(obstracts_job):
 @pytest.fixture
 def fake_stixifier_processor():
     mocked_processor = MagicMock()
-    mocked_processor.summary = "Summarized post"
+    mocked_processor.summary = "some summary"
     mocked_processor.md_file.open.return_value = io.BytesIO(b"Generated MD File")
     mocked_processor.incident = None
-    mocked_processor.txt2stix_data.model_dump.return_value = {"data": "data is here"}
+    mocked_processor.txt2stix_data = Txt2StixData.model_validate(
+        dict(
+            content_check=dict(
+                threat_score=8,
+                describes_incident=True,
+                explanation="some explanation",
+                incident_classification=["class1", "class2"],
+                summary="some summary",
+            )
+        )
+    )
     return mocked_processor
 
 
@@ -219,7 +228,15 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
         ] == ["cat1", "cat2", "dog1", "dog2"]
         assert file.processed == True
         assert file.summary == fake_stixifier_processor.summary
-        assert file.txt2stix_data == {"data": "data is here"}
+        assert file.txt2stix_data == {
+            "content_check": {
+                "summary": "some summary",
+                "explanation": "some explanation",
+                "threat_score": 8,
+                "describes_incident": True,
+                "incident_classification": ["class1", "class2"],
+            }
+        }
         assert file.markdown_file.read() == b"Generated MD File"
         assert obstracts_job.failed_processes == 5
         assert obstracts_job.processed_items == 13
@@ -272,7 +289,11 @@ def test_process_post_generate_pdf(
     ],
 )
 def test_process_post_generate_pdf_on_reprocess(
-    obstracts_job_reprocess, fake_stixifier_processor, has_pdf_file, generate_pdf, expected
+    obstracts_job_reprocess,
+    fake_stixifier_processor,
+    has_pdf_file,
+    generate_pdf,
+    expected,
 ):
     obstracts_job_reprocess.type = models.JobType.REPROCESS_POSTS
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
@@ -307,7 +328,7 @@ def test_process_post_generate_pdf_on_reprocess__skip_extraction_no_existing_dat
     obstracts_job_reprocess, fake_stixifier_processor
 ):
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
-    obstracts_job_reprocess.extra['skip_extraction'] = True
+    obstracts_job_reprocess.extra["skip_extraction"] = True
     obstracts_job_reprocess.profile.generate_pdf = False
     obstracts_job_reprocess.profile.save()
     file = models.File.objects.get(pk=post_id)
@@ -324,10 +345,13 @@ def test_process_post_generate_pdf_on_reprocess__skip_extraction_no_existing_dat
         obstracts_job_reprocess.refresh_from_db()
         assert obstracts_job_reprocess.failed_processes == 1
 
+
 @pytest.mark.django_db
-def test_reprocess_post__skip_extraction__generates_md(obstracts_job_reprocess, fake_stixifier_processor):
+def test_reprocess_post__skip_extraction__generates_md(
+    obstracts_job_reprocess, fake_stixifier_processor
+):
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
-    obstracts_job_reprocess.extra['skip_extraction'] = False
+    obstracts_job_reprocess.extra["skip_extraction"] = False
     obstracts_job_reprocess.profile.generate_pdf = False
     obstracts_job_reprocess.profile.save()
     obstracts_job_reprocess.save()
@@ -347,21 +371,15 @@ def test_process_post_with_incident(obstracts_job, fake_stixifier_processor):
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
     obstracts_job.processed_items = 12
     obstracts_job.save()
-
-    incident = fake_stixifier_processor.incident = MagicMock()
-    incident.describes_incident = True
-    incident.explanation = "some explanation"
-    incident.incident_classification = []
-
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
     ):
         mock_stixify_processor_cls.return_value = fake_stixifier_processor
         process_post.si(obstracts_job.id, post_id).delay()
         file = models.File.objects.get(pk=post_id)
-        assert file.ai_describes_incident == incident.describes_incident
-        assert file.ai_incident_summary == incident.explanation
-        assert file.ai_incident_classification == incident.incident_classification
+        assert file.ai_describes_incident == True
+        assert file.ai_incident_summary == "some explanation"
+        assert file.ai_incident_classification == ["class1", "class2"]
 
 
 @pytest.mark.parametrize(
@@ -514,7 +532,12 @@ def test_create_pdf_reindex_job__skips_no_pdf(
 @pytest.mark.django_db
 def test_update_vulnerabilities_task_success():
     import uuid
-    job = models.Job.objects.create(id=uuid.uuid4(), type=models.JobType.SYNC_VULNERABILITIES, state=models.JobState.PROCESSING)
+
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.SYNC_VULNERABILITIES,
+        state=models.JobState.PROCESSING,
+    )
     with patch("obstracts.cjob.tasks.helpers.run_on_collections") as mock_run:
         # no exception -> should set state to PROCESSED
         mock_run.return_value = None
@@ -528,8 +551,15 @@ def test_update_vulnerabilities_task_success():
 @pytest.mark.django_db
 def test_update_vulnerabilities_task_failure():
     import uuid
-    job = models.Job.objects.create(id=uuid.uuid4(), type=models.JobType.SYNC_VULNERABILITIES, state=models.JobState.PROCESSING)
-    with patch("obstracts.cjob.tasks.helpers.run_on_collections", side_effect=Exception("boom")):
+
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.SYNC_VULNERABILITIES,
+        state=models.JobState.PROCESSING,
+    )
+    with patch(
+        "obstracts.cjob.tasks.helpers.run_on_collections", side_effect=Exception("boom")
+    ):
         from obstracts.cjob.tasks import update_vulnerabilities
 
         update_vulnerabilities(job.id)

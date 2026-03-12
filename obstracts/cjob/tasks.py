@@ -288,16 +288,6 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
         else:
             processor.process()
 
-        if processor.incident:
-            file.ai_describes_incident = processor.incident.describes_incident
-            file.ai_incident_summary = processor.incident.explanation
-            file.ai_incident_classification = processor.incident.incident_classification
-
-        file.txt2stix_data = processor.txt2stix_data.model_dump(
-            mode="json", exclude_defaults=True, exclude_unset=True, exclude_none=True
-        )
-        file.summary = processor.summary
-
         if getattr(processor, "md_file", None):
             file.markdown_file.save("markdown.md", processor.md_file.open(), save=False)
             models.FileImage.objects.filter(report=file).delete()  # remove old references
@@ -307,16 +297,13 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
                     report=file, file=File(image, image.name), name=image.name
                 )
 
+        file.set_txt2stix_data(processor.txt2stix_data)
+
         file.processed = True
         file.save(
             update_fields=[
                 "processed",
                 "markdown_file",
-                "summary",
-                "txt2stix_data",
-                "ai_describes_incident",
-                "ai_incident_summary",
-                "ai_incident_classification",
             ]
         )
         job.processed_items += 1
