@@ -191,7 +191,7 @@ class Command(BaseCommand):
                     name=post.title,
                     identity=file_obj.feed.identity,
                     tlp_level="clear",
-                    confidence=0,
+                    confidence=None,
                     labels=[f"tag.{cat.name}" for cat in post.categories.all()],
                     created=post.pubdate,
                     kwargs=dict(
