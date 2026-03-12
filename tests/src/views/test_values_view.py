@@ -178,40 +178,39 @@ class TestSCOValueView:
         assert all(t in ['ipv4-addr', 'domain-name'] for t in types)
     
     def test_filter_by_value_wildcard(self, feed_with_object_values):
-        """Test default search uses trigram matching for flexible matching."""
+        """Test default search uses vcontains for substring matching."""
         client = APIClient()
         response = client.get('/api/v1/values/scos/?value=192.168')
         
         assert response.status_code == 200
         data = response.json()
         
-        # Should return the 192.168.1.1 IP using trigram matching
+        # Should return the 192.168.1.1 IP using substring matching
         assert data['total_results_count'] == 1
         assert data['values'][0]['values']['value'] == '192.168.1.1'
     
     def test_filter_by_value_exact(self, feed_with_object_values):
-        """Test value_exact search finds values containing the term (without trigram flexibility)."""
+        """Test value_exact matches exact individual values only."""
         client = APIClient()
         response = client.get('/api/v1/values/scos/?value=192.168.1.1&value_exact=true')
         
         assert response.status_code == 200
         data = response.json()
         
-        # Should return the IP containing 192.168.1.1
+        # Should return the IP with exact value match
         assert data['total_results_count'] == 1
         assert data['values'][0]['values']['value'] == '192.168.1.1'
     
-    def test_filter_by_value_exact_substring_match(self, feed_with_object_values):
-        """Test that exact match finds values containing the search term."""
+    def test_filter_by_value_exact_no_substring_match(self, feed_with_object_values):
+        """Test that exact match does NOT match substrings - only exact individual values."""
         client = APIClient()
         response = client.get('/api/v1/values/scos/?value=192.168&value_exact=true')
         
         assert response.status_code == 200
         data = response.json()
         
-        # Should return the IP since '192.168' is contained in '192.168.1.1'
-        assert data['total_results_count'] == 1
-        assert '192.168' in data['values'][0]['values']['value']
+        # Should return nothing since '192.168' is not an exact match for any individual value
+        assert data['total_results_count'] == 0
     
     def test_filter_by_post_id(self, feed_with_object_values):
         """Test filtering by post ID."""
@@ -386,7 +385,7 @@ class TestSDOValueView:
         assert all(t in ['cve', 'location'] for t in ttp_types)
     
     def test_filter_by_value_searches_name(self, feed_with_object_values):
-        """Test that value filter searches name field using trigram matching."""
+        """Test that value filter searches name field using substring matching."""
         client = APIClient()
         response = client.get('/api/v1/values/sdos/?value=WannaCry')
         
@@ -398,7 +397,7 @@ class TestSDOValueView:
         assert 'WannaCry' in data['values'][0]['values']['name']
     
     def test_filter_by_value_searches_aliases(self, feed_with_object_values):
-        """Test that value filter searches aliases using trigram matching."""
+        """Test that value filter searches aliases using substring matching."""
         client = APIClient()
         response = client.get('/api/v1/values/sdos/?value=T1566.002')
         
@@ -410,7 +409,7 @@ class TestSDOValueView:
         assert data['values'][0]['type'] == 'attack-pattern'
     
     def test_filter_by_value_exact(self, feed_with_object_values):
-        """Test value_exact finds values containing the term."""
+        """Test value_exact matches exact individual values only."""
         client = APIClient()
         response = client.get('/api/v1/values/sdos/?value=CVE-2021-44228&value_exact=true')
         
