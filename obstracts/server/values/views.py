@@ -1,3 +1,4 @@
+import textwrap
 from rest_framework import viewsets, filters, mixins
 from rest_framework.response import Response
 from django_filters.rest_framework import (
@@ -6,9 +7,10 @@ from django_filters.rest_framework import (
     CharFilter,
     MultipleChoiceFilter,
     BooleanFilter,
-    BaseCSVFilter
+    BaseCSVFilter,
 )
 from django_filters.fields import ChoiceField
+from obstracts.server import autoschema as api_schema
 
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -41,7 +43,7 @@ class ChoiceCSVFilter(BaseCSVFilter):
     field_class = ChoiceField
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('lookup_expr', 'in')
+        kwargs.setdefault("lookup_expr", "in")
         super().__init__(*args, **kwargs)
 
 
@@ -76,15 +78,15 @@ class ObjectValueFilterSet(FilterSet):
         """
         if not value:
             return queryset
-        
+
         # Check if value_exact is set to True
-        value_exact = self.data.get('value_exact', 'false').lower() == 'true'
-        
+        value_exact = self.data.get("value_exact", "false").lower() == "true"
+
         if value_exact:
             return queryset.filter(values__jsonb_vexact=value)
         else:
             return queryset.filter(values__jsonb_trg=value)
-    
+
     def filter_noop(self, queryset, name, value):
         """
         No-op filter for value_exact - it's handled by filter_value method.
@@ -92,8 +94,16 @@ class ObjectValueFilterSet(FilterSet):
         return queryset
 
 
-class BaseObjectValueView(mixins.ListModelMixin,
-                           viewsets.GenericViewSet):
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: ObjectValueSerializer,
+            400: api_schema.DEFAULT_400_ERROR
+        },
+        
+    )
+)
+class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
     """Base view for ObjectValue queries with common functionality."""
 
     queryset = ObjectValue.objects.all()
@@ -131,34 +141,34 @@ class BaseObjectValueView(mixins.ListModelMixin,
 @extend_schema_view(
     list=extend_schema(
         summary="Search and filter STIX Cyber Observable Objects",
-        description="""Search for STIX Cyber Observable Objects (aka Indicators of Compromise). If you have the object ID already, you can use the base GET Objects endpoint.
+        description=textwrap.dedent(
+            """
+            Search for STIX Cyber Observable Objects (aka Indicators of Compromise). If you have the object ID already, you can use the base GET Objects endpoint.
 
-The `value` filter searches all extracted fields from the object, including:
+            The `value` filter searches all extracted fields from the object, including:
 
-* `artifact.url`, `artifact.mime_type`
-* `autonomous-system.number`, `autonomous-system.name`
-* `directory.path`
-* `domain-name.value`
-* `email-addr.value`
-* `email-message.subject`, `email-message.body`, `email-message.message_id`
-* `file.name` and file hashes
-* `ipv4-addr.value`
-* `ipv6-addr.value`
-* `mac-addr.value`
-* `mutex.name`
-* `network-traffic.protocols`
-* `process.command_line`, `process.cwd`
-* `software.name`, `software.cpe`, `software.vendor`, `software.version`
-* `url.value`
-* `user-account.user_id`, `user-account.account_login`, `user-account.account_type`
-* `windows-registry-key.key`
-* `x509-certificate.subject`, `x509-certificate.issuer`, `x509-certificate.serial_number`
+            * `artifact.url`, `artifact.mime_type`
+            * `autonomous-system.number`, `autonomous-system.name`
+            * `directory.path`
+            * `domain-name.value`
+            * `email-addr.value`
+            * `email-message.subject`, `email-message.body`, `email-message.message_id`
+            * `file.name` and file hashes
+            * `ipv4-addr.value`
+            * `ipv6-addr.value`
+            * `mac-addr.value`
+            * `mutex.name`
+            * `network-traffic.protocols`
+            * `process.command_line`, `process.cwd`
+            * `software.name`, `software.cpe`, `software.vendor`, `software.version`
+            * `url.value`
+            * `user-account.user_id`, `user-account.account_login`, `user-account.account_type`
+            * `windows-registry-key.key`
+            * `x509-certificate.subject`, `x509-certificate.issuer`, `x509-certificate.serial_number`
 
-Results are deduplicated by `stix_id`, with all associated `post_id`s aggregated in the `matched_posts` field.""",
-    ),
-    retrieve=extend_schema(
-        summary="Retrieve a specific SCO Object Value",
-        description="Get details of a specific STIX Cyber Observable Object by ID.",
+            Results are deduplicated by `stix_id`, with all associated `post_id`s aggregated in the `matched_posts` field.
+            """
+        ),
     ),
 )
 class SCOValueView(BaseObjectValueView):
@@ -179,36 +189,36 @@ class SCOValueView(BaseObjectValueView):
 @extend_schema_view(
     list=extend_schema(
         summary="Search and filter STIX Domain Objects",
-        description="""Search for STIX Domain Objects (aka TTPs). If you have the object ID already, you can use the base GET Objects endpoint.
+        description=textwrap.dedent(
+            """
+            Search for STIX Domain Objects (aka TTPs). If you have the object ID already, you can use the base GET Objects endpoint.
 
-The `value` filter searches all extracted name and descriptive fields from the object, including:
+            The `value` filter searches all extracted name and descriptive fields from the object, including:
 
-* `attack-pattern.name`, `attack-pattern.aliases`
-* `campaign.name`, `campaign.aliases`
-* `course-of-action.name`
-* `grouping.name`, `grouping.context`
-* `identity.name`
-* `incident.name`
-* `indicator.name`, `indicator.pattern`
-* `infrastructure.name`
-* `intrusion-set.name`, `intrusion-set.aliases`
-* `location.name`, `location.country`, `location.region`
-* `malware.name`, `malware.x_mitre_aliases`
-* `malware-analysis.product`, `malware-analysis.version`
-* `note.abstract`, `note.content`
-* `observed-data.objects`
-* `opinion.explanation`, `opinion.opinion`
-* `report.name`
-* `threat-actor.name`
-* `tool.name`, `tool.tool_version`, `tool.x_mitre_aliases`
-* `vulnerability.name`
-* MITRE ATT&CK objects: `x-mitre-analytic`, `x-mitre-asset`, `x-mitre-collection`, `x-mitre-data-component`, `x-mitre-data-source`, `x-mitre-detection-strategy`, `x-mitre-matrix`, `x-mitre-tactic`
+            * `attack-pattern.name`, `attack-pattern.aliases`
+            * `campaign.name`, `campaign.aliases`
+            * `course-of-action.name`
+            * `grouping.name`, `grouping.context`
+            * `identity.name`
+            * `incident.name`
+            * `indicator.name`, `indicator.pattern`
+            * `infrastructure.name`
+            * `intrusion-set.name`, `intrusion-set.aliases`
+            * `location.name`, `location.country`, `location.region`
+            * `malware.name`, `malware.x_mitre_aliases`
+            * `malware-analysis.product`, `malware-analysis.version`
+            * `note.abstract`, `note.content`
+            * `observed-data.objects`
+            * `opinion.explanation`, `opinion.opinion`
+            * `report.name`
+            * `threat-actor.name`
+            * `tool.name`, `tool.tool_version`, `tool.x_mitre_aliases`
+            * `vulnerability.name`
+            * MITRE ATT&CK objects: `x-mitre-analytic`, `x-mitre-asset`, `x-mitre-collection`, `x-mitre-data-component`, `x-mitre-data-source`, `x-mitre-detection-strategy`, `x-mitre-matrix`, `x-mitre-tactic`
 
-Results are deduplicated by `stix_id`, with all associated `post_id`s aggregated in the `matched_posts` field.""",
-    ),
-    retrieve=extend_schema(
-        summary="Retrieve a specific SDO Object Value",
-        description="Get details of a specific STIX Domain Object by ID.",
+            Results are deduplicated by `stix_id`, with all associated `post_id`s aggregated in the `matched_posts` field.
+            """
+        ),
     ),
 )
 class SDOValueView(BaseObjectValueView):
