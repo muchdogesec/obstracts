@@ -606,7 +606,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
         min_confidence = IntegerFilter(
             field_name="threat_score",
             lookup_expr="gte",
-            help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also assign a confidence score between 0 and 1. Use this filter to only include posts where the confidence score is above a certain threshold.",
+            help_text="If `ai_content_check_provider` set in Profile and the AI believes the post describes a security incident, then it will also assign a confidence score between 0 and 100. Use this filter to only include posts where the confidence score is above a certain threshold.",
         )
         text = filters.CharFilter(
             method="semantic_search",
