@@ -85,7 +85,7 @@ class ObjectValueFilterSet(FilterSet):
         if value_exact:
             return queryset.filter(values__jsonb_vexact=value)
         else:
-            return queryset.filter(values__jsonb_trg=value)
+            return queryset.filter(values__jsonb_vcontains=value)
 
     def filter_noop(self, queryset, name, value):
         """
