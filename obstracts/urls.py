@@ -20,6 +20,7 @@ from django.conf.urls.static import static
 
 from obstracts.server import values
 from obstracts.server.identities import IdentityView
+from obstracts.server.statistics import StatisticsView
 from .server import views
 from rest_framework import routers, response
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
@@ -63,6 +64,9 @@ regex_router.register('objects/sdos', arango_views.SDOView, "object-view-sdo")
 ## values
 regex_router.register('values/scos', values.SCOValueView, "value-view-sco")
 regex_router.register('values/sdos', values.SDOValueView, "value-view-sdo")
+
+## statistics
+regex_router.register('statistics', StatisticsView, "statistics-view")
 
 # txt2stix views
 router.register('extractors', ExtractorsView, "extractors-view")
