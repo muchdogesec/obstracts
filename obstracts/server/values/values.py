@@ -40,7 +40,14 @@ def get_values(obj: dict, value_keys: list[str] | dict[str, str] | Callable):
     else:
         raise ValueError("value_keys must be a list, a dictionary, or a callable")
 
-
+s2e_sco_map = {
+    "bank-account": dict(values=["iban", "bic", "currency"]),
+    "cryptocurrency-wallet": dict(values=["value"]),
+    "cryptocurrency-transaction": dict(values=["value", "symbol"]),
+    "payment-card": dict(values=["value", "scheme", "currency"]),
+    "phone-number": dict(values=["value", "country", "provider"]),
+    "user-agent": dict(values=["value"]),
+}
 sco_value_map = {
     # Cyber Observable Objects (SCOs)
     "artifact": dict(values=["url", "mime_type"]),
@@ -61,8 +68,12 @@ sco_value_map = {
     "user-account": dict(values=["user_id", "account_login", "account_type"]),
     "windows-registry-key": dict(values=["key"]),
     "x509-certificate": dict(values=["subject", "issuer", "serial_number"]),
+    **s2e_sco_map,
 }
-
+s2e_sdo_map = {
+    "weakness": dict(values=["name"]),
+    "exploit": dict(values=["name", "proof_of_concept"]),
+}
 # mitre ATT&CK TTP types can be identified by their x_mitre_domains property or specific external references
 MITRE_VALUE_MAP = {
     "x-mitre-analytic": dict(values=["name"]),
@@ -96,7 +107,7 @@ sdo_value_map = {
     "threat-actor": dict(values=["name"]),
     "tool": dict(values=["name", "tool_version", "x_mitre_aliases"]),
     "vulnerability": dict(values=["name"]),
-    "weakness": dict(values=["name"]),
+    **s2e_sdo_map,
     **MITRE_VALUE_MAP,
 }
 sro_value_map = {
@@ -239,6 +250,8 @@ def process_uploaded_objects_hook(instance, collection_name, objects, **kwargs):
             continue
 
         metadata = extract_object_metadata(obj)
+        if not metadata["values"]:
+            continue
         object_values_to_create.append(
             ObjectValue(
                 file_id=post_uuid,
