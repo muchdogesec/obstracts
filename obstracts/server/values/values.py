@@ -96,6 +96,7 @@ sdo_value_map = {
     "threat-actor": dict(values=["name"]),
     "tool": dict(values=["name", "tool_version", "x_mitre_aliases"]),
     "vulnerability": dict(values=["name"]),
+    "weakness": dict(values=["name"]),
     **MITRE_VALUE_MAP,
 }
 sro_value_map = {
