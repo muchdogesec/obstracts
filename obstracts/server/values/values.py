@@ -29,6 +29,17 @@ def get_file_values(obj):
         values.update({k.lower().replace("-", ""): v for k, v in obj["hashes"].items()})
     return values
 
+def get_location_values(obj):
+    values = {}
+    for key in ["name", "region"]:
+        if key in obj:
+            values[key] = obj[key]
+    for ext_ref in obj.get("external_references", []):
+        source_name = ext_ref.get("source_name", "")
+        if source_name in ["type", "alpha-3"]:
+            values[source_name] = ext_ref['external_id']
+    return values
+
 
 def get_values(obj: dict, value_keys: list[str] | dict[str, str] | Callable):
     if isinstance(value_keys, list):
@@ -97,7 +108,7 @@ sdo_value_map = {
     "indicator": dict(values=["name", "pattern"]),
     "infrastructure": dict(values=["name"]),
     "intrusion-set": dict(values=["name", "aliases"]),
-    "location": dict(values=["name", "country", "region"]),
+    "location": dict(values=get_location_values),
     "malware": dict(values=["name", "x_mitre_aliases"]),
     "malware-analysis": dict(values=["product", "version"]),
     "note": dict(values=["abstract", "content"]),
