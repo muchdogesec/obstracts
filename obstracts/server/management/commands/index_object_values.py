@@ -6,8 +6,8 @@ and processes them through the process_uploaded_objects_hook to populate the Obj
 
 Usage:
     python manage.py index_object_values
-    python manage.py index_object_values --feed-id <uuid>
-    python manage.py index_object_values --post-id <uuid>
+    python manage.py index_object_values --feeds <uuid>
+    python manage.py index_object_values --posts <uuid>
     python manage.py index_object_values --dry-run
 """
 
