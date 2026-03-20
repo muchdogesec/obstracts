@@ -46,6 +46,7 @@ router.register('feeds', views.FeedView, "feed-view")
 router.register("feeds", views.RSSView, "feed-rss-view")
 
 router.register("posts", views.PostOnlyView, "post-view")
+router.register("topics", views.TopicView, "topic-view")
 
 
 router.register('tasks', views.TasksView, "task-view")

@@ -1,4 +1,4 @@
-from functools import reduce
+from functools import lru_cache, reduce
 import logging
 import operator
 import typing
@@ -352,25 +352,26 @@ class FeedView(h4f_views.FeedView):
     @decorators.action(methods=["PATCH"], detail=True, url_path="reindex-pdfs")
     def reindex_pdfs_for_feed(self, request, feed_id=None, **kwargs):
         feed: models.FeedProfile = self.get_object()
-        
+
         # Validate and parse request data
-        s = serializers.ReindexPDFsSerializer(data=request.data, context={'feed': feed})
+        s = serializers.ReindexPDFsSerializer(data=request.data, context={"feed": feed})
         s.is_valid(raise_exception=True)
-        
+
         # Start with base query: processed posts with PDF generation enabled
         files = models.File.objects.filter(
             feed_id=feed.pk, profile__generate_pdf=True, processed=True
         )
-        
+
         # Filter by specific post IDs if provided
         if s.validated_data.get("posts"):
             files = files.filter(post_id__in=s.validated_data["posts"])
-        
+
         # Filter to only missing PDFs if requested
         if s.validated_data.get("missing_pdfs_only", False):
             from django.db.models import Q
+
             files = files.filter(Q(pdf_file__isnull=True) | Q(pdf_file=""))
-        
+
         return FeedView.reindex_pdfs(feed, list(files))
 
     @decorators.action(methods=["PATCH"], detail=True)
@@ -406,8 +407,25 @@ class FeedView(h4f_views.FeedView):
             )
         return FeedPostView.reprocess_posts(feed, list(posts), s.validated_data)
 
+
 class IntegerFilter(filters.NumberFilter):
     field_class = forms.IntegerField
+
+
+@lru_cache(maxsize=None)
+def get_retrieve_serializer_class(serializer_class):
+    class PostWithSimilaritiesSerializer(
+        serializer_class, serializers.PostWithSimilaritiesSerializer
+    ):
+        pass
+
+    PostWithSimilaritiesSerializer.__name__ = (
+        PostWithSimilaritiesSerializer.__name__.replace(
+            "Serializer", "DetailSerializer"
+        )
+    )
+    return PostWithSimilaritiesSerializer
+
 
 @extend_schema_view(
     list=extend_schema(
@@ -429,6 +447,10 @@ class IntegerFilter(filters.NumberFilter):
             This will return a single Post by its ID. It is useful if you only want to get the data for a single entry.
             """
         ),
+        responses={
+            200: get_retrieve_serializer_class(serializers.PostWithFeedIDSerializer),
+            404: api_schema.DEFAULT_404_ERROR,
+        },
     ),
     destroy=extend_schema(
         summary="Delete a post in a Feed",
@@ -671,6 +693,12 @@ class PostOnlyView(h4f_views.PostOnlyView):
                         data[name] = initial
             super().__init__(data, *args, **kwargs)
 
+        # clustered_filter removed — similar() action accepts `clustered` query param instead
+        topic_id = UUIDFilter(
+            field_name="obstracts_post__embedding__clusters",
+            help_text="Filter posts belonging to a specific topic (cluster) by its UUID.",
+        )
+
     def filter_queryset(self, queryset):
         queryset = queryset.annotate(
             job_state=Subquery(
@@ -678,7 +706,9 @@ class PostOnlyView(h4f_views.PostOnlyView):
                     history4feed_job_id=OuterRef("last_job_id")
                 ).values("state")[:1]
             ),
-            threat_score=F("obstracts_post__txt2stix_data__content_check__threat_score")
+            threat_score=F(
+                "obstracts_post__txt2stix_data__content_check__threat_score"
+            ),
         )
         return super().filter_queryset(queryset)
 
@@ -735,6 +765,12 @@ class PostOnlyView(h4f_views.PostOnlyView):
                 }
             )
         return post_file
+
+    def get_serializer_class(self):
+        serializer_class = super().get_serializer_class()
+        if self.action == "retrieve":
+            return get_retrieve_serializer_class(serializer_class)
+        return serializer_class
 
     @extend_schema(
         summary="Get the extractions performed on this post",
@@ -975,6 +1011,12 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
 
 @extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: serializers.ObstractsPostSerializer,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+    ),
     create=extend_schema(
         request=serializers.PostCreateSerializer,
         responses={
@@ -1059,7 +1101,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     schema = ObstractsAutoSchema()
-    serializer_class = serializers.PostWithFeedIDSerializer
+    serializer_class = serializers.ObstractsPostSerializer
 
     openapi_tags = ["Posts (by Feed)"]
 
@@ -1109,6 +1151,67 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
 class RSSView(h4f_views.RSSView):
     class filterset_class(PostOnlyView.filterset_class):
         feed_id = None
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Search Topics",
+        description=textwrap.dedent(
+            """
+            Returns all topics (clusters) produced by the classifier. Use the `label`
+            filter for a case-insensitive partial-match search on the topic label.
+            """
+        ),
+        responses={
+            200: serializers.TopicSerializer,
+            400: api_schema.DEFAULT_400_ERROR,
+        },
+    ),
+    retrieve=extend_schema(
+        summary="Get a Topic",
+        description=textwrap.dedent(
+            """
+            Returns a single topic by its UUID, including the list of post IDs
+            that belong to that topic.
+            """
+        ),
+        responses={
+            200: serializers.TopicDetailSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+        },
+    ),
+)
+class TopicView(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    openapi_tags = ["Topics"]
+    schema = ObstractsAutoSchema()
+    pagination_class = Pagination("topics")
+    lookup_url_kwarg = "topic_id"
+
+    class filterset_class(FilterSet):
+        label = filters.CharFilter(
+            field_name="label",
+            lookup_expr="icontains",
+            help_text="Case-insensitive partial match search on topic label.",
+        )
+
+    def get_queryset(self):
+        from obstracts.classifier.models import Cluster
+        from django.db.models import Count, Aggregate
+
+        qs = Cluster.objects.annotate(
+            posts_count=Count("members__file", distinct=True),
+            # post_ids=ArrayAgg("members__file__post_id", distinct=True),
+        )
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return serializers.TopicDetailSerializer
+        return serializers.TopicSerializer
 
 
 @extend_schema_view(

@@ -26,6 +26,8 @@ anyio==4.12.1
     #   google-genai
     #   httpx
     #   openai
+apscheduler==3.10.4
+    # via obstracts (pyproject.toml)
 arrow==1.4.0
     # via isoduration
 asgiref==3.11.1
@@ -219,6 +221,8 @@ gunicorn==25.1.0
     #   obstracts (pyproject.toml)
 h11==0.16.0
     # via httpcore
+hdbscan==0.8.41
+    # via obstracts (pyproject.toml)
 hf-xet==1.3.1
     # via huggingface-hub
 history4feed==1.1.7
@@ -267,7 +271,10 @@ jmespath==1.1.0
     #   boto3
     #   botocore
 joblib==1.5.3
-    # via nltk
+    # via
+    #   hdbscan
+    #   nltk
+    #   scikit-learn
 json-repair==0.58.0
     # via txt2stix
 jsonpointer==3.0.0
@@ -344,8 +351,12 @@ nltk==3.9.3
     # via llama-index-core
 numpy==2.4.2
     # via
+    #   hdbscan
     #   llama-index-core
     #   pandas
+    #   pgvector
+    #   scikit-learn
+    #   scipy
     #   transformers
 openai==2.24.0
     # via llama-index-llms-openai
@@ -361,6 +372,8 @@ pandas==3.0.1
     # via file2txt
 pathvalidate==3.3.1
     # via txt2stix
+pgvector==0.4.2
+    # via obstracts (pyproject.toml)
 phonenumbers==9.0.25
     # via txt2stix
 pillow==12.1.1
@@ -438,6 +451,7 @@ python-dotenv==1.2.1
     #   txt2stix
 pytz==2025.2
     # via
+    #   apscheduler
     #   dateparser
     #   stix2
 pyyaml==6.0.3
@@ -509,12 +523,19 @@ safetensors==0.7.0
     # via transformers
 schwifty==2026.1.0
     # via txt2stix
+scikit-learn==1.8.0
+    # via hdbscan
+scipy==1.17.1
+    # via
+    #   hdbscan
+    #   scikit-learn
 simplejson==3.20.2
     # via
     #   stix2
     #   stix2-validator
 six==1.17.0
     # via
+    #   apscheduler
     #   markdownify
     #   python-dateutil
     #   rfc3339-validator
@@ -541,7 +562,9 @@ stix2-patterns==2.1.2
 stix2-validator==3.2.0
     # via txt2stix
 stix2arango==1.2.0
-    # via dogesec-commons
+    # via
+    #   dogesec-commons
+    #   obstracts (pyproject.toml)
 stix2extensions==2.1.3
     # via txt2stix
 tabulate==0.9.0
@@ -550,6 +573,8 @@ tenacity==9.1.4
     # via
     #   google-genai
     #   llama-index-core
+threadpoolctl==3.6.0
+    # via scikit-learn
 tiktoken==0.12.0
     # via llama-index-core
 tinytag==2.2.0
@@ -604,6 +629,7 @@ tzdata==2025.3
     #   kombu
 tzlocal==5.3.1
     # via
+    #   apscheduler
     #   celery
     #   dateparser
 uri-template==1.3.0

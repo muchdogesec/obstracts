@@ -7,6 +7,7 @@ import typing
 from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
+from pgvector.django import CosineDistance
 import txt2stix, txt2stix.extractions
 from django.core.exceptions import ValidationError
 from dogesec_commons.stixifier.models import Profile
@@ -23,6 +24,10 @@ from django.db.models.signals import post_save
 from django.contrib.postgres.fields import ArrayField
 from stix2arango.stix2arango import Stix2Arango
 from dogesec_commons.objects.db_view_creator import link_one_collection
+from sklearn.metrics.pairwise import cosine_similarity
+
+from obstracts.classifier.models import Cluster, DocumentEmbedding
+from obstracts.classifier.tasks import create_embedding_text, compute_embedding_for_document
 
 # Create your models here.
 if typing.TYPE_CHECKING:
@@ -253,6 +258,7 @@ class File(models.Model):
     )
 
     txt2stix_data = models.JSONField(default=None, null=True)
+    embedding = models.ForeignKey(DocumentEmbedding, on_delete=models.SET_NULL, null=True)
 
     def save(self, *args, **kwargs):
         self.post.save()  # update datetime_updated
@@ -296,15 +302,52 @@ class File(models.Model):
             ]
         )
 
-
-FakeRequest = SimpleNamespace(
-    GET=dict(), query_params=SimpleNamespace(dict=lambda: dict())
-)
+    @property
+    def similar_posts(file):
+        if not file.embedding:
+            return []
+        
+        files_qs = (
+                File.objects.exclude(pk=file.pk).filter(embedding__isnull=False).select_related("embedding", "post")
+            )
+        # get top 5 most similar posts based on embedding similarity, excluding self
+        similar_files = files_qs.annotate(
+            distance=CosineDistance("embedding__embedding", file.embedding.embedding)
+        ).order_by("distance")[:5]
+        results = []
+        for sfile in similar_files:
+            similarity_score = cosine_similarity(file.embedding.embedding.reshape(1, -1), sfile.embedding.embedding.reshape(1, -1))[0][0]
+            shared_topics = list(
+                set(file.embedding.clusters.values_list("id", flat=True))
+                & set(sfile.embedding.clusters.values_list("id", flat=True))
+            )
+            results.append(
+                {
+                    "post_id": sfile.post_id,
+                    "post_title": sfile.post.title,  # or get from related post
+                    "similarity_score": similarity_score,
+                    "shared_topics": list(Cluster.objects.filter(id__in=shared_topics).values_list("label", flat=True))[:3],
+                }
+            )
+        return results
+    
+    def generate_embedding_text(self):
+        return create_embedding_text(
+            self.post.title, self.summary, self.ai_incident_summary,
+        )
+    
+    def create_embedding(file, force=False):
+        if force or (file.embedding is None and file.ai_describes_incident):
+            logging.info(f"creating embedding for post {file.post_id}")
+            file.embedding, _ = DocumentEmbedding.objects.get_or_create(text=create_embedding_text(file.post.title, file.summary, file.ai_incident_summary), id=file.pk)
+            compute_embedding_for_document(file.embedding)
+            logging.info(f"created embedding for post {file.post_id}")
+            file.save(update_fields=["embedding"])
 
 
 @receiver(post_delete, sender=FeedProfile)
 def delete_collections(sender, instance: FeedProfile, **kwargs):
-    db = ArangoDBHelper(instance.collection_name, FakeRequest).db
+    db = ArangoDBHelper(instance.collection_name, None).db
     try:
         graph = db.graph(db.name.split("_database")[0] + "_graph")
         graph.delete_edge_definition(

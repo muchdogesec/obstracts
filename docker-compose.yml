@@ -24,6 +24,17 @@ services:
             - 8001:8001
         depends_on:
             - celery
+    classifier:
+        extends: env_django
+        command: >
+                bash -c "
+                  python manage.py build_clusters --daemon
+                "
+        depends_on:
+            redis:
+                condition: service_started
+            env_django: 
+                condition: service_completed_successfully
 
     celery:
         extends: env_django
