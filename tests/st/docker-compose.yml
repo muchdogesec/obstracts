@@ -15,7 +15,7 @@ services:
       start_period: 10s
       timeout: 10s
   pgdb2:
-    image: postgres
+    image: pgvector/pgvector:pg18-trixie
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
