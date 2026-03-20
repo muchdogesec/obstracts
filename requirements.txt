@@ -552,7 +552,7 @@ tenacity==9.1.4
     #   llama-index-core
 tiktoken==0.12.0
     # via llama-index-core
-tinytag==2.2.0
+tinytag==2.2.1
     # via llama-index-core
 tld==0.13.1
     # via txt2stix
