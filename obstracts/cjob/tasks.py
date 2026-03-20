@@ -11,6 +11,8 @@ from txt2stix.txt2stix import Txt2StixData
 import requests
 
 from obstracts.cjob import helpers
+from obstracts.classifier.models import DocumentEmbedding
+import obstracts.classifier.tasks as classifier_tasks
 from ..server.models import Job
 from ..server import models
 from django.core.cache import cache
@@ -298,6 +300,7 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
                 )
 
         file.set_txt2stix_data(processor.txt2stix_data)
+        file.create_embedding()
 
         file.processed = True
         file.save(

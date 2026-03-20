@@ -13,6 +13,7 @@ from dogesec_commons.utils.filters import MinMaxDateFilter
 from obstracts.server.serializers import (
     CreateTaskSerializer,
     PostWithFeedIDSerializer,
+    ObstractsPostSerializer
 )
 from django_filters.rest_framework import DjangoFilterBackend
 from history4feed.app import views as history4feed_views
@@ -46,7 +47,7 @@ def test_class_variables():
     assert history4feed_views.PostOnlyView in PostOnlyView.mro()
 
     assert history4feed_views.feed_post_view in FeedPostView.mro()
-    assert FeedPostView.serializer_class == PostWithFeedIDSerializer
+    assert FeedPostView.serializer_class == ObstractsPostSerializer
 
 
 @pytest.mark.django_db
@@ -824,3 +825,111 @@ def test_reprocess_posts_in_feed_posts(
         "posts": ["345c8d0b-c6ca-4419-b1f7-0daeb4e9278b"],
     }
     assert data["profile_id"] == str(stixifier_profile.id)
+
+
+# ── topic_id filter ───────────────────────────────────────────────────────────
+# Fixtures shared with test_topic_view.py live here for reuse via import.
+from tests.src.views.test_topic_view import posts_with_clusters, CLUSTER_1_ID, CLUSTER_2_ID, POST1_ID, POST2_ID  # noqa: E402
+
+
+@pytest.mark.django_db
+def test_filter_posts_by_topic_id(client, posts_with_clusters, api_schema):
+    # cluster1 contains post1 and post2
+    resp = client.get("/api/v1/posts/", query_params={"topic_id": str(CLUSTER_1_ID)})
+    assert resp.status_code == 200
+    ids = {r["id"] for r in resp.data["posts"]}
+    assert ids == {str(POST1_ID), str(POST2_ID)}
+    api_schema["/api/v1/posts/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
+
+@pytest.mark.django_db
+def test_filter_posts_by_topic_id_single(client, posts_with_clusters, api_schema):
+    # cluster2 contains only post2
+    resp = client.get("/api/v1/posts/", query_params={"topic_id": str(CLUSTER_2_ID)})
+    assert resp.status_code == 200
+    ids = {r["id"] for r in resp.data["posts"]}
+    assert ids == {str(POST2_ID)}
+    api_schema["/api/v1/posts/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
+
+@pytest.mark.django_db
+def test_filter_posts_by_topic_id_no_match(client, posts_with_clusters, api_schema):
+    unknown_id = uuid.uuid4()
+    resp = client.get("/api/v1/posts/", query_params={"topic_id": str(unknown_id)})
+    assert resp.status_code == 200
+    assert resp.data["total_results_count"] == 0
+    api_schema["/api/v1/posts/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
+
+# ── retrieve shows topics and similar_posts ───────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_retrieve_post_includes_topics(client, posts_with_clusters, api_schema):
+    # post1 is a member of cluster1 only
+    resp = client.get(f"/api/v1/posts/{POST1_ID}/")
+    assert resp.status_code == 200
+    assert "topics" in resp.data
+    topic_ids = {t["id"] for t in resp.data["topics"]}
+    assert str(CLUSTER_1_ID) in topic_ids
+    # cluster2 doesn't contain post1
+    assert str(CLUSTER_2_ID) not in topic_ids
+    api_schema["/api/v1/posts/{post_id}/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
+
+@pytest.mark.django_db
+def test_retrieve_post_topics_empty_when_no_embedding(client, feed_with_posts, api_schema):
+    # post1 has no embedding in baseline fixture → topics should be empty / null
+    resp = client.get(f"/api/v1/posts/{POST1_ID}/")
+    assert resp.status_code == 200
+    assert "topics" in resp.data
+    assert not resp.data["topics"]  # null or []
+    api_schema["/api/v1/posts/{post_id}/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
+
+@pytest.mark.django_db
+def test_retrieve_post_includes_similar_posts(client, posts_with_clusters, api_schema):
+    # post1 and post2 both have embeddings → similar_posts should be non-empty for post1
+    resp = client.get(f"/api/v1/posts/{POST1_ID}/")
+    assert resp.status_code == 200
+    assert "similar_posts" in resp.data
+    similar_ids = [str(s["post_id"]) for s in resp.data["similar_posts"]]
+    assert str(POST2_ID) in similar_ids
+    api_schema["/api/v1/posts/{post_id}/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
+
+@pytest.mark.django_db
+def test_retrieve_post_similar_posts_empty_when_no_embedding(client, feed_with_posts, api_schema):
+    # no embeddings → similar_posts must be empty
+    resp = client.get(f"/api/v1/posts/{POST1_ID}/")
+    assert resp.status_code == 200
+    assert "similar_posts" in resp.data
+    assert resp.data["similar_posts"] == []
+    api_schema["/api/v1/posts/{post_id}/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
+
+
+@pytest.mark.django_db
+def test_list_posts_does_not_include_topics_or_similar(client, posts_with_clusters, api_schema):
+    # topics / similar_posts are detail-only; they must not appear on the list endpoint
+    resp = client.get("/api/v1/posts/")
+    assert resp.status_code == 200
+    post = resp.data["posts"][0]
+    assert "topics" not in post
+    assert "similar_posts" not in post
+    api_schema["/api/v1/posts/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )

@@ -59,6 +59,7 @@ OBSTRACTS_APPS = [
     "history4feed.app",
     "dogesec_commons.stixifier",
     "obstracts.server",
+    "obstracts.classifier",
 ]
 
 PROJECT_APPS = [
@@ -66,6 +67,7 @@ PROJECT_APPS = [
     "corsheaders",
     "drf_spectacular",
     'django_cleanup.apps.CleanupConfig',
+    'pgvector',
 ]
 
 INSTALLED_APPS = CORE_APPS + OBSTRACTS_APPS + PROJECT_APPS
@@ -292,3 +294,9 @@ if not GOOGLE_VISION_API_KEY:
 INPUT_TOKEN_LIMIT = int(os.environ["INPUT_TOKEN_LIMIT"])
 SRO_OBJECTS_ONLY_LATEST = os.getenv('SRO_OBJECTS_ONLY_LATEST', False)
 PDFSHIFT_API_KEY = os.getenv('PDFSHIFT_API_KEY')
+
+# Classifier: cron schedule for nightly clustering (12 AM UTC every day)
+CLASSIFIER_CRON_SCHEDULE = os.getenv("CLASSIFIER_CRON_SCHEDULE", "0 0 * * *")  # default to daily at midnight UTC
+
+CLASSIFIER_MIN_CLUSTER_SIZE = int(os.getenv("CLASSIFIER_MIN_CLUSTER_SIZE", 5))
+CLASSIFIER_LABEL_SAMPLE_SIZE = int(os.getenv("CLASSIFIER_LABEL_SAMPLE_SIZE", 10))
