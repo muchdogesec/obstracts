@@ -209,21 +209,6 @@ def test_retrieve_topic_not_found(client, api_schema):
 
 
 @pytest.mark.django_db
-def test_build_embeddings_action(client, celery_always_eager):
-    with patch("obstracts.cjob.tasks.build_topic_embeddings.run") as mock_task:
-        resp = client.patch("/api/v1/topics/build_embeddings/")
-        assert resp.status_code == 201
-        data = resp.json()
-        job_id = data.get("id")
-        assert job_id
-
-        job = ob_models.Job.objects.get(pk=job_id)
-        assert job.type == ob_models.JobType.BUILD_EMBEDDINGS
-        assert job.state == ob_models.JobState.PROCESSING
-        mock_task.assert_called_once_with(uuid.UUID(job_id), force=False)
-
-
-@pytest.mark.django_db
 def test_build_clusters_action(client, celery_always_eager):
     with patch("obstracts.cjob.tasks.build_topic_clusters.run") as mock_task:
         resp = client.patch("/api/v1/topics/build_clusters/")
@@ -236,13 +221,3 @@ def test_build_clusters_action(client, celery_always_eager):
         assert job.type == ob_models.JobType.BUILD_CLUSTERS
         assert job.state == ob_models.JobState.PROCESSING
         mock_task.assert_called_once_with(uuid.UUID(job_id), force=False)
-
-
-@pytest.mark.django_db
-def test_build_embeddings_action_supports_force(client, celery_always_eager):
-    with patch("obstracts.cjob.tasks.build_topic_embeddings.run") as mock_task:
-        resp = client.patch("/api/v1/topics/build_embeddings/", data={"force": True}, content_type="application/json")
-        assert resp.status_code == 201
-        job_id = resp.json().get("id")
-        assert job_id
-        mock_task.assert_called_once_with(uuid.UUID(job_id), force=True)

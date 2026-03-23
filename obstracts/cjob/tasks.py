@@ -285,11 +285,6 @@ def run_topic_clusters_job(job_id, force=False):
 
 
 @shared_task
-def build_topic_embeddings(job_id, force=False):
-    run_topic_embeddings_job(job_id, force=force)
-
-
-@shared_task
 def build_topic_clusters(job_id, force=False):
     run_topic_clusters_job(job_id, force=force)
 

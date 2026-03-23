@@ -6,7 +6,6 @@ from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 from obstracts.cjob.tasks import (
     add_pdf_to_post,
     build_topic_clusters,
-    build_topic_embeddings,
     create_pdf_reindex_job,
     download_pdf,
     process_post,
@@ -698,18 +697,6 @@ def test_run_topic_clusters_job_clustering_cancelled():
 
     job.refresh_from_db()
     assert job.state == models.JobState.CANCELLED
-
-
-@pytest.mark.django_db
-def test_build_topic_embeddings_wrapper_passes_force():
-    job = models.Job.objects.create(
-        id=uuid.uuid4(),
-        type=models.JobType.BUILD_EMBEDDINGS,
-        state=models.JobState.PROCESSING,
-    )
-    with patch("obstracts.cjob.tasks.run_topic_embeddings_job") as mock_runner:
-        build_topic_embeddings.run(job.id, force=True)
-    mock_runner.assert_called_once_with(job.id, force=True)
 
 
 @pytest.mark.django_db

@@ -81,12 +81,6 @@ class TopicBuildSerializer(serializers.Serializer):
             404: api_schema.DEFAULT_404_ERROR,
         },
     ),
-    build_embeddings=extend_schema(
-        summary="Build topic embeddings",
-        description="Create a background job that computes missing embeddings for eligible posts.",
-        request=TopicBuildSerializer,
-        responses={201: ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR},
-    ),
     build_clusters=extend_schema(
         summary="Build topic clusters",
         description="Create a background job that runs topic clustering from available embeddings.",
@@ -122,25 +116,6 @@ class TopicView(
             return TopicDetailSerializer
         return TopicSerializer
 
-    @decorators.action(methods=["PATCH"], detail=False, url_path="build_embeddings")
-    def build_embeddings(self, request, *args, **kwargs):
-        from .serializers import ObstractsJobSerializer
-
-        s = TopicBuildSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
-
-        job = models.Job.objects.create(
-            id=uuid.uuid4(),
-            type=models.JobType.BUILD_EMBEDDINGS,
-            state=models.JobState.PROCESSING,
-        )
-        t = tasks.build_topic_embeddings.si(
-            job.id,
-            force=s.validated_data["force"],
-        )
-        t.apply_async()
-        obj = models.Job.objects.get(id=job.id)
-        return Response(ObstractsJobSerializer(obj).data, status=status.HTTP_201_CREATED)
 
     @decorators.action(methods=["PATCH"], detail=False, url_path="build_clusters")
     def build_clusters(self, request, *args, **kwargs):
