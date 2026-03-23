@@ -47,6 +47,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from history4feed.app import views as h4f_views
 from . import models
 from .autoschema import ObstractsAutoSchema
+from .topics import TopicView
 
 from ..cjob import tasks
 from obstracts.server import serializers
@@ -1151,67 +1152,6 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
 class RSSView(h4f_views.RSSView):
     class filterset_class(PostOnlyView.filterset_class):
         feed_id = None
-
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="Search Topics",
-        description=textwrap.dedent(
-            """
-            Returns all topics (clusters) produced by the classifier. Use the `label`
-            filter for a case-insensitive partial-match search on the topic label.
-            """
-        ),
-        responses={
-            200: serializers.TopicSerializer,
-            400: api_schema.DEFAULT_400_ERROR,
-        },
-    ),
-    retrieve=extend_schema(
-        summary="Get a Topic",
-        description=textwrap.dedent(
-            """
-            Returns a single topic by its UUID, including the list of post IDs
-            that belong to that topic.
-            """
-        ),
-        responses={
-            200: serializers.TopicDetailSerializer,
-            404: api_schema.DEFAULT_404_ERROR,
-        },
-    ),
-)
-class TopicView(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet,
-):
-    openapi_tags = ["Topics"]
-    schema = ObstractsAutoSchema()
-    pagination_class = Pagination("topics")
-    lookup_url_kwarg = "topic_id"
-
-    class filterset_class(FilterSet):
-        label = filters.CharFilter(
-            field_name="label",
-            lookup_expr="icontains",
-            help_text="Case-insensitive partial match search on topic label.",
-        )
-
-    def get_queryset(self):
-        from obstracts.classifier.models import Cluster
-        from django.db.models import Count, Aggregate
-
-        qs = Cluster.objects.annotate(
-            posts_count=Count("members__file", distinct=True),
-            # post_ids=ArrayAgg("members__file__post_id", distinct=True),
-        )
-        return qs
-
-    def get_serializer_class(self):
-        if self.action == "retrieve":
-            return serializers.TopicDetailSerializer
-        return serializers.TopicSerializer
 
 
 @extend_schema_view(

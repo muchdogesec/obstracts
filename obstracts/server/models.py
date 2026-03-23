@@ -71,6 +71,8 @@ class JobType(models.TextChoices):
     PDF_INDEX = "pdf_index"
     SYNC_VULNERABILITIES = "sync-vulnerabilities"
     REPROCESS_POSTS = "reprocess-posts"
+    BUILD_EMBEDDINGS = "build-embeddings"
+    BUILD_CLUSTERS = "build-clusters"
 
 
 class PDFCookieConsentMode(models.TextChoices):
@@ -258,7 +260,7 @@ class File(models.Model):
     )
 
     txt2stix_data = models.JSONField(default=None, null=True)
-    embedding = models.ForeignKey(DocumentEmbedding, on_delete=models.SET_NULL, null=True)
+    embedding = models.ForeignKey(DocumentEmbedding, on_delete=models.SET_NULL, null=True, related_name="file")
 
     def save(self, *args, **kwargs):
         self.post.save()  # update datetime_updated

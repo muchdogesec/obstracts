@@ -1,11 +1,12 @@
 import uuid
+from unittest.mock import patch
 
 import pytest
 
 from obstracts.classifier.models import Cluster, DocumentEmbedding
 from obstracts.server.models import File
-from obstracts.server.serializers import TopicDetailSerializer, TopicSerializer
-from obstracts.server.views import TopicView
+from obstracts.server.topics import TopicDetailSerializer, TopicSerializer, TopicView
+from obstracts.server import models as ob_models
 from dogesec_commons.utils import Pagination
 
 from tests.utils import Transport
@@ -169,8 +170,9 @@ def test_retrieve_topic(client, posts_with_clusters, api_schema):
 def test_retrieve_topic_post_ids(client, posts_with_clusters, api_schema):
     resp = client.get(f"/api/v1/topics/{CLUSTER_1_ID}/")
     assert resp.status_code == 200
-    assert "post_ids" in resp.data
-    assert set(str(p) for p in resp.data["post_ids"]) == {str(POST1_ID), str(POST2_ID)}
+    assert "posts" in resp.data
+    assert {p["id"] for p in resp.data["posts"]} == {str(POST1_ID), str(POST2_ID)}
+    assert set(resp.data["posts"][0].keys()) == {"id", "title", "feed_id"}
     api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
         Transport.get_st_response(resp)
     )
@@ -178,7 +180,7 @@ def test_retrieve_topic_post_ids(client, posts_with_clusters, api_schema):
     # cluster2 only has post2
     resp2 = client.get(f"/api/v1/topics/{CLUSTER_2_ID}/")
     assert resp2.status_code == 200
-    assert [str(p) for p in resp2.data["post_ids"]] == [str(POST2_ID)]
+    assert [p["id"] for p in resp2.data["posts"]] == [str(POST2_ID)]
     api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
         Transport.get_st_response(resp2)
     )
@@ -188,8 +190,8 @@ def test_retrieve_topic_post_ids(client, posts_with_clusters, api_schema):
 def test_retrieve_topic_uses_detail_serializer(client, posts_with_clusters, api_schema):
     resp = client.get(f"/api/v1/topics/{CLUSTER_1_ID}/")
     assert resp.status_code == 200
-    # TopicDetailSerializer adds post_ids, omits posts_count
-    assert "post_ids" in resp.data
+    # TopicDetailSerializer adds posts with post metadata.
+    assert "posts" in resp.data
     assert resp.data['posts_count'] == 2
     api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
         Transport.get_st_response(resp)
@@ -204,3 +206,43 @@ def test_retrieve_topic_not_found(client, api_schema):
     api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
         Transport.get_st_response(resp)
     )
+
+
+@pytest.mark.django_db
+def test_build_embeddings_action(client, celery_always_eager):
+    with patch("obstracts.cjob.tasks.build_topic_embeddings.run") as mock_task:
+        resp = client.patch("/api/v1/topics/build_embeddings/")
+        assert resp.status_code == 201
+        data = resp.json()
+        job_id = data.get("id")
+        assert job_id
+
+        job = ob_models.Job.objects.get(pk=job_id)
+        assert job.type == ob_models.JobType.BUILD_EMBEDDINGS
+        assert job.state == ob_models.JobState.PROCESSING
+        mock_task.assert_called_once_with(uuid.UUID(job_id), force=False)
+
+
+@pytest.mark.django_db
+def test_build_clusters_action(client, celery_always_eager):
+    with patch("obstracts.cjob.tasks.build_topic_clusters.run") as mock_task:
+        resp = client.patch("/api/v1/topics/build_clusters/")
+        assert resp.status_code == 201
+        data = resp.json()
+        job_id = data.get("id")
+        assert job_id
+
+        job = ob_models.Job.objects.get(pk=job_id)
+        assert job.type == ob_models.JobType.BUILD_CLUSTERS
+        assert job.state == ob_models.JobState.PROCESSING
+        mock_task.assert_called_once_with(uuid.UUID(job_id), force=False)
+
+
+@pytest.mark.django_db
+def test_build_embeddings_action_supports_force(client, celery_always_eager):
+    with patch("obstracts.cjob.tasks.build_topic_embeddings.run") as mock_task:
+        resp = client.patch("/api/v1/topics/build_embeddings/", data={"force": True}, content_type="application/json")
+        assert resp.status_code == 201
+        job_id = resp.json().get("id")
+        assert job_id
+        mock_task.assert_called_once_with(uuid.UUID(job_id), force=True)

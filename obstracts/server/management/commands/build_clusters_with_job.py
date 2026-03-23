@@ -3,7 +3,7 @@ import os
 from django.core.management.base import BaseCommand
 from django.conf import settings
 
-from obstracts.classifier import tasks
+from obstracts.cjob import tasks as cjob_tasks
 from obstracts.server import models
 import uuid
 
@@ -39,7 +39,13 @@ class Command(BaseCommand):
                 self.stdout.write(f"Removed existing model: {model_path}")
 
         self.stdout.write("Running clustering once...")
-        tasks.run_clustering(
+        job = models.Job.objects.create(
+            id=uuid.uuid4(),
+            type=models.JobType.BUILD_CLUSTERS,
+            state=models.JobState.PROCESSING,
+        )
+        cjob_tasks.run_topic_clusters_job(
+            job.id,
             force=force,
             workers=workers,
         )

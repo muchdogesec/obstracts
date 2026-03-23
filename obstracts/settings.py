@@ -295,8 +295,7 @@ INPUT_TOKEN_LIMIT = int(os.environ["INPUT_TOKEN_LIMIT"])
 SRO_OBJECTS_ONLY_LATEST = os.getenv('SRO_OBJECTS_ONLY_LATEST', False)
 PDFSHIFT_API_KEY = os.getenv('PDFSHIFT_API_KEY')
 
-# Classifier: cron schedule for nightly clustering (12 AM UTC every day)
-CLASSIFIER_CRON_SCHEDULE = os.getenv("CLASSIFIER_CRON_SCHEDULE", "0 0 * * *")  # default to daily at midnight UTC
-
 CLASSIFIER_MIN_CLUSTER_SIZE = int(os.getenv("CLASSIFIER_MIN_CLUSTER_SIZE", 5))
 CLASSIFIER_LABEL_SAMPLE_SIZE = int(os.getenv("CLASSIFIER_LABEL_SAMPLE_SIZE", 10))
+CLASSIFIER_MODEL_PATH = os.getenv("CLASSIFIER_MODEL_PATH", os.path.join(BASE_DIR, "classifier_hdbscan.joblib"))
+CLASSIFIER_CONCURRENCY = int(os.getenv("CLASSIFIER_CONCURRENCY", 12))

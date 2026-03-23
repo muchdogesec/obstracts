@@ -1,16 +1,24 @@
 from enum import StrEnum, auto
 import uuid
-from pgvector.django import CosineDistance
 from rest_framework import serializers
 
 
 from history4feed.app import serializers as h4fserializers
 
-from obstracts.classifier.models import Cluster
 from .models import File, PDFCookieConsentMode, Profile, Job, FileImage
+from obstracts.classifier.models import Cluster
+
 from drf_spectacular.utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 
+
+
+
+class TopicBaseSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Cluster
+        exclude = ["members", "created_at"]
 
 class ObstractsJobSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField()
@@ -256,25 +264,6 @@ class ObstractsPostSerializer(h4fserializers.PostSerializer):
         allow_null=True,
     )
 
-
-class TopicBaseSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Cluster
-        exclude = ["members", "created_at"]
-
-class TopicSerializer(TopicBaseSerializer):
-    posts_count = serializers.IntegerField(read_only=True, required=False)
-
-
-class TopicDetailSerializer(TopicSerializer):
-    post_ids = serializers.SerializerMethodField()
-
-    @extend_schema_field(serializers.ListField(child=serializers.UUIDField()))
-    def get_post_ids(self, obj):
-        return list(
-            File.objects.filter(embedding__clusters=obj).values_list("post_id", flat=True)
-        )
 
 class SimilarPostsSerializer(serializers.Serializer):
     """
