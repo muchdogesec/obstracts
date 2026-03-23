@@ -208,7 +208,7 @@ def _build_topic_embedding_for_post(post_id, force=False):
         return "failed", f"embedding build failed for post {post_id}"
 
 
-def run_topic_embeddings_job(job_id, force=False):
+def run_topic_embeddings_job(job_id, force=False, workers=settings.CLASSIFIER_CONCURRENCY):
     job = models.Job.objects.get(pk=job_id)
     try:
         qs = models.File.objects.filter(
@@ -225,7 +225,7 @@ def run_topic_embeddings_job(job_id, force=False):
 
         cancelled = False
 
-        with ThreadPoolExecutor(max_workers=settings.CLASSIFIER_CONCURRENCY) as pool:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
                 pool.submit(_build_topic_embedding_for_post, post_id, force): post_id
                 for post_id in post_ids
