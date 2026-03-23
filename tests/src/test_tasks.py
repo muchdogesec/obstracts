@@ -205,6 +205,7 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
         patch(
             "obstracts.cjob.tasks.add_pdf_to_post.run", side_effect=add_pdf_to_post.run
         ) as mock_add_pdf_to_post,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
         patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf,
         patch.object(
             PostOnlyView, "remove_report_objects"
@@ -244,6 +245,7 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
             }
         }
         assert file.markdown_file.read() == b"Generated MD File"
+        mock_create_embedding.assert_called_once_with()
         assert obstracts_job.failed_processes == 5
         assert obstracts_job.processed_items == 13
         process_stream: io.BytesIO = mock_stixify_processor_cls.call_args[0][0]
@@ -271,6 +273,7 @@ def test_process_post_generate_pdf(
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
         patch(
             "obstracts.cjob.tasks.add_pdf_to_post.run", side_effect=add_pdf_to_post.run
         ) as mock_add_pdf_to_post,
@@ -282,6 +285,7 @@ def test_process_post_generate_pdf(
         )  # should only be called if generate_pdf == True
         file = models.File.objects.get(pk=post_id)
         assert file.processed == True
+        mock_create_embedding.assert_called_once_with()
 
 
 @pytest.mark.django_db
@@ -314,6 +318,7 @@ def test_process_post_generate_pdf_on_reprocess(
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
         patch(
             "obstracts.cjob.tasks.add_pdf_to_post.run",
         ) as mock_add_pdf_to_post,
@@ -325,6 +330,7 @@ def test_process_post_generate_pdf_on_reprocess(
         )  # should NOT be called on reprocess if pdf already exists
         file.refresh_from_db()
         assert file.processed == True
+        mock_create_embedding.assert_called_once_with()
         obstracts_job_reprocess.refresh_from_db()
         assert obstracts_job_reprocess.failed_processes == 0
 
@@ -364,11 +370,13 @@ def test_reprocess_post__skip_extraction__generates_md(
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
     ):
         mock_stixify_processor_cls.return_value = fake_stixifier_processor
         process_post.si(obstracts_job_reprocess.id, post_id).delay()
         obstracts_job_reprocess.refresh_from_db()
         fake_stixifier_processor.process.assert_called_once()
+        mock_create_embedding.assert_called_once_with()
         assert obstracts_job_reprocess.failed_processes == 0
 
 
