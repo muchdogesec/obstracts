@@ -24,7 +24,6 @@ services:
             - 8001:8001
         depends_on:
             - celery
-
     celery:
         extends: env_django
         command: >
@@ -36,5 +35,13 @@ services:
                 condition: service_started
             env_django: 
                 condition: service_completed_successfully
+        environment:
+            - CLASSIFIER_MODEL_PATH=/opt/clusters/classfier_hdbscan.joblib
+        volumes:
+            - clusters:/opt/clusters/
+
     redis:
         image: "redis:alpine"
+
+volumes:
+    clusters:

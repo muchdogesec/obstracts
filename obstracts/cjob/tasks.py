@@ -1,6 +1,7 @@
 import io
 import logging
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from celery import shared_task, chain, current_task, Task as CeleryTask
 from django.db import transaction
 import typing
@@ -11,6 +12,8 @@ from txt2stix.txt2stix import Txt2StixData
 import requests
 
 from obstracts.cjob import helpers
+from obstracts.classifier.models import DocumentEmbedding
+import obstracts.classifier.tasks as classifier_tasks
 from ..server.models import Job
 from ..server import models
 from django.core.cache import cache
@@ -192,6 +195,99 @@ def update_vulnerabilities(job_id):
         state = models.JobState.PROCESS_FAILED
     job.update_state(state)
 
+
+def _build_topic_embedding_for_post(post_id, force=False):
+    try:
+        post_file = models.File.objects.select_related("post").get(pk=post_id)
+        post_file.create_embedding(force=force)
+        if post_file.embedding_id:
+            return "processed", None
+        return "failed", f"embedding not created for post {post_id}"
+    except Exception:
+        logging.exception("embedding build failed for post %s", post_id)
+        return "failed", f"embedding build failed for post {post_id}"
+
+
+def run_topic_embeddings_job(job_id, force=False):
+    job = models.Job.objects.get(pk=job_id)
+    try:
+        qs = models.File.objects.filter(
+            processed=True,
+            ai_describes_incident=True,
+        )
+        if not force:
+            qs = qs.filter(embedding__isnull=True)
+
+        post_ids = list(qs.values_list("post_id", flat=True))
+        if not post_ids:
+            job.update_state(models.JobState.PROCESSED)
+            return
+
+        cancelled = False
+
+        with ThreadPoolExecutor(max_workers=settings.CLASSIFIER_CONCURRENCY) as pool:
+            futures = {
+                pool.submit(_build_topic_embedding_for_post, post_id, force): post_id
+                for post_id in post_ids
+            }
+            for future in as_completed(futures):
+                status, msg = future.result()
+                if job.is_cancelled():
+                    cancelled = True
+                    pool.shutdown(wait=False, cancel_futures=True)
+                if status == "processed":
+                    job.processed_items += 1
+                elif status == "failed":
+                    job.failed_processes += 1
+                    if msg:
+                        job.errors.append(msg)
+        if cancelled:
+            job.update_state(models.JobState.CANCELLED)
+        elif job.failed_processes and job.processed_items == 0:
+            job.update_state(models.JobState.PROCESS_FAILED)
+        else:
+            job.update_state(models.JobState.PROCESSED)
+    except Exception as e:
+        logging.exception("topic embedding task failed")
+        job.failed_processes += 1
+        job.errors.append(str(e))
+        job.update_state(models.JobState.PROCESS_FAILED)
+    finally:
+        job.save(update_fields=["errors", "processed_items", "failed_processes"])
+
+
+def run_topic_clusters_job(job_id, force=False):
+    job = models.Job.objects.get(pk=job_id)
+    try:
+        if job.is_cancelled():
+            job.update_state(models.JobState.CANCELLED)
+            return
+
+        classifier_tasks.run_clustering(
+            force=force,
+            workers=settings.CLASSIFIER_CONCURRENCY,
+            should_cancel=lambda: models.Job.objects.get(pk=job_id).is_cancelled(),
+        )
+        if job.is_cancelled():
+            job.update_state(models.JobState.CANCELLED)
+            return
+        job.processed_items += 1
+        job.update_state(models.JobState.PROCESSED)
+    except classifier_tasks.ClusteringCancelled:
+        job.update_state(models.JobState.CANCELLED)
+    except Exception as e:
+        logging.exception("topic cluster task failed")
+        job.failed_processes += 1
+        job.errors.append(str(e))
+        job.update_state(models.JobState.PROCESS_FAILED)
+    finally:
+        job.save(update_fields=["errors", "processed_items", "failed_processes"])
+
+
+@shared_task
+def build_topic_clusters(job_id, force=False):
+    run_topic_clusters_job(job_id, force=force)
+
 @shared_task
 def add_pdf_to_post(job_id, post_id):
     job = models.Job.objects.get(pk=job_id)
@@ -298,6 +394,7 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
                 )
 
         file.set_txt2stix_data(processor.txt2stix_data)
+        file.create_embedding()
 
         file.processed = True
         file.save(

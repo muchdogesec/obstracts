@@ -4,10 +4,21 @@ from rest_framework import serializers
 
 
 from history4feed.app import serializers as h4fserializers
+
 from .models import File, PDFCookieConsentMode, Profile, Job, FileImage
+from obstracts.classifier.models import Cluster
+
 from drf_spectacular.utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 
+
+
+
+class TopicBaseSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Cluster
+        exclude = ["members", "created_at"]
 
 class ObstractsJobSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField()
@@ -254,10 +265,32 @@ class ObstractsPostSerializer(h4fserializers.PostSerializer):
     )
 
 
+class SimilarPostsSerializer(serializers.Serializer):
+    """
+    serialize similar posts with their similarity score to the query post
+    """
+    post_id = serializers.UUIDField(help_text="id of the similar post")
+    post_title = serializers.CharField(help_text="title of the similar post")
+    similarity_score = serializers.FloatField(help_text="similarity score to the query post")
+    shared_topics = serializers.ListField(
+        child=serializers.CharField(), help_text="list of shared topic ids with the query post"
+    )
+
 class PostWithFeedIDSerializer(ObstractsPostSerializer):
-    feed_id = serializers.UUIDField(help_text="containing feed's id")
+    feed_id = serializers.UUIDField(help_text="containing feed's id", required=False)
+
+class PostWithSimilaritiesSerializer(serializers.Serializer):
+    similar_posts = SimilarPostsSerializer(many=True, source="obstracts_post.similar_posts", read_only=True)
+    topics = TopicBaseSerializer(
+        source="obstracts_post.embedding.clusters",
+        many=True,
+        read_only=True,
+        required=False,
+        allow_null=True,
+    )
 
 
+    
 class ImageSerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
 

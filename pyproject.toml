@@ -37,6 +37,9 @@ dependencies = [
     "django-cleanup",
     "gunicorn",
     "requests",
+    "hdbscan",
+    "pgvector",
+    "apscheduler",
 
   ]
 [project.urls]

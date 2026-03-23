@@ -5,14 +5,19 @@ import uuid
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 from obstracts.cjob.tasks import (
     add_pdf_to_post,
+    build_topic_clusters,
     create_pdf_reindex_job,
     download_pdf,
     process_post,
+    run_topic_clusters_job,
+    run_topic_embeddings_job,
     start_processing,
     reindex_pdf_for_post,
     wait_in_queue,
 )
 from obstracts.server import models
+from obstracts.classifier.models import DocumentEmbedding
+import obstracts.classifier.tasks as classifier_tasks
 from history4feed.app import models as h4f_models
 
 from obstracts.server.views import PostOnlyView
@@ -199,6 +204,7 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
         patch(
             "obstracts.cjob.tasks.add_pdf_to_post.run", side_effect=add_pdf_to_post.run
         ) as mock_add_pdf_to_post,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
         patch("obstracts.cjob.tasks.download_pdf") as mock_download_pdf,
         patch.object(
             PostOnlyView, "remove_report_objects"
@@ -238,6 +244,7 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
             }
         }
         assert file.markdown_file.read() == b"Generated MD File"
+        mock_create_embedding.assert_called_once_with()
         assert obstracts_job.failed_processes == 5
         assert obstracts_job.processed_items == 13
         process_stream: io.BytesIO = mock_stixify_processor_cls.call_args[0][0]
@@ -265,6 +272,7 @@ def test_process_post_generate_pdf(
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
         patch(
             "obstracts.cjob.tasks.add_pdf_to_post.run", side_effect=add_pdf_to_post.run
         ) as mock_add_pdf_to_post,
@@ -276,6 +284,7 @@ def test_process_post_generate_pdf(
         )  # should only be called if generate_pdf == True
         file = models.File.objects.get(pk=post_id)
         assert file.processed == True
+        mock_create_embedding.assert_called_once_with()
 
 
 @pytest.mark.django_db
@@ -308,6 +317,7 @@ def test_process_post_generate_pdf_on_reprocess(
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
         patch(
             "obstracts.cjob.tasks.add_pdf_to_post.run",
         ) as mock_add_pdf_to_post,
@@ -319,6 +329,7 @@ def test_process_post_generate_pdf_on_reprocess(
         )  # should NOT be called on reprocess if pdf already exists
         file.refresh_from_db()
         assert file.processed == True
+        mock_create_embedding.assert_called_once_with()
         obstracts_job_reprocess.refresh_from_db()
         assert obstracts_job_reprocess.failed_processes == 0
 
@@ -358,11 +369,13 @@ def test_reprocess_post__skip_extraction__generates_md(
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
     ):
         mock_stixify_processor_cls.return_value = fake_stixifier_processor
         process_post.si(obstracts_job_reprocess.id, post_id).delay()
         obstracts_job_reprocess.refresh_from_db()
         fake_stixifier_processor.process.assert_called_once()
+        mock_create_embedding.assert_called_once_with()
         assert obstracts_job_reprocess.failed_processes == 0
 
 
@@ -566,3 +579,133 @@ def test_update_vulnerabilities_task_failure():
     job.refresh_from_db()
     assert job.state == models.JobState.PROCESS_FAILED
     assert "boom" in job.errors[0]
+
+
+@pytest.mark.django_db
+def test_run_topic_embeddings_job_success(feed_with_posts):
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_EMBEDDINGS,
+        state=models.JobState.PROCESSING,
+    )
+    files = list(models.File.objects.filter(feed=feed_with_posts).order_by("post_id"))
+    for f in files:
+        f.ai_describes_incident = True
+        f.embedding = None
+        f.save(update_fields=["ai_describes_incident", "embedding"])
+
+    emb = DocumentEmbedding.objects.create(
+        id=files[0].post_id,
+        text="existing embedding",
+        embedding=[0.0] * 512,
+    )
+    files[0].embedding = emb
+    files[0].save(update_fields=["embedding"])
+
+    with patch("obstracts.cjob.tasks._build_topic_embedding_for_post", return_value=("processed", None)) as mock_build:
+        run_topic_embeddings_job(job.id, force=False)
+
+    job.refresh_from_db()
+    assert mock_build.call_count == 3
+    assert job.processed_items == 0
+    assert job.failed_processes == 0
+    assert job.state == models.JobState.PROCESSED
+
+
+@pytest.mark.django_db
+def test_run_topic_embeddings_job_force_includes_existing(feed_with_posts):
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_EMBEDDINGS,
+        state=models.JobState.PROCESSING,
+    )
+    files = list(models.File.objects.filter(feed=feed_with_posts).order_by("post_id"))
+    for f in files:
+        f.ai_describes_incident = True
+        f.embedding = None
+        f.save(update_fields=["ai_describes_incident", "embedding"])
+
+    emb = DocumentEmbedding.objects.create(
+        id=files[0].post_id,
+        text="existing embedding",
+        embedding=[0.0] * 512,
+    )
+    files[0].embedding = emb
+    files[0].save(update_fields=["embedding"])
+
+    with patch("obstracts.cjob.tasks._build_topic_embedding_for_post", return_value=("processed", None)) as mock_build:
+        run_topic_embeddings_job(job.id, force=True)
+
+    job.refresh_from_db()
+    assert mock_build.call_count == 4
+    assert job.processed_items == 0
+    assert job.state == models.JobState.PROCESSED
+
+
+@pytest.mark.django_db
+def test_run_topic_embeddings_job_cancelled(feed_with_posts):
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_EMBEDDINGS,
+        state=models.JobState.PROCESSING,
+    )
+    job.cancel()
+    files = models.File.objects.filter(feed=feed_with_posts)
+    files.update(ai_describes_incident=True, embedding=None)
+
+    with patch("obstracts.cjob.tasks._build_topic_embedding_for_post", return_value=("processed", None)):
+        run_topic_embeddings_job(job.id, force=False)
+
+    job.refresh_from_db()
+    assert job.state == models.JobState.CANCELLED
+
+
+@pytest.mark.django_db
+def test_run_topic_clusters_job_success():
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_CLUSTERS,
+        state=models.JobState.PROCESSING,
+    )
+
+    with patch("obstracts.cjob.tasks.classifier_tasks.run_clustering") as mock_clustering:
+        run_topic_clusters_job(job.id, force=True)
+
+    job.refresh_from_db()
+    assert mock_clustering.call_count == 1
+    kwargs = mock_clustering.call_args.kwargs
+    assert kwargs["force"] is True
+    assert kwargs["workers"] >= 1
+    assert callable(kwargs["should_cancel"])
+    assert job.processed_items == 0
+    assert job.state == models.JobState.PROCESSED
+
+
+@pytest.mark.django_db
+def test_run_topic_clusters_job_clustering_cancelled():
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_CLUSTERS,
+        state=models.JobState.PROCESSING,
+    )
+
+    with patch(
+        "obstracts.cjob.tasks.classifier_tasks.run_clustering",
+        side_effect=classifier_tasks.ClusteringCancelled,
+    ):
+        run_topic_clusters_job(job.id, force=False)
+
+    job.refresh_from_db()
+    assert job.state == models.JobState.CANCELLED
+
+
+@pytest.mark.django_db
+def test_build_topic_clusters_wrapper_passes_force():
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_CLUSTERS,
+        state=models.JobState.PROCESSING,
+    )
+    with patch("obstracts.cjob.tasks.run_topic_clusters_job") as mock_runner:
+        build_topic_clusters.run(job.id, force=True)
+    mock_runner.assert_called_once_with(job.id, force=True)
