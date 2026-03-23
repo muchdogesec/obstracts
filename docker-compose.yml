@@ -35,6 +35,8 @@ services:
                 condition: service_started
             env_django: 
                 condition: service_completed_successfully
+        environment:
+            - CLASSIFIER_MODEL_PATH=/opt/clusters/classfier_hdbscan.joblib
         volumes:
             - clusters:/opt/clusters/
 
