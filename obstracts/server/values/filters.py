@@ -1,5 +1,7 @@
 
 from django.db.models import JSONField, Lookup
+from django.db.models import Func, CharField
+
 
 
 @JSONField.register_lookup
@@ -69,3 +71,12 @@ class JSONValueExact(Lookup):
         # Use jsonb_each_text to iterate over key-value pairs and check if any value matches exactly
         sql = f"EXISTS (SELECT 1 FROM jsonb_each_text({lhs}) WHERE value = %s)"
         return sql, lhs_params + rhs_params
+
+class NormalizeDict(Func):
+    """
+    Returns the value for the first key (alphabetically) from a JSONB object.
+    """
+
+    template = "(SELECT kv.value FROM jsonb_each_text(%(expressions)s) AS kv ORDER BY kv.key LIMIT 1)"
+    output_field = CharField()
+

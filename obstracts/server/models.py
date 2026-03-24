@@ -377,7 +377,7 @@ class ObjectValue(models.Model):
     """
     stix_id = models.CharField(max_length=256, db_index=True)
     type = models.CharField(max_length=256, db_index=True)
-    ttp_type = models.CharField(max_length=64, null=True, blank=True, db_index=True)
+    knowledgebase = models.CharField(max_length=64, null=True, blank=True, db_index=True)
     values = models.JSONField()
     file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='object_values')
     created = models.DateTimeField(default=None, null=True)
@@ -390,7 +390,7 @@ class ObjectValue(models.Model):
         unique_together = [['stix_id', 'file']]
 
     def __str__(self):
-        return f'ObjectValue(stix_id={self.stix_id}, ttp_type={self.ttp_type})'
+        return f'ObjectValue(stix_id={self.stix_id}, knowledgebase={self.knowledgebase})'
 
 
 class Job(models.Model):

@@ -10,7 +10,6 @@ from django.utils import timezone
 from obstracts.server.models import ObjectValue, File
 from history4feed.app import models as h4f_models
 from tests.conftest import make_feed
-from rest_framework.test import APIClient
 import uuid
 
 
@@ -27,7 +26,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="ipv4-addr--ba6b3f21-d818-4e7c-bfff-765805177512",
         type="ipv4-addr",
-        ttp_type=None,
+        knowledgebase=None,
         values={"value": "192.168.1.1"},
         file=files[0],
     )
@@ -35,7 +34,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="ipv4-addr--ba6b3f21-d818-4e7c-bfff-765805177512",
         type="ipv4-addr",
-        ttp_type=None,
+        knowledgebase=None,
         values={"value": "192.168.1.1"},
         file=files[1],  # Same IP in different post
     )
@@ -43,7 +42,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="ipv4-addr--cc7b4f32-e929-5c8d-cfff-876916288623",
         type="ipv4-addr",
-        ttp_type=None,
+        knowledgebase=None,
         values={"value": "10.0.0.1"},
         file=files[0],
     )
@@ -52,7 +51,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="domain-name--dd8c5e43-fa3a-6d9e-dfff-987027399734",
         type="domain-name",
-        ttp_type=None,
+        knowledgebase=None,
         values={"value": "malicious.example.com"},
         file=files[0],
     )
@@ -60,7 +59,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="domain-name--ee9d6f54-gb4b-7e0f-efff-098138400845",
         type="domain-name",
-        ttp_type=None,
+        knowledgebase=None,
         values={"value": "phishing.example.net"},
         file=files[1],
     )
@@ -69,7 +68,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="url--ff0e7g65-hc5c-8f1g-ffff-109249511956",
         type="url",
-        ttp_type=None,
+        knowledgebase=None,
         values={"value": "https://malicious.example.com/payload.exe"},
         file=files[0],
     )
@@ -78,7 +77,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="attack-pattern--0f4a0c76-ab2d-4cb0-85d3-3f0efb8cba4d",
         type="attack-pattern",
-        ttp_type="enterprise-attack",
+        knowledgebase="enterprise-attack",
         values={"name": "Spearphishing Link", "aliases": ["T1566.002"]},
         file=files[0],
         created=timezone.now(),
@@ -88,7 +87,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="attack-pattern--0f4a0c76-ab2d-4cb0-85d3-3f0efb8cba4d",
         type="attack-pattern",
-        ttp_type="enterprise-attack",
+        knowledgebase="enterprise-attack",
         values={"name": "Spearphishing Link", "aliases": ["T1566.002"]},
         file=files[2],  # Same attack pattern in different post
         created=timezone.now(),
@@ -99,7 +98,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="malware--1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
         type="malware",
-        ttp_type=None,
+        knowledgebase=None,
         values={"name": "WannaCry", "x_mitre_aliases": ["WannaCryptor", "WCry"]},
         file=files[1],
         created=timezone.now(),
@@ -110,7 +109,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="vulnerability--2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
         type="vulnerability",
-        ttp_type="cve",
+        knowledgebase="cve",
         values={"name": "CVE-2021-44228"},
         file=files[0],
         created=timezone.now(),
@@ -121,7 +120,7 @@ def feed_with_object_values(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="location--3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
         type="location",
-        ttp_type="location",
+        knowledgebase="location",
         values={"name": "United States", "country": "US", "region": "northern-america"},
         file=files[1],
         created=timezone.now(),
@@ -135,9 +134,8 @@ def feed_with_object_values(stixifier_profile):
 class TestSCOValueView:
     """Tests for the SCO (Cyber Observable) values endpoint."""
     
-    def test_list_all_scos(self, feed_with_object_values):
+    def test_list_all_scos(self, client, feed_with_object_values):
         """Test listing all SCO values."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/')
         
         assert response.status_code == 200
@@ -151,9 +149,8 @@ class TestSCOValueView:
         stix_ids = [obj['id'] for obj in data['values']]
         assert len(stix_ids) == len(set(stix_ids))  # All unique
     
-    def test_filter_by_type(self, feed_with_object_values):
+    def test_filter_by_type(self, client, feed_with_object_values):
         """Test filtering SCOs by type."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?types=ipv4-addr')
         
         assert response.status_code == 200
@@ -164,9 +161,8 @@ class TestSCOValueView:
         for obj in data['values']:
             assert obj['type'] == 'ipv4-addr'
     
-    def test_filter_by_multiple_types(self, feed_with_object_values):
+    def test_filter_by_multiple_types(self, client, feed_with_object_values):
         """Test filtering by multiple types."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?types=ipv4-addr,domain-name')
         
         assert response.status_code == 200
@@ -177,9 +173,8 @@ class TestSCOValueView:
         types = [obj['type'] for obj in data['values']]
         assert all(t in ['ipv4-addr', 'domain-name'] for t in types)
     
-    def test_filter_by_value_wildcard(self, feed_with_object_values):
+    def test_filter_by_value_wildcard(self, client, feed_with_object_values):
         """Test default search uses vcontains for substring matching."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?value=192.168')
         
         assert response.status_code == 200
@@ -189,9 +184,8 @@ class TestSCOValueView:
         assert data['total_results_count'] == 1
         assert data['values'][0]['values']['value'] == '192.168.1.1'
     
-    def test_filter_by_value_exact(self, feed_with_object_values):
+    def test_filter_by_value_exact(self, client, feed_with_object_values):
         """Test value_exact matches exact individual values only."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?value=192.168.1.1&value_exact=true')
         
         assert response.status_code == 200
@@ -201,9 +195,8 @@ class TestSCOValueView:
         assert data['total_results_count'] == 1
         assert data['values'][0]['values']['value'] == '192.168.1.1'
     
-    def test_filter_by_value_exact_no_substring_match(self, feed_with_object_values):
+    def test_filter_by_value_exact_no_substring_match(self, client, feed_with_object_values):
         """Test that exact match does NOT match substrings - only exact individual values."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?value=192.168&value_exact=true')
         
         assert response.status_code == 200
@@ -212,10 +205,9 @@ class TestSCOValueView:
         # Should return nothing since '192.168' is not an exact match for any individual value
         assert data['total_results_count'] == 0
     
-    def test_filter_by_post_id(self, feed_with_object_values):
+    def test_filter_by_post_id(self, client, feed_with_object_values):
         """Test filtering by post ID."""
-        client = APIClient()
-        
+
         # Get first post's ID
         feed = feed_with_object_values
         first_file = File.objects.filter(feed=feed).order_by('post__pubdate').first()
@@ -234,9 +226,8 @@ class TestSCOValueView:
         for obj in data['values']:
             assert str(post_id) in [str(p) for p in obj['matched_posts']]
     
-    def test_filter_by_feed_id(self, feed_with_object_values):
+    def test_filter_by_feed_id(self, client, feed_with_object_values):
         """Test filtering by feed ID."""
-        client = APIClient()
         feed = feed_with_object_values
         
         response = client.get(f'/api/v1/values/scos/?feed_id={feed.feed_id}')
@@ -247,9 +238,8 @@ class TestSCOValueView:
         # Should return all SCOs from this feed
         assert data['total_results_count'] == 5
     
-    def test_filter_by_stix_id(self, feed_with_object_values):
+    def test_filter_by_stix_id(self, client, feed_with_object_values):
         """Test filtering by exact STIX object ID."""
-        client = APIClient()
         stix_id = "ipv4-addr--ba6b3f21-d818-4e7c-bfff-765805177512"
         
         response = client.get(f'/api/v1/values/scos/?id={stix_id}')
@@ -260,10 +250,9 @@ class TestSCOValueView:
         assert data['total_results_count'] == 1
         assert data['values'][0]['id'] == stix_id
     
-    def test_matched_posts_aggregation(self, feed_with_object_values):
+    def test_matched_posts_aggregation(self, client, feed_with_object_values):
         """Test that matched_posts aggregates all posts containing the object."""
-        client = APIClient()
-        
+
         # Query for the IP that appears in 2 posts
         response = client.get('/api/v1/values/scos/?value=192.168.1.1&value_exact=true')
         
@@ -276,9 +265,8 @@ class TestSCOValueView:
         # Should have 2 posts in matched_posts
         assert len(obj['matched_posts']) == 2
     
-    def test_sdo_types_not_returned(self, feed_with_object_values):
+    def test_sdo_types_not_returned(self, client, feed_with_object_values):
         """Test that SDO types are not returned in SCO endpoint."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/')
         
         assert response.status_code == 200
@@ -289,9 +277,8 @@ class TestSCOValueView:
         for obj in data['values']:
             assert obj['type'] not in sdo_types
     
-    def test_ordering_by_stix_id(self, feed_with_object_values):
+    def test_ordering_by_stix_id(self, client, feed_with_object_values):
         """Test ordering results by stix_id."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?sort=stix_id_ascending')
         
         assert response.status_code == 200
@@ -299,10 +286,44 @@ class TestSCOValueView:
         
         stix_ids = [obj['id'] for obj in data['values']]
         assert stix_ids == sorted(stix_ids)
+
+    def test_ordering_by_value_uses_first_key(self, client, feed_with_object_values):
+        """Test value ordering uses the first key alphabetically from values JSON."""
+        feed = feed_with_object_values
+        files = File.objects.filter(feed=feed).order_by('post__pubdate')
+
+        ObjectValue.objects.create(
+            stix_id="domain-name--11111111-1111-1111-1111-111111111111",
+            type="domain-name",
+            knowledgebase=None,
+            values={"z_key": "aaa.example", "a_key": "zzz.example"},
+            file=files[0],
+        )
+        ObjectValue.objects.create(
+            stix_id="domain-name--22222222-2222-2222-2222-222222222222",
+            type="domain-name",
+            knowledgebase=None,
+            values={"z_key": "zzz.example", "a_key": "aaa.example"},
+            file=files[1],
+        )
+        ObjectValue.objects.create(
+            stix_id="domain-name--33333333-3333-3333-3333-333333333333",
+            type="domain-name",
+            knowledgebase=None,
+            values={"a_key": "aaa.example", "z_key": "zzz.example"},
+            file=files[1],
+        )
+
+        response = client.get('/api/v1/values/scos/?types=domain-name&sort=value_ascending')
+
+        assert response.status_code == 200
+        data = response.json()
+
+        normalized_values = [list(obj['values'].values())[0] for obj in data['values']]
+        assert normalized_values == sorted(normalized_values)
     
-    def test_pagination(self, feed_with_object_values):
+    def test_pagination(self, client, feed_with_object_values):
         """Test pagination of results."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?page_size=2')
         
         assert response.status_code == 200
@@ -311,9 +332,8 @@ class TestSCOValueView:
         assert len(data['values']) == 2
         assert data['total_results_count'] == 5
     
-    def test_no_ttp_type_in_sco_results(self, feed_with_object_values):
+    def test_no_ttp_type_in_sco_results(self, client, feed_with_object_values):
         """Test that SCOs don't have ttp_type field in results."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/')
         
         assert response.status_code == 200
@@ -321,7 +341,7 @@ class TestSCOValueView:
         
         for obj in data['values']:
             # ttp_type should not be present (null fields are removed)
-            assert 'ttp_type' not in obj
+            assert "kb_name" not in obj
 
 
 @pytest.mark.django_db
@@ -334,9 +354,8 @@ class TestSDOValueView:
 
         }
     
-    def test_list_all_sdos(self, feed_with_object_values):
+    def test_list_all_sdos(self, client, feed_with_object_values):
         """Test listing all SDO values."""
-        client = APIClient()
         response = client.get('/api/v1/values/sdos/')
         
         assert response.status_code == 200
@@ -347,9 +366,8 @@ class TestSDOValueView:
         assert len({obj['id'] for obj in data['values']}) == len(data['values'])  # All unique
         assert data['total_results_count'] == 4
     
-    def test_filter_by_type(self, feed_with_object_values):
+    def test_filter_by_type(self, client, feed_with_object_values):
         """Test filtering SDOs by type."""
-        client = APIClient()
         response = client.get('/api/v1/values/sdos/?types=attack-pattern')
         
         assert response.status_code == 200
@@ -359,34 +377,31 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         assert data['values'][0]['type'] == 'attack-pattern'
     
-    def test_filter_by_ttp_type(self, feed_with_object_values):
+    def test_filter_by_ttp_type(self, client, feed_with_object_values):
         """Test filtering by TTP type."""
-        client = APIClient()
-        response = client.get('/api/v1/values/sdos/?ttp_types=enterprise-attack')
+        response = client.get('/api/v1/values/sdos/?knowledgebases=enterprise-attack')
         
         assert response.status_code == 200
         data = response.json()
         
         # Should return only enterprise-attack objects (1)
         assert data['total_results_count'] == 1
-        assert data['values'][0]['ttp_type'] == 'enterprise-attack'
+        assert data['values'][0]["kb_name"] == 'enterprise-attack'
     
-    def test_filter_by_multiple_ttp_types(self, feed_with_object_values):
+    def test_filter_by_multiple_knowledgebases(self, client, feed_with_object_values):
         """Test filtering by multiple TTP types."""
-        client = APIClient()
-        response = client.get('/api/v1/values/sdos/?ttp_types=cve,location')
+        response = client.get('/api/v1/values/sdos/?knowledgebases=cve,location')
         
         assert response.status_code == 200
         data = response.json()
         
         # Should return CVE (1) + location (1) = 2 objects
         assert data['total_results_count'] == 2
-        ttp_types = [obj['ttp_type'] for obj in data['values']]
-        assert all(t in ['cve', 'location'] for t in ttp_types)
+        knowledgebases = [obj["kb_name"] for obj in data['values']]
+        assert all(t in ['cve', 'location'] for t in knowledgebases)
     
-    def test_filter_by_value_searches_name(self, feed_with_object_values):
+    def test_filter_by_value_searches_name(self, client, feed_with_object_values):
         """Test that value filter searches name field using substring matching."""
-        client = APIClient()
         response = client.get('/api/v1/values/sdos/?value=WannaCry')
         
         assert response.status_code == 200
@@ -396,9 +411,8 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         assert 'WannaCry' in data['values'][0]['values']['name']
     
-    def test_filter_by_value_searches_aliases(self, feed_with_object_values):
+    def test_filter_by_value_searches_aliases(self, client, feed_with_object_values):
         """Test that value filter searches aliases using substring matching."""
-        client = APIClient()
         response = client.get('/api/v1/values/sdos/?value=T1566.002')
         
         assert response.status_code == 200
@@ -408,9 +422,8 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         assert data['values'][0]['type'] == 'attack-pattern'
     
-    def test_filter_by_value_exact(self, feed_with_object_values):
+    def test_filter_by_value_exact(self, client, feed_with_object_values):
         """Test value_exact matches exact individual values only."""
-        client = APIClient()
         response = client.get('/api/v1/values/sdos/?value=CVE-2021-44228&value_exact=true')
         
         assert response.status_code == 200
@@ -419,10 +432,9 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         assert 'CVE-2021-44228' in data['values'][0]['values']['name']
     
-    def test_filter_by_post_id(self, feed_with_object_values):
+    def test_filter_by_post_id(self, client, feed_with_object_values):
         """Test filtering by post ID."""
-        client = APIClient()
-        
+
         # Get second post's ID
         feed = feed_with_object_values
         files = File.objects.filter(feed=feed).order_by('post__pubdate')
@@ -441,9 +453,8 @@ class TestSDOValueView:
         for obj in data['values']:
             assert str(post_id) in [str(p) for p in obj['matched_posts']]
     
-    def test_filter_by_feed_id(self, feed_with_object_values):
+    def test_filter_by_feed_id(self, client, feed_with_object_values):
         """Test filtering by feed ID."""
-        client = APIClient()
         feed = feed_with_object_values
         
         response = client.get(f'/api/v1/values/sdos/?feed_id={feed.feed_id}')
@@ -454,9 +465,8 @@ class TestSDOValueView:
         # Should return all SDOs from this feed
         assert data['total_results_count'] == 4
     
-    def test_filter_by_stix_id(self, feed_with_object_values):
+    def test_filter_by_stix_id(self, client, feed_with_object_values):
         """Test filtering by exact STIX object ID."""
-        client = APIClient()
         stix_id = "attack-pattern--0f4a0c76-ab2d-4cb0-85d3-3f0efb8cba4d"
         
         response = client.get(f'/api/v1/values/sdos/?id={stix_id}')
@@ -467,10 +477,9 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         assert data['values'][0]['id'] == stix_id
     
-    def test_matched_posts_aggregation(self, feed_with_object_values):
+    def test_matched_posts_aggregation(self, client, feed_with_object_values):
         """Test that matched_posts aggregates all posts containing the object."""
-        client = APIClient()
-        
+
         # Query for the attack pattern that appears in 2 posts
         response = client.get('/api/v1/values/sdos/?value=Spearphishing')
         
@@ -483,9 +492,8 @@ class TestSDOValueView:
         # Should have 2 posts in matched_posts
         assert len(obj['matched_posts']) == 2
     
-    def test_sco_types_not_returned(self, feed_with_object_values):
+    def test_sco_types_not_returned(self, client, feed_with_object_values):
         """Test that SCO types are not returned in SDO endpoint."""
-        client = APIClient()
         response = client.get('/api/v1/values/sdos/')
         
         assert response.status_code == 200
@@ -496,34 +504,63 @@ class TestSDOValueView:
         for obj in data['values']:
             assert obj['type'] not in sco_types
     
-    def test_ttp_type_present_when_applicable(self, feed_with_object_values):
+    def test_ttp_type_present_when_applicable(self, client, feed_with_object_values):
         """Test that ttp_type is present when it exists."""
-        client = APIClient()
-        response = client.get('/api/v1/values/sdos/?ttp_types=cve')
+        response = client.get('/api/v1/values/sdos/?knowledgebases=cve')
         
         assert response.status_code == 200
         data = response.json()
         
         assert data['total_results_count'] == 1
-        assert 'ttp_type' in data['values'][0]
-        assert data['values'][0]['ttp_type'] == 'cve'
+        assert "kb_name" in data['values'][0]
+        assert data['values'][0]["kb_name"] == 'cve'
     
-    def test_ordering_by_ttp_type(self, feed_with_object_values):
-        """Test ordering results by ttp_type."""
-        client = APIClient()
-        response = client.get('/api/v1/values/sdos/?sort=ttp_type_ascending')
+    def test_ordering_by_knowledgebase(self, client, feed_with_object_values):
+        """Test ordering results by kb_name."""
+        response = client.get('/api/v1/values/sdos/?sort=knowledgebase_ascending')
         
         assert response.status_code == 200
         data = response.json()
         
-        # Extract ttp_types, treating None as z string for sorting (None values should come last)
-        ttp_types = [obj.get('ttp_type', 'z') or 'z' for obj in data['values']]
-        assert ttp_types == sorted(ttp_types)
+        # Extract knowledgebases, treating None as z string for sorting (None values should come last)
+        knowledgebases = [obj.get("kb_name", 'z') or 'z' for obj in data['values']]
+        assert knowledgebases == sorted(knowledgebases)
+
+    def test_ordering_by_value_uses_first_key(self, client, feed_with_object_values):
+        """Test value ordering uses the first key alphabetically from values JSON."""
+        feed = feed_with_object_values
+        files = File.objects.filter(feed=feed).order_by('post__pubdate')
+
+        ObjectValue.objects.create(
+            stix_id="vulnerability--11111111-1111-1111-1111-111111111111",
+            type="vulnerability",
+            knowledgebase="cve",
+            values={"z_key": "cve-z", "a_key": "cve-a"},
+            file=files[0],
+            created=timezone.now(),
+            modified=timezone.now(),
+        )
+        ObjectValue.objects.create(
+            stix_id="vulnerability--22222222-2222-2222-2222-222222222222",
+            type="vulnerability",
+            knowledgebase="cve",
+            values={"z_key": "cve-a", "a_key": "cve-z"},
+            file=files[1],
+            created=timezone.now(),
+            modified=timezone.now(),
+        )
+
+        response = client.get('/api/v1/values/sdos/?types=vulnerability&sort=value_ascending')
+
+        assert response.status_code == 200
+        data = response.json()
+
+        normalized_values = [obj['values'][sorted(obj['values'].keys())[0]] for obj in data['values']]
+        assert normalized_values == sorted(normalized_values)
     
-    def test_combined_filters(self, feed_with_object_values):
+    def test_combined_filters(self, client, feed_with_object_values):
         """Test combining multiple filters."""
-        client = APIClient()
-        response = client.get('/api/v1/values/sdos/?types=vulnerability&ttp_types=cve')
+        response = client.get('/api/v1/values/sdos/?types=vulnerability&knowledgebases=cve')
         
         assert response.status_code == 200
         data = response.json()
@@ -531,11 +568,10 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         obj = data['values'][0]
         assert obj['type'] == 'vulnerability'
-        assert obj['ttp_type'] == 'cve'
+        assert obj["kb_name"] == 'cve'
     
-    def test_created_modified_timestamps(self, feed_with_object_values):
+    def test_created_modified_timestamps(self, client, feed_with_object_values):
         """Test that created and modified timestamps are returned."""
-        client = APIClient()
         response = client.get('/api/v1/values/sdos/')
         
         assert response.status_code == 200
@@ -550,9 +586,8 @@ class TestSDOValueView:
 class TestValuesViewEdgeCases:
     """Tests for edge cases and error conditions."""
     
-    def test_empty_database(self):
+    def test_empty_database(self, client):
         """Test querying when no ObjectValue entries exist."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/')
         
         assert response.status_code == 200
@@ -560,37 +595,33 @@ class TestValuesViewEdgeCases:
         assert data['total_results_count'] == 0
         assert data['values'] == []
     
-    def test_invalid_filter_values(self, feed_with_object_values):
+    def test_invalid_filter_values(self, client, feed_with_object_values):
         """Test that invalid filter values are handled gracefully."""
-        client = APIClient()
-        
+
         # Invalid UUID format
         response = client.get('/api/v1/values/scos/?post_id=invalid-uuid')
         # Should return 200 with no results or handle gracefully
         assert response.status_code in [200, 400]
     
-    def test_nonexistent_stix_id(self, feed_with_object_values):
+    def test_nonexistent_stix_id(self, client, feed_with_object_values):
         """Test querying for non-existent STIX ID."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?id=ipv4-addr--00000000-0000-0000-0000-000000000000')
         
         assert response.status_code == 200
         data = response.json()
         assert data['total_results_count'] == 0
     
-    def test_value_search_no_results(self, feed_with_object_values):
+    def test_value_search_no_results(self, client, feed_with_object_values):
         """Test value search that returns no results."""
-        client = APIClient()
         response = client.get('/api/v1/values/scos/?value=nonexistent-value-12345')
         
         assert response.status_code == 200
         data = response.json()
         assert data['total_results_count'] == 0
     
-    def test_multiple_filters_narrow_results(self, feed_with_object_values):
+    def test_multiple_filters_narrow_results(self, client, feed_with_object_values):
         """Test that multiple filters properly narrow results."""
-        client = APIClient()
-        
+
         # Get a specific post ID
         feed = feed_with_object_values
         first_file = File.objects.filter(feed=feed).order_by('post__pubdate').first()
