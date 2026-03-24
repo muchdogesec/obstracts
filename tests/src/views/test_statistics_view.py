@@ -3,7 +3,7 @@ Tests for the Statistics endpoint (GET /api/v1/statistics/).
 
 Verifies that:
 - The response shape contains both last_7_days and last_30_days periods.
-- Each period has the expected categories with correct ttp_type values.
+- Each period has the expected categories with correct knowledgebase values.
 - Counts reflect only posts whose pubdate falls within the period window.
 - Objects outside the time window are not counted.
 - The top-10 ordering is by descending count.
@@ -98,7 +98,7 @@ def stats_data(stixifier_profile):
         ObjectValue.objects.create(
             stix_id="attack-pattern--aaaaaaaa-0000-0000-0000-000000000001",
             type="attack-pattern",
-            ttp_type="enterprise-attack",
+            knowledgebase="enterprise-attack",
             values={"name": "Technique A", "aliases": ["T9000"]},
             file=f,
             created=now,
@@ -109,7 +109,7 @@ def stats_data(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="attack-pattern--bbbbbbbb-0000-0000-0000-000000000002",
         type="attack-pattern",
-        ttp_type="enterprise-attack",
+        knowledgebase="enterprise-attack",
         values={"name": "Technique B", "aliases": ["T9001"]},
         file=file_7a,
         created=now,
@@ -120,7 +120,7 @@ def stats_data(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="vulnerability--cccccccc-0000-0000-0000-000000000003",
         type="vulnerability",
-        ttp_type="cve",
+        knowledgebase="cve",
         values={"name": "CVE-2099-99999"},
         file=file_7a,
         created=now,
@@ -131,7 +131,7 @@ def stats_data(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="identity--dddddddd-0000-0000-0000-000000000004",
         type="identity",
-        ttp_type="sector",
+        knowledgebase="sector",
         values={"name": "Finance"},
         file=file_30a,
         created=now,
@@ -142,7 +142,7 @@ def stats_data(stixifier_profile):
     ObjectValue.objects.create(
         stix_id="weakness--eeeeeeee-0000-0000-0000-000000000005",
         type="weakness",
-        ttp_type="cwe",
+        knowledgebase="cwe",
         values={"name": "CWE-79"},
         file=file_old,
         created=now,
@@ -185,19 +185,19 @@ class TestStatisticsView:
         assert data["last_30_days"]["period_days"] == 30
 
     def test_categories_present(self, client, stats_data):
-        """All four expected ttp_type categories are present in each period."""
+        """All four expected knowledgebase categories are present in each period."""
         data = client.get(STATISTICS_URL).json()
         for key in ("last_7_days", "last_30_days"):
-            ttp_types = [c["ttp_type"] for c in data[key]["categories"]]
+            knowledgebases = [c["knowledgebase"] for c in data[key]["categories"]]
             for expected in EXPECTED_CATEGORIES:
-                assert expected in ttp_types, f"{expected} missing from {key}"
+                assert expected in knowledgebases, f"{expected} missing from {key}"
 
     def test_category_shape(self, client, stats_data):
-        """Each category entry has label, ttp_type, and results keys."""
+        """Each category entry has label, knowledgebase, and results keys."""
         data = client.get(STATISTICS_URL).json()
         for category in data["last_7_days"]["categories"]:
             assert "label" in category
-            assert "ttp_type" in category
+            assert "knowledgebase" in category
             assert "results" in category
 
     def test_result_entry_shape(self, client, stats_data):
@@ -210,9 +210,9 @@ class TestStatisticsView:
                     assert "values" in result
                     assert "count" in result
 
-    def _get_category(self, data, period_key, ttp_type):
+    def _get_category(self, data, period_key, knowledgebase):
         return next(
-            c for c in data[period_key]["categories"] if c["ttp_type"] == ttp_type
+            c for c in data[period_key]["categories"] if c["knowledgebase"] == knowledgebase
         )
 
     def test_7d_attack_count_top_entry(self, client, stats_data):
@@ -288,7 +288,7 @@ class TestStatisticsView:
             ObjectValue.objects.create(
                 stix_id=f"attack-pattern--{i:08d}-0000-0000-0000-000000000099",
                 type="attack-pattern",
-                ttp_type="enterprise-attack",
+                knowledgebase="enterprise-attack",
                 values={"name": f"Technique {i}"},
                 file=f,
                 created=now,

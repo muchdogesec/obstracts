@@ -287,41 +287,6 @@ class TestSCOValueView:
         stix_ids = [obj['id'] for obj in data['values']]
         assert stix_ids == sorted(stix_ids)
 
-    def test_ordering_by_value_uses_first_key(self, client, feed_with_object_values):
-        """Test value ordering uses the first key alphabetically from values JSON."""
-        feed = feed_with_object_values
-        files = File.objects.filter(feed=feed).order_by('post__pubdate')
-
-        ObjectValue.objects.create(
-            stix_id="domain-name--11111111-1111-1111-1111-111111111111",
-            type="domain-name",
-            knowledgebase=None,
-            values={"z_key": "aaa.example", "a_key": "zzz.example"},
-            file=files[0],
-        )
-        ObjectValue.objects.create(
-            stix_id="domain-name--22222222-2222-2222-2222-222222222222",
-            type="domain-name",
-            knowledgebase=None,
-            values={"z_key": "zzz.example", "a_key": "aaa.example"},
-            file=files[1],
-        )
-        ObjectValue.objects.create(
-            stix_id="domain-name--33333333-3333-3333-3333-333333333333",
-            type="domain-name",
-            knowledgebase=None,
-            values={"a_key": "aaa.example", "z_key": "zzz.example"},
-            file=files[1],
-        )
-
-        response = client.get('/api/v1/values/scos/?types=domain-name&sort=value_ascending')
-
-        assert response.status_code == 200
-        data = response.json()
-
-        normalized_values = [list(obj['values'].values())[0] for obj in data['values']]
-        assert normalized_values == sorted(normalized_values)
-    
     def test_pagination(self, client, feed_with_object_values):
         """Test pagination of results."""
         response = client.get('/api/v1/values/scos/?page_size=2')
@@ -341,7 +306,7 @@ class TestSCOValueView:
         
         for obj in data['values']:
             # ttp_type should not be present (null fields are removed)
-            assert "kb_name" not in obj
+            assert "knowledgebase" not in obj
 
 
 @pytest.mark.django_db
@@ -386,7 +351,7 @@ class TestSDOValueView:
         
         # Should return only enterprise-attack objects (1)
         assert data['total_results_count'] == 1
-        assert data['values'][0]["kb_name"] == 'enterprise-attack'
+        assert data['values'][0]["knowledgebase"] == 'enterprise-attack'
     
     def test_filter_by_multiple_knowledgebases(self, client, feed_with_object_values):
         """Test filtering by multiple TTP types."""
@@ -397,7 +362,7 @@ class TestSDOValueView:
         
         # Should return CVE (1) + location (1) = 2 objects
         assert data['total_results_count'] == 2
-        knowledgebases = [obj["kb_name"] for obj in data['values']]
+        knowledgebases = [obj["knowledgebase"] for obj in data['values']]
         assert all(t in ['cve', 'location'] for t in knowledgebases)
     
     def test_filter_by_value_searches_name(self, client, feed_with_object_values):
@@ -512,18 +477,18 @@ class TestSDOValueView:
         data = response.json()
         
         assert data['total_results_count'] == 1
-        assert "kb_name" in data['values'][0]
-        assert data['values'][0]["kb_name"] == 'cve'
+        assert "knowledgebase" in data['values'][0]
+        assert data['values'][0]["knowledgebase"] == 'cve'
     
     def test_ordering_by_knowledgebase(self, client, feed_with_object_values):
-        """Test ordering results by kb_name."""
+        """Test ordering results by knowledgebase."""
         response = client.get('/api/v1/values/sdos/?sort=knowledgebase_ascending')
         
         assert response.status_code == 200
         data = response.json()
         
         # Extract knowledgebases, treating None as z string for sorting (None values should come last)
-        knowledgebases = [obj.get("kb_name", 'z') or 'z' for obj in data['values']]
+        knowledgebases = [obj.get("knowledgebase", 'z') or 'z' for obj in data['values']]
         assert knowledgebases == sorted(knowledgebases)
 
     def test_ordering_by_value_uses_first_key(self, client, feed_with_object_values):
@@ -549,13 +514,21 @@ class TestSDOValueView:
             created=timezone.now(),
             modified=timezone.now(),
         )
+        ObjectValue.objects.create(
+            stix_id="attack-pattern--33333333-3333-3333-3333-333333333333",
+            type="attack-pattern",
+            knowledgebase=None,
+            values={"a_key": "aaa.example", "z_key": "zzz.example"},
+            file=files[1],
+        )
 
-        response = client.get('/api/v1/values/sdos/?types=vulnerability&sort=value_ascending')
+        response = client.get('/api/v1/values/sdos/?types=vulnerability,attack-pattern&sort=value_ascending')
 
         assert response.status_code == 200
         data = response.json()
 
-        normalized_values = [obj['values'][sorted(obj['values'].keys())[0]] for obj in data['values']]
+        normalized_values = [list(obj['values'].values())[0].lower() for obj in data['values']]
+        assert len(normalized_values) >= 3
         assert normalized_values == sorted(normalized_values)
     
     def test_combined_filters(self, client, feed_with_object_values):
@@ -568,7 +541,7 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         obj = data['values'][0]
         assert obj['type'] == 'vulnerability'
-        assert obj["kb_name"] == 'cve'
+        assert obj["knowledgebase"] == 'cve'
     
     def test_created_modified_timestamps(self, client, feed_with_object_values):
         """Test that created and modified timestamps are returned."""

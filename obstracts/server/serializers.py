@@ -271,10 +271,12 @@ class SimilarPostsSerializer(serializers.Serializer):
     """
     post_id = serializers.UUIDField(help_text="id of the similar post")
     post_title = serializers.CharField(help_text="title of the similar post")
+    pubdate = serializers.DateTimeField(help_text="publication date of the similar post")
     similarity_score = serializers.FloatField(help_text="similarity score to the query post")
     shared_topics = serializers.ListField(
         child=serializers.CharField(), help_text="list of shared topic ids with the query post"
     )
+    feed_id = serializers.UUIDField(help_text="id of the feed containing the similar post")
 
 class PostWithFeedIDSerializer(ObstractsPostSerializer):
     feed_id = serializers.UUIDField(help_text="containing feed's id", required=False)

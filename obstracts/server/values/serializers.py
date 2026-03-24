@@ -6,7 +6,7 @@ class ObjectValueSerializer(serializers.Serializer):
     
     id = serializers.CharField(source='stix_id')
     type = serializers.CharField()
-    kb_name = serializers.CharField(read_only=True, required=False, source='knowledgebase')
+    knowledgebase = serializers.CharField(read_only=True, required=False)
     values = serializers.JSONField(read_only=True)
     matched_posts = serializers.ListField(child=serializers.UUIDField())
     created = serializers.DateTimeField(required=False)
