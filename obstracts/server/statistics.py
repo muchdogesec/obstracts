@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_serializer
 from obstracts.server.models import ObjectValue
 
 
-STATISTICS_TTP_TYPES = {
+STATISTICS_knowledgebaseS = {
     "enterprise-attack": "Top 10 ATT&CK Techniques",
     "cve": "Top 10 CVEs",
     "sector": "Top 10 Sectors",
@@ -19,11 +19,11 @@ STATISTICS_TTP_TYPES = {
 }
 
 
-def _top10(ttp_type: str, since: datetime, until: datetime):
-    """Return top 10 stix_ids for a given ttp_type and time window, ranked by occurrence count."""
+def _top10(knowledgebase: str, since: datetime, until: datetime):
+    """Return top 10 stix_ids for a given knowledgebase and time window, ranked by occurrence count."""
     return (
         ObjectValue.objects.filter(
-            ttp_type=ttp_type,
+            knowledgebase=knowledgebase,
             file__post__pubdate__gte=since,
             file__post__pubdate__lt=until,
         )
@@ -38,13 +38,13 @@ def _build_categories(now: datetime, days: int):
     return [
         {
             "label": label,
-            "ttp_type": ttp_type,
+            "knowledgebase": knowledgebase,
             "results": [
                 {"stix_id": row["stix_id"], "values": row["values"], "count": row["count"]}
-                for row in _top10(ttp_type, since, now)
+                for row in _top10(knowledgebase, since, now)
             ],
         }
-        for ttp_type, label in STATISTICS_TTP_TYPES.items()
+        for knowledgebase, label in STATISTICS_knowledgebaseS.items()
     ]
 
 
@@ -56,7 +56,7 @@ class TrendingEntrySerializer(serializers.Serializer):
 
 class TrendingCategorySerializer(serializers.Serializer):
     label = serializers.CharField(help_text="Human-readable label for this category.")
-    ttp_type = serializers.CharField(help_text="The ttp_type value used to filter ObjectValues.")
+    knowledgebase = serializers.CharField(help_text="The knowledgebase value used to filter ObjectValues.")
     results = TrendingEntrySerializer(many=True)
 
 
