@@ -1,29 +1,26 @@
 import textwrap
-from rest_framework import viewsets, filters, mixins
-from rest_framework.response import Response
+from rest_framework import viewsets, mixins
 from django_filters.rest_framework import (
     DjangoFilterBackend,
     FilterSet,
     CharFilter,
-    MultipleChoiceFilter,
     BooleanFilter,
     BaseCSVFilter,
 )
 from django_filters.fields import ChoiceField
 from obstracts.server import autoschema as api_schema
 
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
-from drf_spectacular.types import OpenApiTypes
-from django.db.models import F, Value, JSONField as DjangoJSONField, Min, Max
-from django.db.models.functions import JSONObject
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from django.db.models import F, Min, Max
 from django.contrib.postgres.aggregates import ArrayAgg
 
 
 from obstracts.server.models import ObjectValue
 from obstracts.server.utils import Pagination
-from obstracts.server.values.values import sco_value_map, sdo_value_map
+from obstracts.server.values.values import sco_value_map, sdo_value_map, KB_TYPES
 from .serializers import ObjectValueSerializer
 from dogesec_commons.utils.ordering import Ordering
+from .filters import NormalizeDict
 
 TTP_TYPES = [
     "cve",
@@ -111,7 +108,7 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
     pagination_class = Pagination("values")
     filter_backends = [DjangoFilterBackend, Ordering]
     filterset_class = ObjectValueFilterSet
-    ordering_fields = ["stix_id", "type", "ttp_type"]
+    ordering_fields = ["stix_id", "type", "knowledgebase", "value"]
     ordering = "stix_id_descending"
     openapi_tags = ["Object Values"]
 
@@ -128,11 +125,12 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
         # Aggregate all post_ids for each unique stix_id
         queryset = queryset.values("stix_id").annotate(
             type=F("type"),
-            ttp_type=F("ttp_type"),
+            knowledgebase=F("knowledgebase"),
             values=F("values"),
             matched_posts=ArrayAgg("file__post_id", distinct=True),
             created=Min("created"),
             modified=Max("modified"),
+            value=NormalizeDict(F("values")),
         )
 
         return queryset
@@ -175,8 +173,8 @@ class SCOValueView(BaseObjectValueView):
     """View for STIX Cyber Observable Objects (SCOs) only."""
 
     allowed_types = list(sco_value_map.keys())
-    ordering_fields = ["values", "stix_id", "type"]
-    ordering = "values_ascending"
+    ordering_fields = ["value", "stix_id", "type"]
+    ordering = "value_ascending"
 
     class filterset_class(ObjectValueFilterSet):
         types = ChoiceCSVFilter(
@@ -225,11 +223,11 @@ class SDOValueView(BaseObjectValueView):
     """View for STIX Domain Objects (SDOs) only."""
 
     allowed_types = list(sdo_value_map.keys())
-    ordering_fields = ["stix_id", "type", "ttp_type", "values", "created", "modified"]
+    ordering_fields = ["stix_id", "type", "knowledgebase", "value", "created", "modified"]
 
     class filterset_class(ObjectValueFilterSet):
-        ttp_types = ChoiceCSVFilter(
-            field_name="ttp_type",
+        knowledgebases = ChoiceCSVFilter(
+            field_name="knowledgebase",
             help_text="Filter results by source of TTP object (cve, cwe, enterprise-attack, mobile-attack, ics-attack, capec, location, disarm, atlas, sector)",
             choices=[(c, c) for c in TTP_TYPES],
         )
@@ -237,4 +235,10 @@ class SDOValueView(BaseObjectValueView):
             field_name="type",
             help_text="Filter the results by one or more STIX Domain Object types",
             choices=[(c, c) for c in sdo_value_map.keys()],
+        )
+
+        kb_type = ChoiceCSVFilter(
+            field_name="values__kb_type",
+            help_text="Filter results by knowledge base type.",
+            choices=[(c, c) for c in KB_TYPES.keys()],
         )

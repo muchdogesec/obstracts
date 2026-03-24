@@ -20,6 +20,27 @@ def external_id(obj):
 def hashes(obj):
     return obj.get("hashes", {})
 
+KB_TYPES = {
+    "Tactic": [dict(type='x-mitre-tactic')],
+    "Analytic": [dict(type='x-mitre-analytic')],
+    "Detection Strategy": [dict(type='x-mitre-detection-strategy')],
+    "Technique": [dict(type='attack-pattern', x_mitre_is_subtechnique=False), dict(type='attack-pattern', x_mitre_is_subtechnique=None)],
+    "Sub-technique": [dict(type='attack-pattern', x_mitre_is_subtechnique=True)],
+    "Mitigation": [dict(type='course-of-action')],
+    "Group": [dict(type='intrusion-set')],
+    "Software": [dict(type='malware'), dict(type='tool')],
+    "Campaign": [dict(type='campaign')],
+    "Data Source": [dict(type='x-mitre-data-source')],
+    "Data Component": [dict(type='x-mitre-data-component')],
+    "Asset": [dict(type='x-mitre-asset')],
+}
+
+def get_kb_type(obj):
+    for form, criteria_list in KB_TYPES.items():
+        for criteria in criteria_list:
+            if all(obj.get(k) == v for k, v in criteria.items()):
+                return form
+    return None
 
 def get_file_values(obj):
     values = {}
@@ -133,9 +154,9 @@ type_value_map = {
 }
 
 
-def get_ttp_type(obj: dict) -> str | None:
+def guess_kb_data(obj: dict) -> str | None:
     """
-    Determine the TTP type of a STIX object based on its properties.
+    Determine the KnowledgeBase type of a STIX object based on its properties.
 
     Returns:
         - "cve" for vulnerability objects
@@ -143,26 +164,26 @@ def get_ttp_type(obj: dict) -> str | None:
         - "location" for location objects
         - "enterprise-attack", "mobile-attack", "ics-attack" based on x_mitre_domains
         - "capec", "atlas", "disarm", "sector" based on external_references source_name
-        - None if not a TTP object
+        - None if not a KnowledgeBase object
     """
     obj_type = obj["type"]
-    ttp_type = None
+    kb_name = None
     extra = {}
 
     # Check for CVE (vulnerability)
     match obj_type:
         case "vulnerability":
-            ttp_type = "cve"
+            kb_name = "cve"
         case "weakness":
-            ttp_type = "cwe"
+            kb_name = "cwe"
         case "location":
-            ttp_type = "location"
+            kb_name = "location"
     # Check for MITRE ATT&CK domains
     x_mitre_domains = obj.get("x_mitre_domains", [])
     if x_mitre_domains:
         domain = x_mitre_domains[0]
         if domain in ["enterprise-attack", "mobile-attack", "ics-attack"]:
-            ttp_type = domain
+            kb_name = domain
 
     # Check external references for other TTP types
     external_refs = obj.get("external_references", [])
@@ -176,10 +197,12 @@ def get_ttp_type(obj: dict) -> str | None:
             "sector2stix": "sector",
         }
         if source_name in ttp_source_name_mapping:
-            ttp_type = ttp_source_name_mapping[source_name]
-    if ttp_type and (ttp_ids := external_id(obj)):
-        extra["ttp_id"] = ttp_ids[0]
-    return ttp_type, extra
+            kb_name = ttp_source_name_mapping[source_name]
+    if kb_name and (kb_ids := external_id(obj)):
+        extra["kb_id"] = kb_ids[0]
+    if kb_name and (kb_type := get_kb_type(obj)):
+        extra["kb_type"] = kb_type    
+    return kb_name, extra
 
 
 def get_visibility(obj: dict) -> str:
@@ -209,12 +232,12 @@ def extract_object_metadata(obj: dict) -> dict:
         A dictionary containing:
         - id: The STIX object ID
         - type: The STIX object type
-        - ttp_type: The TTP type if applicable (None otherwise)
+        - knowledgebase: The source KnowledgeBase type if applicable (None otherwise)
         - values: The extracted values based on the object type
     """
     obj_id = obj["id"]
     obj_type = obj["type"]
-    ttp_type, ttp_extra = get_ttp_type(obj)
+    kb_name, kb_extra = guess_kb_data(obj)
 
     # Get the value configuration for this object type
     type_config = type_value_map.get(obj_type, {})
@@ -223,11 +246,11 @@ def extract_object_metadata(obj: dict) -> dict:
     # Extract values using get_values function
     values = get_values(obj, value_keys) or {}
 
-    values.update(ttp_extra)
+    values.update(kb_extra)
     return {
         "stix_id": obj_id,
         "type": obj_type,
-        "ttp_type": ttp_type,
+        "knowledgebase": kb_name,
         "values": values,
         "modified": obj.get("modified"),
         "created": obj.get("created"),
