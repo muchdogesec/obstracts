@@ -14,7 +14,8 @@ from obstracts.cjob import tasks
 from . import autoschema as api_schema
 from . import models
 from .autoschema import ObstractsAutoSchema
-from .utils import Pagination
+from .utils import Pagination, Ordering
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 class TopicBaseSerializer(serializers.ModelSerializer):
@@ -97,6 +98,10 @@ class TopicView(
     schema = ObstractsAutoSchema()
     pagination_class = Pagination("topics")
     lookup_url_kwarg = "topic_id"
+    filter_backends = [DjangoFilterBackend, Ordering]
+    ordering_fields = ["label", "posts_count"]
+    ordering = "posts_count_descending"
+
 
     class filterset_class(FilterSet):
         label = filters.CharFilter(
