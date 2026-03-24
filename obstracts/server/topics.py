@@ -84,7 +84,17 @@ class TopicBuildSerializer(serializers.Serializer):
     ),
     build_clusters=extend_schema(
         summary="Build topic clusters",
-        description="Create a background job that runs topic clustering from available embeddings.",
+        description=textwrap.dedent(
+            """
+            When a new post is added, the existing clusters remain fixed and the app predicts where a new point would land, instead of changing the clusters every time.
+
+            This will create a background job that runs topic clustering from available embeddings.
+
+            The following parameters are available to pass in the body;
+
+            * `force` (boolean, default `false`), setting to `true` will force a regeneration of clusters across all indexed posts. Note, post topic IDs will change. You should only run as `true` if you want to destroy everything that exists, else `false` will regenerate the clusters but persist old topics.
+            """
+        ),
         request=TopicBuildSerializer,
         responses={201: ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR},
     ),
