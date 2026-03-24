@@ -91,7 +91,7 @@ class TopicBuildSerializer(serializers.Serializer):
 
             The following parameters are available to pass in the body;
 
-            * `force` (boolean, default `false`), setting to `true` will force a regeneration of clusters across all indexed posts. Note, post topic IDs remain fixed, so will not change between runs.
+            * `force` (boolean, default `false`), setting to `true` will force a regeneration of clusters across all indexed posts. Note, post topic IDs will change. You should only run as `true` if you want to destroy everything that exists, else `false` will regenerate the clusters but persist old topics.
             """
         ),
         request=TopicBuildSerializer,
