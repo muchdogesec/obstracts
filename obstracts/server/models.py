@@ -329,6 +329,8 @@ class File(models.Model):
                     "post_title": sfile.post.title,  # or get from related post
                     "similarity_score": similarity_score,
                     "shared_topics": list(Cluster.objects.filter(id__in=shared_topics).values_list("label", flat=True))[:3],
+                    "feed_id": sfile.feed_id,
+                    "pubdate": sfile.post.pubdate,
                 }
             )
         return results
