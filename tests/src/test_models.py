@@ -248,6 +248,52 @@ def test_upload_to(feed_with_posts):
 
 
 @pytest.mark.django_db
+def test_file_create_embedding_skips_non_incident_by_default(feed_with_posts):
+    file = models.File.objects.filter(feed=feed_with_posts).first()
+    file.ai_describes_incident = False
+    file.embedding = None
+    file.save(update_fields=["ai_describes_incident", "embedding"])
+
+    with patch("obstracts.server.models.compute_embedding_for_document") as mock_compute:
+        file.create_embedding(force=False, include_non_incident=False)
+
+    file.refresh_from_db()
+    assert file.embedding is None
+    mock_compute.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_file_create_embedding_includes_non_incident_when_flag_enabled(feed_with_posts):
+    file = models.File.objects.filter(feed=feed_with_posts).first()
+    file.ai_describes_incident = False
+    file.embedding = None
+    file.save(update_fields=["ai_describes_incident", "embedding"])
+
+    with patch("obstracts.server.models.compute_embedding_for_document") as mock_compute:
+        file.create_embedding(force=False, include_non_incident=True)
+
+    file.refresh_from_db()
+    assert file.embedding_id == file.pk
+    assert file.embedding is not None
+    mock_compute.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_file_create_embedding_defaults_to_false_for_non_incident(feed_with_posts):
+    file = models.File.objects.filter(feed=feed_with_posts).first()
+    file.ai_describes_incident = False
+    file.embedding = None
+    file.save(update_fields=["ai_describes_incident", "embedding"])
+
+    with patch("obstracts.server.models.compute_embedding_for_document") as mock_compute:
+        file.create_embedding(force=False)
+
+    file.refresh_from_db()
+    assert file.embedding is None
+    mock_compute.assert_not_called()
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "original_state, new_state, expected_state, has_completion_time",
     [

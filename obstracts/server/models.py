@@ -308,7 +308,7 @@ class File(models.Model):
     def similar_posts(file):
         if not file.embedding:
             return []
-        
+
         files_qs = (
                 File.objects.exclude(pk=file.pk).filter(embedding__isnull=False).select_related("embedding", "post")
             )
@@ -334,16 +334,17 @@ class File(models.Model):
                 }
             )
         return results
-    
-    def generate_embedding_text(self):
-        return create_embedding_text(
-            self.post.title, self.summary, self.ai_incident_summary,
-        )
-    
-    def create_embedding(file, force=False):
-        if force or (file.embedding is None and file.ai_describes_incident):
+
+    def create_embedding(file, force=False, include_non_incident=False):
+        should_embed = file.ai_describes_incident or include_non_incident
+        if force or (file.embedding is None and should_embed):
             logging.info(f"creating embedding for post {file.post_id}")
-            file.embedding, _ = DocumentEmbedding.objects.get_or_create(text=create_embedding_text(file.post.title, file.summary, file.ai_incident_summary), id=file.pk)
+            file.embedding, _ = DocumentEmbedding.objects.get_or_create(
+                text=create_embedding_text(
+                    file.post.title, file.summary, file.ai_incident_summary
+                ),
+                id=file.pk,
+            )
             compute_embedding_for_document(file.embedding)
             logging.info(f"created embedding for post {file.post_id}")
             file.save(update_fields=["embedding"])
