@@ -1,5 +1,5 @@
 import io
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import ANY, MagicMock, patch, call
 import pytest
 import uuid
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
@@ -244,7 +244,7 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
             }
         }
         assert file.markdown_file.read() == b"Generated MD File"
-        mock_create_embedding.assert_called_once_with()
+        mock_create_embedding.assert_called_once_with(include_non_incident=False)
         assert obstracts_job.failed_processes == 5
         assert obstracts_job.processed_items == 13
         process_stream: io.BytesIO = mock_stixify_processor_cls.call_args[0][0]
@@ -264,11 +264,12 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
 @pytest.mark.django_db
 @pytest.mark.parametrize("generate_pdf", [True, False])
 def test_process_post_generate_pdf(
-    obstracts_job, fake_stixifier_processor, generate_pdf
+    obstracts_job, fake_stixifier_processor, generate_pdf, settings
 ):
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
     obstracts_job.profile.generate_pdf = generate_pdf
     obstracts_job.profile.save()
+    settings.CREATE_EMBEDDING_INCLUDE_NON_INCIDENT = True  # ensure consistent test environment
 
     with (
         patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
@@ -284,7 +285,7 @@ def test_process_post_generate_pdf(
         )  # should only be called if generate_pdf == True
         file = models.File.objects.get(pk=post_id)
         assert file.processed == True
-        mock_create_embedding.assert_called_once_with()
+        mock_create_embedding.assert_called_once_with(include_non_incident=True)
 
 
 @pytest.mark.django_db
@@ -329,7 +330,7 @@ def test_process_post_generate_pdf_on_reprocess(
         )  # should NOT be called on reprocess if pdf already exists
         file.refresh_from_db()
         assert file.processed == True
-        mock_create_embedding.assert_called_once_with()
+        mock_create_embedding.assert_called_once_with(include_non_incident=False)
         obstracts_job_reprocess.refresh_from_db()
         assert obstracts_job_reprocess.failed_processes == 0
 
@@ -375,7 +376,7 @@ def test_reprocess_post__skip_extraction__generates_md(
         process_post.si(obstracts_job_reprocess.id, post_id).delay()
         obstracts_job_reprocess.refresh_from_db()
         fake_stixifier_processor.process.assert_called_once()
-        mock_create_embedding.assert_called_once_with()
+        mock_create_embedding.assert_called_once_with(include_non_incident=False)
         assert obstracts_job_reprocess.failed_processes == 0
 
 
@@ -607,7 +608,7 @@ def test_run_topic_embeddings_job_success(feed_with_posts):
 
     job.refresh_from_db()
     assert mock_build.call_count == 3
-    assert job.processed_items == 0
+    assert job.processed_items == 3
     assert job.failed_processes == 0
     assert job.state == models.JobState.PROCESSED
 
@@ -638,7 +639,7 @@ def test_run_topic_embeddings_job_force_includes_existing(feed_with_posts):
 
     job.refresh_from_db()
     assert mock_build.call_count == 4
-    assert job.processed_items == 0
+    assert job.processed_items == 4
     assert job.state == models.JobState.PROCESSED
 
 
@@ -658,6 +659,60 @@ def test_run_topic_embeddings_job_cancelled(feed_with_posts):
 
     job.refresh_from_db()
     assert job.state == models.JobState.CANCELLED
+
+
+@pytest.mark.django_db
+def test_run_topic_embeddings_job_include_non_incident_flag(feed_with_posts):
+    files = list(models.File.objects.filter(feed=feed_with_posts).order_by("post_id"))
+    for i, f in enumerate(files):
+        f.ai_describes_incident = i < 2
+        f.embedding = None
+        f.save(update_fields=["ai_describes_incident", "embedding"])
+
+    job_without_flag = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_EMBEDDINGS,
+        state=models.JobState.PROCESSING,
+    )
+    with patch("obstracts.cjob.tasks._build_topic_embedding_for_post", return_value=("processed", None)) as mock_build:
+        run_topic_embeddings_job(job_without_flag.id, force=False, include_non_incident=False)
+
+    assert mock_build.call_count == 2 # should only process the 2 files that describe an incident
+    mock_build.assert_has_calls(
+        [call(ANY, False, False), call(ANY, False, False)], any_order=True
+    )  # should pass False for include_non_incident
+    mock_build.reset_mock()
+
+    job_with_flag = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_EMBEDDINGS,
+        state=models.JobState.PROCESSING,
+    )
+    with patch("obstracts.server.models.File.create_embedding") as mock_create_embedding:
+        run_topic_embeddings_job(job_with_flag.id, force=False, include_non_incident=True)
+
+    assert mock_create_embedding.call_count == 4
+    mock_create_embedding.assert_has_calls([call(force=False, include_non_incident=True)] * 4, any_order=True)  # should default to False if include_non_incident is not passed
+
+
+@pytest.mark.django_db
+def test_run_topic_embeddings_job_include_non_incident_defaults_false(feed_with_posts):
+    files = list(models.File.objects.filter(feed=feed_with_posts).order_by("post_id"))
+    for i, f in enumerate(files):
+        f.ai_describes_incident = i == 0
+        f.embedding = None
+        f.save(update_fields=["ai_describes_incident", "embedding"])
+
+    job = models.Job.objects.create(
+        id=uuid.uuid4(),
+        type=models.JobType.BUILD_EMBEDDINGS,
+        state=models.JobState.PROCESSING,
+    )
+    with patch("obstracts.cjob.tasks._build_topic_embedding_for_post", return_value=("processed", None)) as mock_build:
+        run_topic_embeddings_job(job.id, force=False)
+
+    assert mock_build.call_count == 1
+    mock_build.assert_called_with(ANY, ANY, False)  # should default to False if include_non_incident is not passed
 
 
 @pytest.mark.django_db

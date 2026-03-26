@@ -22,10 +22,19 @@ class Command(BaseCommand):
             default=12,
             help="Number of worker threads to use for embedding creation.",
         )
+        parser.add_argument(
+            "--include-non-incident",
+            action="store_true",
+            help=(
+                "Also include files where ai_describes_incident is false. "
+                "This will create embeddings for all files, which may be desirable for broader topic classification but will increase processing time and resource usage."
+            ),
+        )
 
     def handle(self, *args, **options):
         force = options["force"]
         workers = options["workers"]
+        include_non_incident = options["include_non_incident"]
 
         job = models.Job.objects.create(
             id=uuid.uuid4(),
@@ -34,7 +43,12 @@ class Command(BaseCommand):
         )
 
         self.stdout.write(f"Running embedding build for job {job.id}...")
-        cjob_tasks.run_topic_embeddings_job(job.id, force=force, workers=workers)
+        cjob_tasks.run_topic_embeddings_job(
+            job.id,
+            force=force,
+            workers=workers,
+            include_non_incident=include_non_incident,
+        )
         job.refresh_from_db()
         self.stdout.write(
             self.style.SUCCESS(

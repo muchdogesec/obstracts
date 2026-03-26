@@ -196,30 +196,36 @@ def update_vulnerabilities(job_id):
     job.update_state(state)
 
 
-def _build_topic_embedding_for_post(post_id, force=False):
+def _build_topic_embedding_for_post(post_file, force=False, include_non_incident=False):
     try:
-        post_file = models.File.objects.select_related("post").get(pk=post_id)
-        post_file.create_embedding(force=force)
+        post_file.create_embedding(
+            force=force,
+            include_non_incident=include_non_incident,
+        )
         if post_file.embedding_id:
             return "processed", None
-        return "failed", f"embedding not created for post {post_id}"
+        return "failed", f"embedding not created for post {post_file.post_id}"
     except Exception:
-        logging.exception("embedding build failed for post %s", post_id)
-        return "failed", f"embedding build failed for post {post_id}"
+        logging.exception("embedding build failed for post %s", post_file.post_id)
+        return "failed", f"embedding build failed for post {post_file.post_id}"
 
 
-def run_topic_embeddings_job(job_id, force=False, workers=settings.CLASSIFIER_CONCURRENCY):
+def run_topic_embeddings_job(
+    job_id,
+    force=False,
+    workers=settings.CLASSIFIER_CONCURRENCY,
+    include_non_incident=False,
+):
     job = models.Job.objects.get(pk=job_id)
     try:
-        qs = models.File.objects.filter(
-            processed=True,
-            ai_describes_incident=True,
-        )
+        qs = models.File.objects.filter(processed=True)
+        if not include_non_incident:
+            qs = qs.filter(ai_describes_incident=True)
+
         if not force:
             qs = qs.filter(embedding__isnull=True)
 
-        post_ids = list(qs.values_list("post_id", flat=True))
-        if not post_ids:
+        if not qs.count():
             job.update_state(models.JobState.PROCESSED)
             return
 
@@ -227,8 +233,13 @@ def run_topic_embeddings_job(job_id, force=False, workers=settings.CLASSIFIER_CO
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(_build_topic_embedding_for_post, post_id, force): post_id
-                for post_id in post_ids
+                pool.submit(
+                    _build_topic_embedding_for_post,
+                    post_file,
+                    force,
+                    include_non_incident,
+                ): post_file.pk
+                for post_file in qs
             }
             for future in as_completed(futures):
                 status, msg = future.result()
@@ -241,6 +252,9 @@ def run_topic_embeddings_job(job_id, force=False, workers=settings.CLASSIFIER_CO
                     job.failed_processes += 1
                     if msg:
                         job.errors.append(msg)
+                else:
+                    logging.error("unexpected status %s for post %s", status, futures[future])
+                job.save(update_fields=["errors", "processed_items", "failed_processes"])
         if cancelled:
             job.update_state(models.JobState.CANCELLED)
         elif job.failed_processes and job.processed_items == 0:
@@ -249,8 +263,8 @@ def run_topic_embeddings_job(job_id, force=False, workers=settings.CLASSIFIER_CO
             job.update_state(models.JobState.PROCESSED)
     except Exception as e:
         logging.exception("topic embedding task failed")
-        job.failed_processes += 1
         job.errors.append(str(e))
+        job.save(update_fields=["errors"])
         job.update_state(models.JobState.PROCESS_FAILED)
     finally:
         job.save(update_fields=["errors", "processed_items", "failed_processes"])
@@ -394,7 +408,7 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
                 )
 
         file.set_txt2stix_data(processor.txt2stix_data)
-        file.create_embedding()
+        file.create_embedding(include_non_incident=settings.CREATE_EMBEDDING_INCLUDE_NON_INCIDENT)
 
         file.processed = True
         file.save(
