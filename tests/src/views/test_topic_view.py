@@ -1,12 +1,15 @@
+from datetime import datetime
 import uuid
 from unittest.mock import patch
 
 import pytest
+from pytz import UTC
 
 from obstracts.classifier.models import Cluster, DocumentEmbedding
 from obstracts.server.models import File
 from obstracts.server.topics import TopicDetailSerializer, TopicSerializer, TopicView
 from obstracts.server import models as ob_models
+from history4feed.app import models as h4f_models
 from dogesec_commons.utils import Pagination
 
 from tests.utils import Transport
@@ -197,6 +200,35 @@ def test_retrieve_topic_uses_detail_serializer(client, posts_with_clusters, api_
         Transport.get_st_response(resp)
     )
 
+@pytest.mark.django_db
+def test_retrieve_topic__limits_posts_to_10(client, posts_with_clusters, api_schema):
+    # Add 15 more posts to cluster1 to test the limit of 10 in the serializer
+    for i in range(15):
+        post = h4f_models.Post.objects.create(
+            feed_id=posts_with_clusters["feed"].id,
+            title=f"Extra Post {i+1}",
+            pubdate=datetime(2020, 1, 4, tzinfo=UTC),
+            link=f"https://example.blog/test_retrieve/{i}",
+            description="The execution was so beautiful and royal.",
+            is_full_text=True,
+        )
+        file = File.objects.create(
+            post_id=post.id,
+        )
+        emb = DocumentEmbedding.objects.create(
+            id=post.id, text=post.title + " text", embedding=[0.0] * 512
+        )
+        file.embedding = emb
+        file.save(update_fields=["embedding"])
+        posts_with_clusters["cluster1"].members.add(emb)
+
+    resp = client.get(f"/api/v1/topics/{CLUSTER_1_ID}/")
+    assert resp.status_code == 200
+    # Should still only return 10 posts due to the limit in get_posts()
+    assert len(resp.data["posts"]) == 10
+    api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
 
 @pytest.mark.django_db
 def test_retrieve_topic_not_found(client, api_schema):

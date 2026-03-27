@@ -47,7 +47,7 @@ class TopicDetailSerializer(TopicSerializer):
             models.File.objects.filter(embedding__in=obj.members.all())
             .select_related("post")
             .distinct()
-        )
+        )[:10]  # Limit to 10 posts for performance; adjust as needed
         return TopicPostSerializer(files, many=True).data
 
 
