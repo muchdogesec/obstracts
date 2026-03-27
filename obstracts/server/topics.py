@@ -39,7 +39,7 @@ class TopicPostSerializer(serializers.ModelSerializer):
 
 
 class TopicDetailSerializer(TopicSerializer):
-    posts = serializers.SerializerMethodField()
+    posts = serializers.SerializerMethodField(help_text="List of posts that belong to this topic. Limited to 10 for performance reasons.")
 
     @extend_schema_field(TopicPostSerializer(many=True))
     def get_posts(self, obj):
