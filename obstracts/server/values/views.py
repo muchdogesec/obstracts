@@ -236,9 +236,13 @@ class SDOValueView(BaseObjectValueView):
             help_text="Filter the results by one or more STIX Domain Object types",
             choices=[(c, c) for c in sdo_value_map.keys()],
         )
-
         kb_type = ChoiceCSVFilter(
             field_name="values__kb_type",
             help_text="Filter results by knowledge base type.",
             choices=[(c, c) for c in KB_TYPES.keys()],
+        )
+        kb_id = BaseCSVFilter(
+            field_name="values__kb_id",
+            lookup_expr="in",
+            help_text="Filter results by knowledge base ID. Can be used in conjunction with kb_type. For example, `CVE-2021-44228` for kb_type `cve`.",
         )
