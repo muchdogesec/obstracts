@@ -39,7 +39,7 @@ class TopicPostSerializer(serializers.ModelSerializer):
 
 
 class TopicDetailSerializer(TopicSerializer):
-    posts = serializers.SerializerMethodField()
+    posts = serializers.SerializerMethodField(help_text="List of posts that belong to this topic. Limited to 10 for performance reasons.")
 
     @extend_schema_field(TopicPostSerializer(many=True))
     def get_posts(self, obj):
@@ -47,7 +47,7 @@ class TopicDetailSerializer(TopicSerializer):
             models.File.objects.filter(embedding__in=obj.members.all())
             .select_related("post")
             .distinct()
-        )
+        )[:10]  # Limit to 10 posts for performance; adjust as needed
         return TopicPostSerializer(files, many=True).data
 
 
