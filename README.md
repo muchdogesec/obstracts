@@ -72,7 +72,7 @@ sudo docker compose up
 Obstracts can be used to cluster posts together around topics. To do this, you must build the embeddings;
 
 ```shell
-python management.py build_embeddings
+python manage.py build_embeddings
 ```
 
 Now use the Obstracts API and run `POST v1/topics/build_clusters` with `force` = `false` to generate your first clusters. You will need indexed posts and the `CLASSIFIER_*` env files must configured in a way that match the number of posts and the types of topics being discussed in them (e.g. if you have a high min cluster size, but wide range of topics, few clusters might end up being created).
