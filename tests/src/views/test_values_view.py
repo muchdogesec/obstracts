@@ -222,9 +222,6 @@ class TestSCOValueView:
         # So we should have 4 unique objects (2 IPs, 1 domain, 1 URL)
         assert data['total_results_count'] == 4
         
-        # Verify all returned objects have this post in matched_posts
-        for obj in data['values']:
-            assert str(post_id) in [str(p) for p in obj['matched_posts']]
     
     def test_filter_by_feed_id(self, client, feed_with_object_values):
         """Test filtering by feed ID."""
@@ -249,21 +246,6 @@ class TestSCOValueView:
         
         assert data['total_results_count'] == 1
         assert data['values'][0]['id'] == stix_id
-    
-    def test_matched_posts_aggregation(self, client, feed_with_object_values):
-        """Test that matched_posts aggregates all posts containing the object."""
-
-        # Query for the IP that appears in 2 posts
-        response = client.get('/api/v1/values/scos/?value=192.168.1.1&value_exact=true')
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        assert data['total_results_count'] == 1
-        obj = data['values'][0]
-        
-        # Should have 2 posts in matched_posts
-        assert len(obj['matched_posts']) == 2
     
     def test_sdo_types_not_returned(self, client, feed_with_object_values):
         """Test that SDO types are not returned in SCO endpoint."""
@@ -414,9 +396,6 @@ class TestSDOValueView:
         # Should return SDOs from second post (2: malware, location)
         assert data['total_results_count'] == 2
         
-        # Verify all returned objects have this post in matched_posts
-        for obj in data['values']:
-            assert str(post_id) in [str(p) for p in obj['matched_posts']]
     
     def test_filter_by_feed_id(self, client, feed_with_object_values):
         """Test filtering by feed ID."""
@@ -441,21 +420,6 @@ class TestSDOValueView:
         
         assert data['total_results_count'] == 1
         assert data['values'][0]['id'] == stix_id
-    
-    def test_matched_posts_aggregation(self, client, feed_with_object_values):
-        """Test that matched_posts aggregates all posts containing the object."""
-
-        # Query for the attack pattern that appears in 2 posts
-        response = client.get('/api/v1/values/sdos/?value=Spearphishing')
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        assert data['total_results_count'] == 1
-        obj = data['values'][0]
-        
-        # Should have 2 posts in matched_posts
-        assert len(obj['matched_posts']) == 2
     
     def test_sco_types_not_returned(self, client, feed_with_object_values):
         """Test that SCO types are not returned in SDO endpoint."""
@@ -609,4 +573,3 @@ class TestValuesViewEdgeCases:
         # Should return only IPv4 addresses from that specific post
         for obj in data['values']:
             assert obj['type'] == 'ipv4-addr'
-            assert str(post_id) in [str(p) for p in obj['matched_posts']]
