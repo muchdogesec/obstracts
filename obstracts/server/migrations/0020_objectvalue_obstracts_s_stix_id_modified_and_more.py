@@ -7,7 +7,7 @@ import obstracts.server.values.filters
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('obstracts', '0020_value_related_indexes'),
+        ('obstracts', '0019_value_related_indexes'),
     ]
 
     operations = [
