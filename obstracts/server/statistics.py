@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_serializer
 from obstracts.server.models import ObjectValue
+from obstracts.server import autoschema as api_schema
 
 
 STATISTICS_KNOWLEDGEBASES = {
@@ -106,7 +107,7 @@ class StatisticsView(viewsets.ViewSet):
             * **CAPECs** (`capec`)
             """
         ),
-        responses={200: StatisticsResponseSerializer},
+        responses={200: StatisticsResponseSerializer, 400: api_schema.DEFAULT_400_ERROR},
         parameters=[
             OpenApiParameter(
                 name="knowledgebase",
