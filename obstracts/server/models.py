@@ -393,7 +393,7 @@ class ObjectValue(models.Model):
             models.Index(fields=['stix_id', 'modified'], name='obstracts_s_stix_id_modified'),
             models.Index(fields=['type', 'stix_id'], name='obstracts_ov_type_stix_idx'),
             models.Index(fields=['knowledgebase', 'stix_id'], name='obstracts_ov_kbase_stix_idx'),
-            models.Index(DictFirstValue('values'), name='obstracts_ov_values_first_value_idx'),
+            models.Index(DictFirstValue('values'), name='obstracts_ov_first_value_idx'),
         ]
         unique_together = [['stix_id', 'file']]
 

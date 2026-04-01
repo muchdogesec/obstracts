@@ -8,7 +8,7 @@ from django.contrib.postgres.operations import TrigramExtension
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('obstracts', '0019_objectvalue_obstracts_s_stix_id_modified_and_more'),
+        ('obstracts', '0018_rename_ttp_type_objectvalue_knowledgebase'),
     ]
 
     operations = [
