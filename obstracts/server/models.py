@@ -28,6 +28,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from obstracts.classifier.models import Cluster, DocumentEmbedding
 from obstracts.classifier.tasks import create_embedding_text, compute_embedding_for_document
+from obstracts.server.values.filters import DictFirstValue
 
 # Create your models here.
 if typing.TYPE_CHECKING:
@@ -389,6 +390,10 @@ class ObjectValue(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['stix_id', 'type'], name='obstracts_s_stix_id_type_idx'),
+            models.Index(fields=['stix_id', 'modified'], name='obstracts_s_stix_id_modified'),
+            models.Index(fields=['type', 'stix_id'], name='obstracts_ov_type_stix_idx'),
+            models.Index(fields=['knowledgebase', 'stix_id'], name='obstracts_ov_kbase_stix_idx'),
+            models.Index(DictFirstValue('values'), name='obstracts_ov_first_value_idx'),
         ]
         unique_together = [['stix_id', 'file']]
 
