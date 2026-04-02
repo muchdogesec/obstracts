@@ -5,16 +5,31 @@ These tests verify the functionality of the /api/v1/values/scos/ and /api/v1/val
 endpoints which provide efficient querying of STIX object values extracted from posts.
 """
 
+from unittest.mock import patch
+
 import pytest
 from django.utils import timezone
 from obstracts.server.models import ObjectValue, File
-from history4feed.app import models as h4f_models
 from tests.conftest import make_feed
-import uuid
-
 
 @pytest.fixture
-def feed_with_object_values(stixifier_profile):
+def override_save_method():
+    """Override the Celery task to save ObjectValues to the database immediately for testing."""
+    original_save = ObjectValue.save
+    with patch.object(ObjectValue, 'save', autospec=True) as mock_save:
+        def new_save(self, *args, **kwargs):
+            if not self.is_dupe:
+                existing = ObjectValue.objects.filter(stix_id=self.stix_id)
+                if self.pk:
+                    existing = existing.exclude(pk=self.pk)
+                self.is_dupe = existing.exists()
+            return original_save(self, *args, **kwargs)
+        
+        mock_save.side_effect = new_save
+        yield
+
+@pytest.fixture
+def feed_with_object_values(stixifier_profile, override_save_method):
     """Create a feed with posts that have ObjectValue entries."""
     feed = make_feed("6ca6ce37-1c69-4a81-8490-89c91b57e557", stixifier_profile)
     
