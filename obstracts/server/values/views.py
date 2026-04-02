@@ -128,19 +128,11 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
 
         from django.db.models import F, Window
         from django.db.models.functions import RowNumber
-        # Aggregate all post_ids for each unique stix_id
-        queryset = queryset.annotate(
-            rn=Window(
-                expression=RowNumber(),
-                partition_by=[F("stix_id")],
-                order_by=F("stix_id").desc(),
-            )
-        ).filter(
-            rn=1
+        queryset = queryset.filter(
+            is_dupe=False
         ).annotate(
             value=DictFirstValue(F("values")),
         )
-
         return queryset
 
 

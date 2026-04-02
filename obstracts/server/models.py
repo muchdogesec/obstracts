@@ -386,6 +386,7 @@ class ObjectValue(models.Model):
     file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='object_values')
     created = models.DateTimeField(default=None, null=True)
     modified = models.DateTimeField(default=None, null=True)
+    is_dupe = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         indexes = [
@@ -399,7 +400,6 @@ class ObjectValue(models.Model):
 
     def __str__(self):
         return f'ObjectValue(stix_id={self.stix_id}, knowledgebase={self.knowledgebase})'
-
 
 class Job(models.Model):
     id = models.UUIDField(primary_key=True, editable=False)
