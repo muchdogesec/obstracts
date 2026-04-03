@@ -28,6 +28,7 @@ def override_save_method():
         mock_save.side_effect = new_save
         yield
 
+
 @pytest.fixture
 def feed_with_object_values(stixifier_profile, override_save_method):
     """Create a feed with posts that have ObjectValue entries."""
@@ -99,7 +100,7 @@ def feed_with_object_values(stixifier_profile, override_save_method):
         modified=timezone.now(),
     )
     
-    ObjectValue.objects.create(
+    a = ObjectValue.objects.create(
         stix_id="attack-pattern--0f4a0c76-ab2d-4cb0-85d3-3f0efb8cba4d",
         type="attack-pattern",
         knowledgebase="enterprise-attack",
@@ -274,15 +275,16 @@ class TestSCOValueView:
         for obj in data['values']:
             assert obj['type'] not in sdo_types
     
-    def test_ordering_by_stix_id(self, client, feed_with_object_values):
-        """Test ordering results by stix_id."""
-        response = client.get('/api/v1/values/scos/?sort=stix_id_ascending')
+    def test_ordering_by_value(self, client, feed_with_object_values):
+        """Test ordering results by value."""
+        response = client.get('/api/v1/values/scos/?sort=value_ascending')
         
         assert response.status_code == 200
         data = response.json()
         
-        stix_ids = [obj['id'] for obj in data['values']]
-        assert stix_ids == sorted(stix_ids)
+        print(data['values'])
+        values = [list(obj['values'].values())[0] for obj in data['values']]
+        assert values == sorted(values)
 
     def test_pagination(self, client, feed_with_object_values):
         """Test pagination of results."""
@@ -459,16 +461,16 @@ class TestSDOValueView:
         assert "knowledgebase" in data['values'][0]
         assert data['values'][0]["knowledgebase"] == 'cve'
     
-    def test_ordering_by_knowledgebase(self, client, feed_with_object_values):
-        """Test ordering results by knowledgebase."""
-        response = client.get('/api/v1/values/sdos/?sort=knowledgebase_ascending')
+    def test_ordering_by_created(self, client, feed_with_object_values):
+        """Test ordering results by created timestamp."""
+        response = client.get('/api/v1/values/sdos/?sort=created_ascending')
         
         assert response.status_code == 200
         data = response.json()
         
-        # Extract knowledgebases, treating None as z string for sorting (None values should come last)
-        knowledgebases = [obj.get("knowledgebase", 'z') or 'z' for obj in data['values']]
-        assert knowledgebases == sorted(knowledgebases)
+        # Extract created timestamps, treating None as a future date string for sorting (None values should come last)
+        created_timestamps = [obj.get("created") or '3000-01-01T00:00:00Z' for obj in data['values']]
+        assert created_timestamps == sorted(created_timestamps)
 
     def test_ordering_by_value_uses_first_key(self, client, feed_with_object_values):
         """Test value ordering uses the first key alphabetically from values JSON."""
