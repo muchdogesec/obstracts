@@ -289,19 +289,26 @@ def process_uploaded_objects_hook(instance, collection_name, objects, **kwargs):
         object_values_to_create.append(
             ObjectValue(
                 file_id=post_uuid,
-                **metadata
+                **metadata,
+                is_dupe=False,  # will be updated later in a deduplication step
             )
         )
 
     # Bulk create with ignore_conflicts to handle duplicates
     if object_values_to_create:
-        created_count = len(
-            ObjectValue.objects.bulk_create(
-                object_values_to_create, ignore_conflicts=True
-            )
+        created = ObjectValue.objects.bulk_create(
+            object_values_to_create, ignore_conflicts=True
         )
+        new_dupes = ObjectValue.objects.filter(
+            stix_id__in=[obj.stix_id for obj in created],
+            is_dupe=False,
+        ).exclude(
+            file_id__in=[obj.file_id for obj in created],
+        )
+        new_dupes.update(is_dupe=True)
         logging.info(
-            f"Created {created_count} ObjectValue records for {len(object_values_to_create)} objects"
+            f"Created {len(created)} ObjectValue records for {len(object_values_to_create)} objects"
         )
+        logging.info(f"Marked {new_dupes.count()} ObjectValue records as duplicates")
     else:
         logging.info("No ObjectValue records to create")

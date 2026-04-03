@@ -83,9 +83,9 @@ class ObjectValueFilterSet(FilterSet):
         value_exact = self.data.get("value_exact", "false").lower() == "true"
 
         if value_exact:
-            return queryset.filter(values__jsonb_vexact=value)
+            return queryset.filter(values_list__contains=[value.lower()])
         else:
-            return queryset.filter(values__jsonb_vcontains=value)
+            return queryset.filter(values_concat__icontains=value.lower())
 
     def filter_noop(self, queryset, name, value):
         """
@@ -109,9 +109,12 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = ObjectValue.objects.all()
     serializer_class = ObjectValueSerializer
     pagination_class = Pagination("values")
-    filter_backends = [DjangoFilterBackend, Ordering]
+    filter_backends = [
+        DjangoFilterBackend,
+        Ordering
+    ]
     filterset_class = ObjectValueFilterSet
-    ordering_fields = ["stix_id", "type", "knowledgebase", "value"]
+    ordering_fields = ["value"]
     ordering = "stix_id_descending"
     openapi_tags = ["Object Values"]
 
@@ -126,21 +129,12 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
             queryset = queryset.filter(type__in=self.allowed_types)
 
 
-        from django.db.models import F, Window
-        from django.db.models.functions import RowNumber
-        # Aggregate all post_ids for each unique stix_id
-        queryset = queryset.annotate(
-            rn=Window(
-                expression=RowNumber(),
-                partition_by=[F("stix_id")],
-                order_by=F("stix_id").desc(),
-            )
-        ).filter(
-            rn=1
-        ).annotate(
-            value=DictFirstValue(F("values")),
-        )
 
+        from django.db.models import F
+        queryset = queryset.alias(value=F('values_concat'))
+        queryset = queryset.filter(
+            is_dupe=False
+        )
         return queryset
 
 
@@ -181,7 +175,7 @@ class SCOValueView(BaseObjectValueView):
     """View for STIX Cyber Observable Objects (SCOs) only."""
 
     allowed_types = list(sco_value_map.keys())
-    ordering_fields = ["value", "stix_id", "type"]
+    ordering_fields = ["value"]
     ordering = "value_ascending"
 
     class filterset_class(ObjectValueFilterSet):
@@ -231,7 +225,8 @@ class SDOValueView(BaseObjectValueView):
     """View for STIX Domain Objects (SDOs) only."""
 
     allowed_types = list(sdo_value_map.keys())
-    ordering_fields = ["stix_id", "type", "knowledgebase", "value", "created", "modified"]
+    ordering_fields = ["value", "created", "modified"]
+    ordering = "modified_descending"
 
     class filterset_class(ObjectValueFilterSet):
         knowledgebases = ChoiceCSVFilter(
