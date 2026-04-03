@@ -13,6 +13,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RemoveField(
+            model_name='objectvalue',
+            name='value',
+        ),
         migrations.RemoveIndex(
             model_name='objectvalue',
             name='obstracts_s_stix_id_type_idx',
@@ -32,10 +36,6 @@ class Migration(migrations.Migration):
         migrations.RemoveIndex(
             model_name='objectvalue',
             name='obstracts_ov_first_value_idx',
-        ),
-        migrations.RemoveField(
-            model_name='objectvalue',
-            name='value',
         ),
         migrations.AddField(
             model_name='objectvalue',

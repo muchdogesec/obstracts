@@ -14,4 +14,10 @@ class Migration(migrations.Migration):
             name='is_dupe',
             field=models.BooleanField(db_index=True, default=False),
         ),
+
+        migrations.AddField(
+            model_name='objectvalue',
+            name='value',
+            field=models.CharField(blank=True, max_length=64, null=True),
+        ),
     ]
