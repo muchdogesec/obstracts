@@ -85,7 +85,7 @@ class ObjectValueFilterSet(FilterSet):
         if value_exact:
             return queryset.filter(values_list__contains=[value.lower()])
         else:
-            return queryset.filter(values_concat__icontains=value.lower())
+            return queryset.filter(values_concat__contains=value.lower())
 
     def filter_noop(self, queryset, name, value):
         """

@@ -7,7 +7,7 @@ import typing
 from django.conf import settings
 from django.db import models
 from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Upper
+from django.db.models.functions import Lower, Upper
 from django.utils.text import slugify
 from pgvector.django import CosineDistance
 import txt2stix, txt2stix.extractions
@@ -391,7 +391,7 @@ class ObjectValue(models.Model):
     modified = models.DateTimeField(default=None, null=True)
     is_dupe = models.BooleanField(default=False)
     values_concat = models.GeneratedField(
-        expression=models.Func(models.F("values"), function="jsonb_values_concat"),
+        expression=Lower(models.Func(models.F("values"), function="jsonb_values_concat")),
         output_field=models.TextField(),
         db_persist=True,
         null=True, blank=True,
