@@ -11,7 +11,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
+        migrations.RemoveField(
+            model_name='objectvalue',
+            name='values_concat',
+        ),
+        migrations.AddField(
             model_name='objectvalue',
             name='values_concat',
             field=models.GeneratedField(db_persist=True, expression=django.db.models.functions.text.Lower(models.Func(models.F('values'), function='jsonb_values_concat')), null=True, output_field=models.TextField()),
