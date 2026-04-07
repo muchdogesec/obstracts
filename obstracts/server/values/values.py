@@ -44,8 +44,9 @@ def get_kb_type(obj):
 
 def get_file_values(obj):
     values = {}
-    if "name" in obj:
-        values["name"] = obj["name"]
+    for k in ["name", "mime_type"]:
+        if k in obj:
+            values[k] = obj[k]
     if "hashes" in obj:
         values.update({k.lower().replace("-", ""): v for k, v in obj["hashes"].items()})
     return values
@@ -59,6 +60,15 @@ def get_location_values(obj):
         source_name = ext_ref.get("source_name", "")
         if source_name in ["type", "alpha-3"]:
             values[source_name] = ext_ref['external_id']
+    return values
+
+def get_cert_values(obj):
+    values = {}
+    for key in ["subject", "issuer", "serial_number", 'signature_algorithm', 'validity_not_before', 'validity_not_after']:
+        if key in obj:
+            values[key] = obj[key]
+    if 'hashes' in obj:
+        values.update({k.lower().replace("-", ""): v for k, v in obj["hashes"].items()})
     return values
 
 
@@ -86,20 +96,20 @@ sco_value_map = {
     "autonomous-system": dict(values=["number", "name"]),
     "directory": dict(values=["path"]),
     "domain-name": dict(values=["value"]),
-    "email-addr": dict(values=["value"]),
+    "email-addr": dict(values=["value", "display_name"]),
     "email-message": dict(values=["subject", "body", "message_id"]),
     "file": dict(values=get_file_values),
     "ipv4-addr": dict(values=["value"]),
     "ipv6-addr": dict(values=["value"]),
     "mac-addr": dict(values=["value"]),
     "mutex": dict(values=["name"]),
-    "network-traffic": dict(values=["protocols"]),
+    "network-traffic": dict(values=["protocols", "src_port", "dst_port", "src_packets", "dst_packets", "src_byte_count", "dst_byte_count"]),
     "process": dict(values=["command_line", "cwd"]),
-    "software": dict(values=["name", "cpe", "vendor", "version"]),
+    "software": dict(values=["name", "cpe", "vendor", "version", "swid"]),
     "url": dict(values=["value"]),
-    "user-account": dict(values=["user_id", "account_login", "account_type"]),
-    "windows-registry-key": dict(values=["key"]),
-    "x509-certificate": dict(values=["subject", "issuer", "serial_number"]),
+    "user-account": dict(values=["display_name", "account_login", "account_type", "user_id"]),
+    "windows-registry-key": dict(values=["key", "values"]),
+    "x509-certificate": dict(values=get_cert_values),
     **s2e_sco_map,
 }
 s2e_sdo_map = {
