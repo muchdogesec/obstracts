@@ -5,16 +5,32 @@ These tests verify the functionality of the /api/v1/values/scos/ and /api/v1/val
 endpoints which provide efficient querying of STIX object values extracted from posts.
 """
 
+from unittest.mock import patch
+
 import pytest
 from django.utils import timezone
 from obstracts.server.models import ObjectValue, File
-from history4feed.app import models as h4f_models
 from tests.conftest import make_feed
-import uuid
+
+@pytest.fixture
+def override_save_method():
+    """Override the Celery task to save ObjectValues to the database immediately for testing."""
+    original_save = ObjectValue.save
+    with patch.object(ObjectValue, 'save', autospec=True) as mock_save:
+        def new_save(self, *args, **kwargs):
+            if not self.is_dupe:
+                existing = ObjectValue.objects.filter(stix_id=self.stix_id)
+                if self.pk:
+                    existing = existing.exclude(pk=self.pk)
+                self.is_dupe = existing.exists()
+            return original_save(self, *args, **kwargs)
+        
+        mock_save.side_effect = new_save
+        yield
 
 
 @pytest.fixture
-def feed_with_object_values(stixifier_profile):
+def feed_with_object_values(stixifier_profile, override_save_method):
     """Create a feed with posts that have ObjectValue entries."""
     feed = make_feed("6ca6ce37-1c69-4a81-8490-89c91b57e557", stixifier_profile)
     
@@ -84,7 +100,7 @@ def feed_with_object_values(stixifier_profile):
         modified=timezone.now(),
     )
     
-    ObjectValue.objects.create(
+    a = ObjectValue.objects.create(
         stix_id="attack-pattern--0f4a0c76-ab2d-4cb0-85d3-3f0efb8cba4d",
         type="attack-pattern",
         knowledgebase="enterprise-attack",
@@ -222,9 +238,6 @@ class TestSCOValueView:
         # So we should have 4 unique objects (2 IPs, 1 domain, 1 URL)
         assert data['total_results_count'] == 4
         
-        # Verify all returned objects have this post in matched_posts
-        for obj in data['values']:
-            assert str(post_id) in [str(p) for p in obj['matched_posts']]
     
     def test_filter_by_feed_id(self, client, feed_with_object_values):
         """Test filtering by feed ID."""
@@ -250,21 +263,6 @@ class TestSCOValueView:
         assert data['total_results_count'] == 1
         assert data['values'][0]['id'] == stix_id
     
-    def test_matched_posts_aggregation(self, client, feed_with_object_values):
-        """Test that matched_posts aggregates all posts containing the object."""
-
-        # Query for the IP that appears in 2 posts
-        response = client.get('/api/v1/values/scos/?value=192.168.1.1&value_exact=true')
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        assert data['total_results_count'] == 1
-        obj = data['values'][0]
-        
-        # Should have 2 posts in matched_posts
-        assert len(obj['matched_posts']) == 2
-    
     def test_sdo_types_not_returned(self, client, feed_with_object_values):
         """Test that SDO types are not returned in SCO endpoint."""
         response = client.get('/api/v1/values/scos/')
@@ -277,15 +275,16 @@ class TestSCOValueView:
         for obj in data['values']:
             assert obj['type'] not in sdo_types
     
-    def test_ordering_by_stix_id(self, client, feed_with_object_values):
-        """Test ordering results by stix_id."""
-        response = client.get('/api/v1/values/scos/?sort=stix_id_ascending')
+    def test_ordering_by_value(self, client, feed_with_object_values):
+        """Test ordering results by value."""
+        response = client.get('/api/v1/values/scos/?sort=value_ascending')
         
         assert response.status_code == 200
         data = response.json()
         
-        stix_ids = [obj['id'] for obj in data['values']]
-        assert stix_ids == sorted(stix_ids)
+        print(data['values'])
+        values = [list(obj['values'].values())[0] for obj in data['values']]
+        assert values == sorted(values)
 
     def test_pagination(self, client, feed_with_object_values):
         """Test pagination of results."""
@@ -414,9 +413,6 @@ class TestSDOValueView:
         # Should return SDOs from second post (2: malware, location)
         assert data['total_results_count'] == 2
         
-        # Verify all returned objects have this post in matched_posts
-        for obj in data['values']:
-            assert str(post_id) in [str(p) for p in obj['matched_posts']]
     
     def test_filter_by_feed_id(self, client, feed_with_object_values):
         """Test filtering by feed ID."""
@@ -442,21 +438,6 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         assert data['values'][0]['id'] == stix_id
     
-    def test_matched_posts_aggregation(self, client, feed_with_object_values):
-        """Test that matched_posts aggregates all posts containing the object."""
-
-        # Query for the attack pattern that appears in 2 posts
-        response = client.get('/api/v1/values/sdos/?value=Spearphishing')
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        assert data['total_results_count'] == 1
-        obj = data['values'][0]
-        
-        # Should have 2 posts in matched_posts
-        assert len(obj['matched_posts']) == 2
-    
     def test_sco_types_not_returned(self, client, feed_with_object_values):
         """Test that SCO types are not returned in SDO endpoint."""
         response = client.get('/api/v1/values/sdos/')
@@ -480,16 +461,16 @@ class TestSDOValueView:
         assert "knowledgebase" in data['values'][0]
         assert data['values'][0]["knowledgebase"] == 'cve'
     
-    def test_ordering_by_knowledgebase(self, client, feed_with_object_values):
-        """Test ordering results by knowledgebase."""
-        response = client.get('/api/v1/values/sdos/?sort=knowledgebase_ascending')
+    def test_ordering_by_created(self, client, feed_with_object_values):
+        """Test ordering results by created timestamp."""
+        response = client.get('/api/v1/values/sdos/?sort=created_ascending')
         
         assert response.status_code == 200
         data = response.json()
         
-        # Extract knowledgebases, treating None as z string for sorting (None values should come last)
-        knowledgebases = [obj.get("knowledgebase", 'z') or 'z' for obj in data['values']]
-        assert knowledgebases == sorted(knowledgebases)
+        # Extract created timestamps, treating None as a future date string for sorting (None values should come last)
+        created_timestamps = [obj.get("created") or '3000-01-01T00:00:00Z' for obj in data['values']]
+        assert created_timestamps == sorted(created_timestamps)
 
     def test_ordering_by_value_uses_first_key(self, client, feed_with_object_values):
         """Test value ordering uses the first key alphabetically from values JSON."""
@@ -609,4 +590,3 @@ class TestValuesViewEdgeCases:
         # Should return only IPv4 addresses from that specific post
         for obj in data['values']:
             assert obj['type'] == 'ipv4-addr'
-            assert str(post_id) in [str(p) for p in obj['matched_posts']]

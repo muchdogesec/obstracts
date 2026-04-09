@@ -8,7 +8,6 @@ class ObjectValueSerializer(serializers.Serializer):
     type = serializers.CharField()
     knowledgebase = serializers.CharField(read_only=True, required=False)
     values = serializers.JSONField(read_only=True)
-    matched_posts = serializers.ListField(child=serializers.UUIDField())
     created = serializers.DateTimeField(required=False)
     modified = serializers.DateTimeField(required=False)
 

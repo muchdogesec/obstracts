@@ -1,10 +1,6 @@
-from stix2 import IPv4Address
-from stix2extensions import BankAccount
-from datetime import datetime
-from typing import List, Dict, Tuple, Callable
+from typing import Callable
 import logging
 
-from dogesec_commons.objects.helpers import TLP_VISIBLE_TO_ALL
 from stix2arango.stix2arango.stix2arango import post_upload_hook
 from obstracts.server.models import ObjectValue
 
@@ -44,8 +40,9 @@ def get_kb_type(obj):
 
 def get_file_values(obj):
     values = {}
-    if "name" in obj:
-        values["name"] = obj["name"]
+    for k in ["name", "mime_type"]:
+        if k in obj:
+            values[k] = obj[k]
     if "hashes" in obj:
         values.update({k.lower().replace("-", ""): v for k, v in obj["hashes"].items()})
     return values
@@ -59,6 +56,15 @@ def get_location_values(obj):
         source_name = ext_ref.get("source_name", "")
         if source_name in ["type", "alpha-3"]:
             values[source_name] = ext_ref['external_id']
+    return values
+
+def get_cert_values(obj):
+    values = {}
+    for key in ["subject", "issuer", "serial_number", 'signature_algorithm', 'validity_not_before', 'validity_not_after']:
+        if key in obj:
+            values[key] = obj[key]
+    if 'hashes' in obj:
+        values.update({k.lower().replace("-", ""): v for k, v in obj["hashes"].items()})
     return values
 
 
@@ -86,20 +92,20 @@ sco_value_map = {
     "autonomous-system": dict(values=["number", "name"]),
     "directory": dict(values=["path"]),
     "domain-name": dict(values=["value"]),
-    "email-addr": dict(values=["value"]),
+    "email-addr": dict(values=["value", "display_name"]),
     "email-message": dict(values=["subject", "body", "message_id"]),
     "file": dict(values=get_file_values),
     "ipv4-addr": dict(values=["value"]),
     "ipv6-addr": dict(values=["value"]),
     "mac-addr": dict(values=["value"]),
     "mutex": dict(values=["name"]),
-    "network-traffic": dict(values=["protocols"]),
+    "network-traffic": dict(values=["protocols", "src_port", "dst_port", "src_packets", "dst_packets", "src_byte_count", "dst_byte_count"]),
     "process": dict(values=["command_line", "cwd"]),
-    "software": dict(values=["name", "cpe", "vendor", "version"]),
+    "software": dict(values=["name", "cpe", "vendor", "version", "swid"]),
     "url": dict(values=["value"]),
-    "user-account": dict(values=["user_id", "account_login", "account_type"]),
-    "windows-registry-key": dict(values=["key"]),
-    "x509-certificate": dict(values=["subject", "issuer", "serial_number"]),
+    "user-account": dict(values=["display_name", "account_login", "account_type", "user_id"]),
+    "windows-registry-key": dict(values=["key", "values"]),
+    "x509-certificate": dict(values=get_cert_values),
     **s2e_sco_map,
 }
 s2e_sdo_map = {
@@ -205,22 +211,6 @@ def guess_kb_data(obj: dict) -> str | None:
     return kb_name, extra
 
 
-def get_visibility(obj: dict) -> str:
-    """
-    Determine the visibility of a STIX object based on its properties.
-
-    Returns:
-        - "public" if the object is marked as public
-        - "private" if the object is marked as private
-        - "unknown" if visibility cannot be determined
-    """
-    if not obj.get("created_by_ref") or set(obj.get("object_marking_refs", [])).intersection(
-        TLP_VISIBLE_TO_ALL
-    ):
-        return "public"
-    return "private"
-
-
 def extract_object_metadata(obj: dict) -> dict:
     """
     Extract key metadata from a STIX object.
@@ -289,19 +279,26 @@ def process_uploaded_objects_hook(instance, collection_name, objects, **kwargs):
         object_values_to_create.append(
             ObjectValue(
                 file_id=post_uuid,
-                **metadata
+                **metadata,
+                is_dupe=False,  # will be updated later in a deduplication step
             )
         )
 
     # Bulk create with ignore_conflicts to handle duplicates
     if object_values_to_create:
-        created_count = len(
-            ObjectValue.objects.bulk_create(
-                object_values_to_create, ignore_conflicts=True
-            )
+        created = ObjectValue.objects.bulk_create(
+            object_values_to_create, ignore_conflicts=True
         )
+        new_dupes = ObjectValue.objects.filter(
+            stix_id__in=[obj.stix_id for obj in created],
+            is_dupe=False,
+        ).exclude(
+            file_id__in=[obj.file_id for obj in created],
+        )
+        new_dupes.update(is_dupe=True)
         logging.info(
-            f"Created {created_count} ObjectValue records for {len(object_values_to_create)} objects"
+            f"Created {len(created)} ObjectValue records for {len(object_values_to_create)} objects"
         )
+        logging.info(f"Marked {new_dupes.count()} ObjectValue records as duplicates")
     else:
         logging.info("No ObjectValue records to create")

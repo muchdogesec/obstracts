@@ -1,3 +1,5 @@
+from functools import reduce
+import operator
 import textwrap
 from rest_framework import viewsets, mixins
 from django_filters.rest_framework import (
@@ -11,7 +13,8 @@ from django_filters.fields import ChoiceField
 from obstracts.server import autoschema as api_schema
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from django.db.models import F, Min, Max
+from django.db.models import F, Q, Min, Max
+from django.db.models.functions import Lower
 from django.contrib.postgres.aggregates import ArrayAgg
 
 
@@ -20,7 +23,7 @@ from obstracts.server.utils import Pagination
 from obstracts.server.values.values import sco_value_map, sdo_value_map, KB_TYPES
 from .serializers import ObjectValueSerializer
 from dogesec_commons.utils.ordering import Ordering
-from .filters import NormalizeDict
+from .filters import DictFirstValue
 
 TTP_TYPES = [
     "cve",
@@ -80,9 +83,9 @@ class ObjectValueFilterSet(FilterSet):
         value_exact = self.data.get("value_exact", "false").lower() == "true"
 
         if value_exact:
-            return queryset.filter(values__jsonb_vexact=value)
+            return queryset.filter(values_list__contains=[value.lower()])
         else:
-            return queryset.filter(values__jsonb_vcontains=value)
+            return queryset.filter(values_concat__contains=value.lower())
 
     def filter_noop(self, queryset, name, value):
         """
@@ -106,9 +109,12 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = ObjectValue.objects.all()
     serializer_class = ObjectValueSerializer
     pagination_class = Pagination("values")
-    filter_backends = [DjangoFilterBackend, Ordering]
+    filter_backends = [
+        DjangoFilterBackend,
+        Ordering
+    ]
     filterset_class = ObjectValueFilterSet
-    ordering_fields = ["stix_id", "type", "knowledgebase", "value"]
+    ordering_fields = ["value"]
     ordering = "stix_id_descending"
     openapi_tags = ["Object Values"]
 
@@ -122,17 +128,13 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
         if self.allowed_types:
             queryset = queryset.filter(type__in=self.allowed_types)
 
-        # Aggregate all post_ids for each unique stix_id
-        queryset = queryset.values("stix_id").annotate(
-            type=F("type"),
-            knowledgebase=F("knowledgebase"),
-            values=F("values"),
-            matched_posts=ArrayAgg("file__post_id", distinct=True),
-            created=Min("created"),
-            modified=Max("modified"),
-            value=NormalizeDict(F("values")),
-        )
 
+
+        from django.db.models import F
+        queryset = queryset.alias(value=F('values_concat'))
+        queryset = queryset.filter(
+            is_dupe=False
+        )
         return queryset
 
 
@@ -173,7 +175,7 @@ class SCOValueView(BaseObjectValueView):
     """View for STIX Cyber Observable Objects (SCOs) only."""
 
     allowed_types = list(sco_value_map.keys())
-    ordering_fields = ["value", "stix_id", "type"]
+    ordering_fields = ["value"]
     ordering = "value_ascending"
 
     class filterset_class(ObjectValueFilterSet):
@@ -223,7 +225,8 @@ class SDOValueView(BaseObjectValueView):
     """View for STIX Domain Objects (SDOs) only."""
 
     allowed_types = list(sdo_value_map.keys())
-    ordering_fields = ["stix_id", "type", "knowledgebase", "value", "created", "modified"]
+    ordering_fields = ["value", "created", "modified"]
+    ordering = "modified_descending"
 
     class filterset_class(ObjectValueFilterSet):
         knowledgebases = ChoiceCSVFilter(
@@ -242,7 +245,20 @@ class SDOValueView(BaseObjectValueView):
             choices=[(c, c) for c in KB_TYPES.keys()],
         )
         kb_id = BaseCSVFilter(
-            field_name="values__kb_id",
-            lookup_expr="in",
+            method="filter_kb_id",
             help_text="Filter results by knowledge base ID. Can be used in conjunction with kb_type. For example, `CVE-2021-44228` for kb_type `cve`.",
         )
+
+        def filter_kb_id(self, queryset, name, value):
+            if not value:
+                return queryset
+
+            # BaseCSVFilter provides a list; normalize to lowercase for case-insensitive matching.
+            filter = reduce(
+                operator.or_,
+                [
+                    Q(values__kb_id__iexact=s)
+                    for s in value
+                ],
+            )
+            return queryset.filter(filter)

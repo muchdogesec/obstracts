@@ -6,6 +6,8 @@ from types import SimpleNamespace
 import typing
 from django.conf import settings
 from django.db import models
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Lower, Upper
 from django.utils.text import slugify
 from pgvector.django import CosineDistance
 import txt2stix, txt2stix.extractions
@@ -28,6 +30,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from obstracts.classifier.models import Cluster, DocumentEmbedding
 from obstracts.classifier.tasks import create_embedding_text, compute_embedding_for_document
+from obstracts.server.values.filters import DictFirstValue
+from django.contrib.postgres import indexes as pg_indexes
 
 # Create your models here.
 if typing.TYPE_CHECKING:
@@ -379,22 +383,42 @@ class ObjectValue(models.Model):
     Stores extracted values from STIX objects for efficient querying and filtering.
     """
     stix_id = models.CharField(max_length=256, db_index=True)
-    type = models.CharField(max_length=256, db_index=True)
-    knowledgebase = models.CharField(max_length=64, null=True, blank=True, db_index=True)
+    type = models.CharField(max_length=256)
+    knowledgebase = models.CharField(max_length=64, null=True, blank=True)
     values = models.JSONField()
     file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='object_values')
     created = models.DateTimeField(default=None, null=True)
     modified = models.DateTimeField(default=None, null=True)
+    is_dupe = models.BooleanField(default=False)
+    values_concat = models.GeneratedField(
+        expression=Lower(models.Func(models.F("values"), function="jsonb_values_concat")),
+        output_field=models.TextField(),
+        db_persist=True,
+        null=True, blank=True,
+    )
+    values_list = models.GeneratedField(
+        expression=models.Func(models.F("values"), function="jsonb_values_list"),
+        output_field=ArrayField(base_field=models.TextField()),
+        db_persist=True, null=True, blank=True,
+    )
 
     class Meta:
         indexes = [
-            models.Index(fields=['stix_id', 'type'], name='obstracts_s_stix_id_type_idx'),
+            models.Index(fields=['type', 'stix_id'], name='obstracts_ov_type_stix_idx', condition=models.Q(is_dupe=False)),
+            models.Index(fields=['created', 'knowledgebase'], name='obstracts_ov_kbase_c_idx', condition=models.Q(is_dupe=False)),
+            models.Index(fields=['modified', 'knowledgebase'], name='obstracts_ov_kbase_m_idx', condition=models.Q(is_dupe=False)),
+            models.Index(fields=['created', 'type'], name='obstracts_ov_created_type_idx', condition=models.Q(is_dupe=False)),
+            models.Index(fields=['modified', 'type'], name='obstracts_ov_modified_type_idx', condition=models.Q(is_dupe=False)),
+            models.Index(KeyTextTransform('kb_type', 'values'), 'type', name='obstracts_ov_kb_type_idx', condition=models.Q(is_dupe=False)),
+            models.Index('created', Upper(KeyTextTransform('kb_id', 'values')), 'type', name='obstracts_ov_kb_id_cidx', condition=models.Q(is_dupe=False)),
+            models.Index('modified', Upper(KeyTextTransform('kb_id', 'values')), 'type', name='obstracts_ov_kb_id_midx', condition=models.Q(is_dupe=False)),
+            models.Index('values_concat', 'type', name='obstracts_ov_values_concat_idx', condition=models.Q(is_dupe=False)),
+            models.Index('values_concat', 'knowledgebase', name='obstracts_ov_values_c_kbidx', condition=models.Q(is_dupe=False)),
         ]
         unique_together = [['stix_id', 'file']]
 
     def __str__(self):
         return f'ObjectValue(stix_id={self.stix_id}, knowledgebase={self.knowledgebase})'
-
 
 class Job(models.Model):
     id = models.UUIDField(primary_key=True, editable=False)
