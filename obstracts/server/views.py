@@ -1213,8 +1213,9 @@ class JobView(
             label="Filter by Feed ID (e.g. `6c6e6448-04d4-42a3-9214-4f0f7d02694e`.",
             lookup_expr="in",
         )
-        state = Filter(
+        state = BaseCSVFilter(
             label="Filter by state.",
+            lookup_expr="in",
         )
         post_id = UUIDFilter(
             label="Filter by Post ID",

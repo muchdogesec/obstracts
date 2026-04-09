@@ -1,10 +1,6 @@
-from stix2 import IPv4Address
-from stix2extensions import BankAccount
-from datetime import datetime
-from typing import List, Dict, Tuple, Callable
+from typing import Callable
 import logging
 
-from dogesec_commons.objects.helpers import TLP_VISIBLE_TO_ALL
 from stix2arango.stix2arango.stix2arango import post_upload_hook
 from obstracts.server.models import ObjectValue
 
@@ -213,22 +209,6 @@ def guess_kb_data(obj: dict) -> str | None:
     if kb_name and (kb_type := get_kb_type(obj)):
         extra["kb_type"] = kb_type    
     return kb_name, extra
-
-
-def get_visibility(obj: dict) -> str:
-    """
-    Determine the visibility of a STIX object based on its properties.
-
-    Returns:
-        - "public" if the object is marked as public
-        - "private" if the object is marked as private
-        - "unknown" if visibility cannot be determined
-    """
-    if not obj.get("created_by_ref") or set(obj.get("object_marking_refs", [])).intersection(
-        TLP_VISIBLE_TO_ALL
-    ):
-        return "public"
-    return "private"
 
 
 def extract_object_metadata(obj: dict) -> dict:
