@@ -1152,7 +1152,9 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
 class RSSView(h4f_views.RSSView):
     class filterset_class(PostOnlyView.filterset_class):
         feed_id = None
-
+    
+    def get_queryset(self):
+        return PostOnlyView.get_queryset(self).filter(feed_id=self.kwargs.get("feed_id"))
 
 @extend_schema_view(
     list=extend_schema(

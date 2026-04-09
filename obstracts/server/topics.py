@@ -38,19 +38,6 @@ class TopicPostSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "feed_id"]
 
 
-class TopicDetailSerializer(TopicSerializer):
-    posts = serializers.SerializerMethodField()
-
-    @extend_schema_field(TopicPostSerializer(many=True))
-    def get_posts(self, obj):
-        files = (
-            models.File.objects.filter(embedding__in=obj.members.all())
-            .select_related("post")
-            .distinct()
-        )
-        return TopicPostSerializer(files, many=True).data
-
-
 class TopicBuildSerializer(serializers.Serializer):
     force = serializers.BooleanField(default=False, help_text="Force regeneration even when embeddings/clusters already exist.")
 
@@ -77,10 +64,6 @@ class TopicBuildSerializer(serializers.Serializer):
             that belong to that topic.
             """
         ),
-        responses={
-            200: TopicDetailSerializer,
-            404: api_schema.DEFAULT_404_ERROR,
-        },
     ),
     build_clusters=extend_schema(
         summary="Build topic clusters",
@@ -111,6 +94,7 @@ class TopicView(
     filter_backends = [DjangoFilterBackend, Ordering]
     ordering_fields = ["label", "posts_count"]
     ordering = "posts_count_descending"
+    serializer_class = TopicSerializer
 
 
     class filterset_class(FilterSet):
@@ -125,11 +109,6 @@ class TopicView(
             posts_count=Count("members__file", distinct=True),
         )
         return qs
-
-    def get_serializer_class(self):
-        if self.action == "retrieve":
-            return TopicDetailSerializer
-        return TopicSerializer
 
 
     @decorators.action(methods=["PATCH"], detail=False, url_path="build_clusters")

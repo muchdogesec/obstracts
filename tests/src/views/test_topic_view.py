@@ -1,12 +1,15 @@
+from datetime import datetime
 import uuid
 from unittest.mock import patch
 
 import pytest
+from pytz import UTC
 
 from obstracts.classifier.models import Cluster, DocumentEmbedding
 from obstracts.server.models import File
-from obstracts.server.topics import TopicDetailSerializer, TopicSerializer, TopicView
+from obstracts.server.topics import TopicView
 from obstracts.server import models as ob_models
+from history4feed.app import models as h4f_models
 from dogesec_commons.utils import Pagination
 
 from tests.utils import Transport
@@ -164,39 +167,6 @@ def test_retrieve_topic(client, posts_with_clusters, api_schema):
     api_schema[f"/api/v1/topics/{{topic_id}}/"]["GET"].validate_response(
         Transport.get_st_response(resp)
     )
-
-
-@pytest.mark.django_db
-def test_retrieve_topic_post_ids(client, posts_with_clusters, api_schema):
-    resp = client.get(f"/api/v1/topics/{CLUSTER_1_ID}/")
-    assert resp.status_code == 200
-    assert "posts" in resp.data
-    assert {p["id"] for p in resp.data["posts"]} == {str(POST1_ID), str(POST2_ID)}
-    assert set(resp.data["posts"][0].keys()) == {"id", "title", "feed_id"}
-    api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
-        Transport.get_st_response(resp)
-    )
-
-    # cluster2 only has post2
-    resp2 = client.get(f"/api/v1/topics/{CLUSTER_2_ID}/")
-    assert resp2.status_code == 200
-    assert [p["id"] for p in resp2.data["posts"]] == [str(POST2_ID)]
-    api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
-        Transport.get_st_response(resp2)
-    )
-
-
-@pytest.mark.django_db
-def test_retrieve_topic_uses_detail_serializer(client, posts_with_clusters, api_schema):
-    resp = client.get(f"/api/v1/topics/{CLUSTER_1_ID}/")
-    assert resp.status_code == 200
-    # TopicDetailSerializer adds posts with post metadata.
-    assert "posts" in resp.data
-    assert resp.data['posts_count'] == 2
-    api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
-        Transport.get_st_response(resp)
-    )
-
 
 @pytest.mark.django_db
 def test_retrieve_topic_not_found(client, api_schema):
