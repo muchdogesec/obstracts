@@ -11,6 +11,7 @@ import pytest
 from django.utils import timezone
 from obstracts.server.models import ObjectValue, File
 from tests.conftest import make_feed
+from tests.utils import Transport
 
 @pytest.fixture
 def override_save_method():
@@ -150,7 +151,7 @@ def feed_with_object_values(stixifier_profile, override_save_method):
 class TestSCOValueView:
     """Tests for the SCO (Cyber Observable) values endpoint."""
     
-    def test_list_all_scos(self, client, feed_with_object_values):
+    def test_list_all_scos(self, client, feed_with_object_values, api_schema):
         """Test listing all SCO values."""
         response = client.get('/api/v1/values/scos/')
         
@@ -164,8 +165,12 @@ class TestSCOValueView:
         # Check that results are deduplicated by stix_id
         stix_ids = [obj['id'] for obj in data['values']]
         assert len(stix_ids) == len(set(stix_ids))  # All unique
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_type(self, client, feed_with_object_values):
+    def test_filter_by_type(self, client, feed_with_object_values, api_schema):
         """Test filtering SCOs by type."""
         response = client.get('/api/v1/values/scos/?types=ipv4-addr')
         
@@ -176,8 +181,12 @@ class TestSCOValueView:
         assert data['total_results_count'] == 2
         for obj in data['values']:
             assert obj['type'] == 'ipv4-addr'
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_multiple_types(self, client, feed_with_object_values):
+    def test_filter_by_multiple_types(self, client, feed_with_object_values, api_schema):
         """Test filtering by multiple types."""
         response = client.get('/api/v1/values/scos/?types=ipv4-addr,domain-name')
         
@@ -188,8 +197,12 @@ class TestSCOValueView:
         assert data['total_results_count'] == 4
         types = [obj['type'] for obj in data['values']]
         assert all(t in ['ipv4-addr', 'domain-name'] for t in types)
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_value_wildcard(self, client, feed_with_object_values):
+    def test_filter_by_value_wildcard(self, client, feed_with_object_values, api_schema):
         """Test default search uses vcontains for substring matching."""
         response = client.get('/api/v1/values/scos/?value=192.168')
         
@@ -199,8 +212,12 @@ class TestSCOValueView:
         # Should return the 192.168.1.1 IP using substring matching
         assert data['total_results_count'] == 1
         assert data['values'][0]['values']['value'] == '192.168.1.1'
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_value_exact(self, client, feed_with_object_values):
+    def test_filter_by_value_exact(self, client, feed_with_object_values, api_schema):
         """Test value_exact matches exact individual values only."""
         response = client.get('/api/v1/values/scos/?value=192.168.1.1&value_exact=true')
         
@@ -210,8 +227,12 @@ class TestSCOValueView:
         # Should return the IP with exact value match
         assert data['total_results_count'] == 1
         assert data['values'][0]['values']['value'] == '192.168.1.1'
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_value_exact_no_substring_match(self, client, feed_with_object_values):
+    def test_filter_by_value_exact_no_substring_match(self, client, feed_with_object_values, api_schema):
         """Test that exact match does NOT match substrings - only exact individual values."""
         response = client.get('/api/v1/values/scos/?value=192.168&value_exact=true')
         
@@ -220,8 +241,12 @@ class TestSCOValueView:
         
         # Should return nothing since '192.168' is not an exact match for any individual value
         assert data['total_results_count'] == 0
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_post_id(self, client, feed_with_object_values):
+    def test_filter_by_post_id(self, client, feed_with_object_values, api_schema):
         """Test filtering by post ID."""
 
         # Get first post's ID
@@ -238,8 +263,12 @@ class TestSCOValueView:
         # So we should have 4 unique objects (2 IPs, 1 domain, 1 URL)
         assert data['total_results_count'] == 4
         
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
+        
     
-    def test_filter_by_feed_id(self, client, feed_with_object_values):
+    def test_filter_by_feed_id(self, client, feed_with_object_values, api_schema):
         """Test filtering by feed ID."""
         feed = feed_with_object_values
         
@@ -250,8 +279,12 @@ class TestSCOValueView:
         
         # Should return all SCOs from this feed
         assert data['total_results_count'] == 5
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_stix_id(self, client, feed_with_object_values):
+    def test_filter_by_stix_id(self, client, feed_with_object_values, api_schema):
         """Test filtering by exact STIX object ID."""
         stix_id = "ipv4-addr--ba6b3f21-d818-4e7c-bfff-765805177512"
         
@@ -262,8 +295,12 @@ class TestSCOValueView:
         
         assert data['total_results_count'] == 1
         assert data['values'][0]['id'] == stix_id
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_sdo_types_not_returned(self, client, feed_with_object_values):
+    def test_sdo_types_not_returned(self, client, feed_with_object_values, api_schema):
         """Test that SDO types are not returned in SCO endpoint."""
         response = client.get('/api/v1/values/scos/')
         
@@ -274,8 +311,12 @@ class TestSCOValueView:
         sdo_types = ['attack-pattern', 'malware', 'vulnerability', 'location']
         for obj in data['values']:
             assert obj['type'] not in sdo_types
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_ordering_by_value(self, client, feed_with_object_values):
+    def test_ordering_by_value(self, client, feed_with_object_values, api_schema):
         """Test ordering results by value."""
         response = client.get('/api/v1/values/scos/?sort=value_ascending')
         
@@ -285,8 +326,12 @@ class TestSCOValueView:
         print(data['values'])
         values = [list(obj['values'].values())[0] for obj in data['values']]
         assert values == sorted(values)
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
 
-    def test_pagination(self, client, feed_with_object_values):
+    def test_pagination(self, client, feed_with_object_values, api_schema):
         """Test pagination of results."""
         response = client.get('/api/v1/values/scos/?page_size=2')
         
@@ -295,8 +340,12 @@ class TestSCOValueView:
         
         assert len(data['values']) == 2
         assert data['total_results_count'] == 5
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_no_ttp_type_in_sco_results(self, client, feed_with_object_values):
+    def test_no_ttp_type_in_sco_results(self, client, feed_with_object_values, api_schema):
         """Test that SCOs don't have ttp_type field in results."""
         response = client.get('/api/v1/values/scos/')
         
@@ -306,6 +355,10 @@ class TestSCOValueView:
         for obj in data['values']:
             # ttp_type should not be present (null fields are removed)
             assert "knowledgebase" not in obj
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
 
 
 @pytest.mark.django_db
@@ -318,7 +371,7 @@ class TestSDOValueView:
 
         }
     
-    def test_list_all_sdos(self, client, feed_with_object_values):
+    def test_list_all_sdos(self, client, feed_with_object_values, api_schema):
         """Test listing all SDO values."""
         response = client.get('/api/v1/values/sdos/')
         
@@ -329,8 +382,12 @@ class TestSDOValueView:
         # Should return all unique SDO objects (4 unique)
         assert len({obj['id'] for obj in data['values']}) == len(data['values'])  # All unique
         assert data['total_results_count'] == 4
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_type(self, client, feed_with_object_values):
+    def test_filter_by_type(self, client, feed_with_object_values, api_schema):
         """Test filtering SDOs by type."""
         response = client.get('/api/v1/values/sdos/?types=attack-pattern')
         
@@ -340,8 +397,12 @@ class TestSDOValueView:
         # Should return only attack-pattern (1 unique)
         assert data['total_results_count'] == 1
         assert data['values'][0]['type'] == 'attack-pattern'
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_ttp_type(self, client, feed_with_object_values):
+    def test_filter_by_ttp_type(self, client, feed_with_object_values, api_schema):
         """Test filtering by TTP type."""
         response = client.get('/api/v1/values/sdos/?knowledgebases=enterprise-attack')
         
@@ -351,8 +412,12 @@ class TestSDOValueView:
         # Should return only enterprise-attack objects (1)
         assert data['total_results_count'] == 1
         assert data['values'][0]["knowledgebase"] == 'enterprise-attack'
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_multiple_knowledgebases(self, client, feed_with_object_values):
+    def test_filter_by_multiple_knowledgebases(self, client, feed_with_object_values, api_schema):
         """Test filtering by multiple TTP types."""
         response = client.get('/api/v1/values/sdos/?knowledgebases=cve,location')
         
@@ -363,8 +428,12 @@ class TestSDOValueView:
         assert data['total_results_count'] == 2
         knowledgebases = [obj["knowledgebase"] for obj in data['values']]
         assert all(t in ['cve', 'location'] for t in knowledgebases)
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_value_searches_name(self, client, feed_with_object_values):
+    def test_filter_by_value_searches_name(self, client, feed_with_object_values, api_schema):
         """Test that value filter searches name field using substring matching."""
         response = client.get('/api/v1/values/sdos/?value=WannaCry')
         
@@ -374,8 +443,12 @@ class TestSDOValueView:
         # Should find the WannaCry malware
         assert data['total_results_count'] == 1
         assert 'WannaCry' in data['values'][0]['values']['name']
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_value_searches_aliases(self, client, feed_with_object_values):
+    def test_filter_by_value_searches_aliases(self, client, feed_with_object_values, api_schema):
         """Test that value filter searches aliases using substring matching."""
         response = client.get('/api/v1/values/sdos/?value=T1566.002')
         
@@ -385,8 +458,12 @@ class TestSDOValueView:
         # Should find the Spearphishing attack pattern
         assert data['total_results_count'] == 1
         assert data['values'][0]['type'] == 'attack-pattern'
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_value_exact(self, client, feed_with_object_values):
+    def test_filter_by_value_exact(self, client, feed_with_object_values, api_schema):
         """Test value_exact matches exact individual values only."""
         response = client.get('/api/v1/values/sdos/?value=CVE-2021-44228&value_exact=true')
         
@@ -395,8 +472,12 @@ class TestSDOValueView:
         
         assert data['total_results_count'] == 1
         assert 'CVE-2021-44228' in data['values'][0]['values']['name']
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_post_id(self, client, feed_with_object_values):
+    def test_filter_by_post_id(self, client, feed_with_object_values, api_schema):
         """Test filtering by post ID."""
 
         # Get second post's ID
@@ -413,8 +494,12 @@ class TestSDOValueView:
         # Should return SDOs from second post (2: malware, location)
         assert data['total_results_count'] == 2
         
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
+        
     
-    def test_filter_by_feed_id(self, client, feed_with_object_values):
+    def test_filter_by_feed_id(self, client, feed_with_object_values, api_schema):
         """Test filtering by feed ID."""
         feed = feed_with_object_values
         
@@ -425,8 +510,12 @@ class TestSDOValueView:
         
         # Should return all SDOs from this feed
         assert data['total_results_count'] == 4
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_filter_by_stix_id(self, client, feed_with_object_values):
+    def test_filter_by_stix_id(self, client, feed_with_object_values, api_schema):
         """Test filtering by exact STIX object ID."""
         stix_id = "attack-pattern--0f4a0c76-ab2d-4cb0-85d3-3f0efb8cba4d"
         
@@ -437,8 +526,12 @@ class TestSDOValueView:
         
         assert data['total_results_count'] == 1
         assert data['values'][0]['id'] == stix_id
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_sco_types_not_returned(self, client, feed_with_object_values):
+    def test_sco_types_not_returned(self, client, feed_with_object_values, api_schema):
         """Test that SCO types are not returned in SDO endpoint."""
         response = client.get('/api/v1/values/sdos/')
         
@@ -449,8 +542,12 @@ class TestSDOValueView:
         sco_types = ['ipv4-addr', 'domain-name', 'url']
         for obj in data['values']:
             assert obj['type'] not in sco_types
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_ttp_type_present_when_applicable(self, client, feed_with_object_values):
+    def test_ttp_type_present_when_applicable(self, client, feed_with_object_values, api_schema):
         """Test that ttp_type is present when it exists."""
         response = client.get('/api/v1/values/sdos/?knowledgebases=cve')
         
@@ -460,8 +557,12 @@ class TestSDOValueView:
         assert data['total_results_count'] == 1
         assert "knowledgebase" in data['values'][0]
         assert data['values'][0]["knowledgebase"] == 'cve'
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_ordering_by_created(self, client, feed_with_object_values):
+    def test_ordering_by_created(self, client, feed_with_object_values, api_schema):
         """Test ordering results by created timestamp."""
         response = client.get('/api/v1/values/sdos/?sort=created_ascending')
         
@@ -471,8 +572,12 @@ class TestSDOValueView:
         # Extract created timestamps, treating None as a future date string for sorting (None values should come last)
         created_timestamps = [obj.get("created") or '3000-01-01T00:00:00Z' for obj in data['values']]
         assert created_timestamps == sorted(created_timestamps)
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
 
-    def test_ordering_by_value_uses_first_key(self, client, feed_with_object_values):
+    def test_ordering_by_value_uses_first_key(self, client, feed_with_object_values, api_schema):
         """Test value ordering uses the first key alphabetically from values JSON."""
         feed = feed_with_object_values
         files = File.objects.filter(feed=feed).order_by('post__pubdate')
@@ -511,8 +616,12 @@ class TestSDOValueView:
         normalized_values = [list(obj['values'].values())[0].lower() for obj in data['values']]
         assert len(normalized_values) >= 3
         assert normalized_values == sorted(normalized_values)
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_combined_filters(self, client, feed_with_object_values):
+    def test_combined_filters(self, client, feed_with_object_values, api_schema):
         """Test combining multiple filters."""
         response = client.get('/api/v1/values/sdos/?types=vulnerability&knowledgebases=cve')
         
@@ -523,8 +632,12 @@ class TestSDOValueView:
         obj = data['values'][0]
         assert obj['type'] == 'vulnerability'
         assert obj["knowledgebase"] == 'cve'
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_created_modified_timestamps(self, client, feed_with_object_values):
+    def test_created_modified_timestamps(self, client, feed_with_object_values, api_schema):
         """Test that created and modified timestamps are returned."""
         response = client.get('/api/v1/values/sdos/')
         
@@ -534,13 +647,17 @@ class TestSDOValueView:
         for obj in data['values']:
             assert 'created' in obj
             assert 'modified' in obj
+        
+        api_schema['/api/v1/values/sdos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
 
 
 @pytest.mark.django_db
 class TestValuesViewEdgeCases:
     """Tests for edge cases and error conditions."""
     
-    def test_empty_database(self, client):
+    def test_empty_database(self, client, api_schema):
         """Test querying when no ObjectValue entries exist."""
         response = client.get('/api/v1/values/scos/')
         
@@ -548,32 +665,49 @@ class TestValuesViewEdgeCases:
         data = response.json()
         assert data['total_results_count'] == 0
         assert data['values'] == []
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_invalid_filter_values(self, client, feed_with_object_values):
+    def test_invalid_filter_values(self, client, feed_with_object_values, api_schema):
         """Test that invalid filter values are handled gracefully."""
 
         # Invalid UUID format
         response = client.get('/api/v1/values/scos/?post_id=invalid-uuid')
         # Should return 200 with no results or handle gracefully
         assert response.status_code in [200, 400]
+        
+        if response.status_code == 200:
+            api_schema['/api/v1/values/scos/']['GET'].validate_response(
+                Transport.get_st_response(response)
+            )
     
-    def test_nonexistent_stix_id(self, client, feed_with_object_values):
+    def test_nonexistent_stix_id(self, client, feed_with_object_values, api_schema):
         """Test querying for non-existent STIX ID."""
         response = client.get('/api/v1/values/scos/?id=ipv4-addr--00000000-0000-0000-0000-000000000000')
         
         assert response.status_code == 200
         data = response.json()
         assert data['total_results_count'] == 0
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_value_search_no_results(self, client, feed_with_object_values):
+    def test_value_search_no_results(self, client, feed_with_object_values, api_schema):
         """Test value search that returns no results."""
         response = client.get('/api/v1/values/scos/?value=nonexistent-value-12345')
         
         assert response.status_code == 200
         data = response.json()
         assert data['total_results_count'] == 0
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )
     
-    def test_multiple_filters_narrow_results(self, client, feed_with_object_values):
+    def test_multiple_filters_narrow_results(self, client, feed_with_object_values, api_schema):
         """Test that multiple filters properly narrow results."""
 
         # Get a specific post ID
@@ -590,3 +724,7 @@ class TestValuesViewEdgeCases:
         # Should return only IPv4 addresses from that specific post
         for obj in data['values']:
             assert obj['type'] == 'ipv4-addr'
+        
+        api_schema['/api/v1/values/scos/']['GET'].validate_response(
+            Transport.get_st_response(response)
+        )

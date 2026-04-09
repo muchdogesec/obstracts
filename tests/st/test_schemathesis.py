@@ -7,8 +7,12 @@ from hypothesis import settings
 from hypothesis import strategies
 from schemathesis.specs.openapi.checks import negative_data_rejection, positive_data_acceptance
 from schemathesis.config import GenerationConfig
+from datetime import datetime, date, UTC
 
 from tests.utils import Transport
+# restrict date and datetime generation to reasonable ranges to avoid issues with database limits
+schemathesis.openapi.format("date-time", strategies.datetimes(max_value=datetime(2050, 1, 1), min_value=datetime(1970, 1, 1)).map(lambda dt: dt.replace(tzinfo=dt.tzinfo or UTC).isoformat()))
+schemathesis.openapi.format("date", strategies.dates(max_value=date(2050, 1, 1), min_value=date(1970, 1, 1)).map(date.isoformat))
 
 schema = schemathesis.openapi.from_wsgi("/api/schema/?format=json", wsgi_app)
 schema.config.base_url = "http://localhost:8001/"
