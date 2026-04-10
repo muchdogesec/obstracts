@@ -1,6 +1,5 @@
-from functools import lru_cache, reduce
+from functools import lru_cache
 import logging
-import operator
 import typing
 import uuid
 from django import forms
@@ -18,7 +17,8 @@ from stix2arango.services import ArangoDBService
 from obstracts.server.md_helper import MarkdownImageReplacer
 from . import autoschema as api_schema
 from dogesec_commons.objects.helpers import OBJECT_TYPES
-from django.db.models import OuterRef, Subquery, Q, Count, F
+from django.db.models import OuterRef, Subquery, Q, Count, F, UUIDField, Value
+from django.db import models as db_models
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from .utils import (
     FEED_406_ERROR,
@@ -612,10 +612,9 @@ class PostOnlyView(h4f_views.PostOnlyView):
             help_text="Show only posts that have been processed (where `visible` property is `true`. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.",
             initial=False,
         )
-        job_state = filters.ChoiceFilter(
-            choices=models.JobState.choices,
-            help_text="Filter by Obstracts job status. Use `show_hidden_posts` filter to apply at post level.",
-        )
+        job_state = None
+        job_id = None
+
         ai_describes_incident = filters.ChoiceFilter(
             method="ai_describes_incident_filter",
             choices=[("true", "True"), ("false", "False"), ("null", "Unset")],
@@ -637,19 +636,12 @@ class PostOnlyView(h4f_views.PostOnlyView):
         )
 
         def semantic_search(self, queryset, name, text):
-            from django.contrib.postgres.search import SearchQuery, SearchVector
-
-            queryset = queryset.annotate(
-                text=SearchVector(
-                    "title",
-                    "description",
-                    "obstracts_post__summary",
-                    "obstracts_post__ai_incident_summary",
-                ),
-            )
+            from django.contrib.postgres.search import SearchQuery
+            matching_post_ids = models.File.objects.filter(
+                text_search=SearchQuery(text, search_type="websearch")
+            ).values("post_id")
             return queryset.filter(
-                Q(text=SearchQuery(text, search_type="websearch"))
-                | Q(title__icontains=text)
+                Q(id__in=matching_post_ids) | Q(title__icontains=text)
             )
 
         def ai_describes_incident_filter(self, queryset, name, value):
@@ -664,14 +656,12 @@ class PostOnlyView(h4f_views.PostOnlyView):
             return queryset.filter(obstracts_post__ai_describes_incident=fv)
 
         def ai_incident_classification_filter(self, queryset, name, value):
-            filter = reduce(
-                operator.or_,
-                [
-                    Q(obstracts_post__ai_incident_classification__icontains=s)
-                    for s in value
-                ],
+            # Use PostgreSQL array overlap (&&) to match any selected classification.
+            if not value:
+                return queryset
+            return queryset.filter(
+                obstracts_post__ai_incident_classification__overlap=list(value)
             )
-            return queryset.filter(filter)
 
         def show_hidden_posts_filter(self, queryset, name, show_hidden_posts):
             if not resolve(self.request.path).view_name.endswith("post-view-list"):
@@ -702,11 +692,8 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
     def filter_queryset(self, queryset):
         queryset = queryset.annotate(
-            job_state=Subquery(
-                models.Job.objects.filter(
-                    history4feed_job_id=OuterRef("last_job_id")
-                ).values("state")[:1]
-            ),
+            last_job_id=db_models.Value(None, output_field=db_models.UUIDField()),
+            job_state=db_models.Value(None, output_field=db_models.CharField()),
             threat_score=F(
                 "obstracts_post__txt2stix_data__content_check__threat_score"
             ),
