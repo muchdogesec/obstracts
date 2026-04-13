@@ -16,6 +16,7 @@ from dogesec_commons.stixifier.models import Profile
 import stix2
 from django.utils import timezone
 from django.db import transaction
+from django.contrib.postgres.search import SearchVectorField
 
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
@@ -237,6 +238,7 @@ class File(models.Model):
     feed = models.ForeignKey(
         FeedProfile, on_delete=models.CASCADE, default=None, null=True
     )
+    text_search = SearchVectorField(null=True)
     post = models.OneToOneField(
         h4f_models.Post,
         on_delete=models.CASCADE,
@@ -266,6 +268,11 @@ class File(models.Model):
     txt2stix_data = models.JSONField(default=None, null=True)
     embedding = models.ForeignKey(DocumentEmbedding, on_delete=models.SET_NULL, null=True, related_name="file")
 
+    class Meta:
+        indexes = [
+            pg_indexes.GinIndex(fields=['text_search'], name='obstracts_file_text_search_idx'),
+            models.Index(fields=["processed", "ai_describes_incident", "post_id"], name="obstracts_file_processed_idx"),
+        ]
     def save(self, *args, **kwargs):
         self.post.save()  # update datetime_updated
         return super().save(*args, **kwargs)
