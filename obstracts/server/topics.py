@@ -107,7 +107,7 @@ class TopicView(
     def get_queryset(self):
         qs = Cluster.objects.annotate(
             posts_count=Count("members__file", distinct=True),
-        )
+        ).exclude(label__exact="")
         return qs
 
 
