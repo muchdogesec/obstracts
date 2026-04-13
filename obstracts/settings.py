@@ -282,6 +282,7 @@ HISTORY4FEED_SETTINGS = {
     'EARLIEST_SEARCH_DATE': datetime.strptime(os.environ.get("HISTORY4FEED_EARLIEST_SEARCH_DATE", "2024-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ"),
     'REQUEST_RETRY_COUNT': int(os.getenv("HISTORY4FEED_REQUEST_RETRY_COUNT", 3)),
     "FULLTEXT_FETCH_TIMEOUT_SECONDS": int(os.getenv("HISTORY4FEED_FULLTEXT_FETCH_TIMEOUT_SECONDS", 100)), # time limit for fulltext fetch tasks
+    "CREATE_POSTS_MAX_LENGTH": int(os.getenv("CREATE_POSTS_MAX_LENGTH", 100)), # max length of posts to accept in one batch when creating posts from urls list
 }
 PROCESSING_TIMEOUT_SECONDS = int(os.getenv("PROCESSING_TIMEOUT_SECONDS", 300))  # time limit for processing tasks
 # stixifier settings
