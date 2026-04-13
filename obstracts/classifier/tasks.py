@@ -235,11 +235,15 @@ def _label_cluster(sample_texts: List[str]) -> dict:
     """Call OpenAI to create a short label and 1-line description for a cluster."""
     client = _openai_client()
     prompt = (
-        "You are a helpful assistant. Given the following short excerpts from texts, provide a concise topic label (3 words max) and a one-sentence description describing the common theme.\n"
+        "You are a helpful assistant. Given the following short excerpts from texts, provide a concise topic label and a one-sentence description describing the common theme.\n"
         "The label and description should be separated by a newline, with the label on the first line.\n"
+        "label and description should be based on the common theme across the excerpts, not just one. If the excerpts are too diverse to label, provide a general label like 'Misc: X, Y, and more' and a description like 'this cluster contains diverse topics including X, Y, and more'.\n"
+        "If the excerpts contain technical terms, you can use those in the label and description. Avoid generic labels like 'Cluster 1' or 'Untitled'.\n"
+        "DO NOT include any text in the label or description that is not supported by the excerpts.\n"
+        "The label must not be longer than 3 words unless the topic is too diverse in which case it's allowed for it to have up to 6 words, shorter is better. The description must be no more than 30 words, shorter is better.\n"
         "\n\nSample excerpts:\n"
     )
-    prompt += "\n".join([f"- {t[:1024]}" for t in sample_texts])
+    prompt += "\n".join([f"- {t[:2048]}" for t in sample_texts])
     resp = client.chat.completions.create(
         model="gpt-5-mini",
         messages=[{"role": "user", "content": prompt}],
@@ -249,6 +253,6 @@ def _label_cluster(sample_texts: List[str]) -> dict:
     ].message.content.strip()  # naive parse: split first line as label if present
     # naive parse: split first line as label if present
     lines = [l.strip() for l in text.splitlines() if l.strip()]
-    label = lines[0] if lines else ""
+    label = lines[0] or ""
     description = " ".join(lines[1:]) if len(lines) > 1 else ""
     return {"label": label, "description": description}

@@ -18,6 +18,7 @@ from tests.utils import Transport
 
 CLUSTER_1_ID = uuid.UUID("a1111111-1111-1111-1111-111111111111")
 CLUSTER_2_ID = uuid.UUID("a2222222-2222-2222-2222-222222222222")
+CLUSTER_HIDDEN_ID = uuid.UUID("a3333333-3333-3333-3333-333333333333")
 POST1_ID = uuid.UUID("561ed102-7584-4b7d-a302-43d4bca5605b")
 POST2_ID = uuid.UUID("345c8d0b-c6ca-4419-b1f7-0daeb4e9278b")
 
@@ -52,6 +53,15 @@ def posts_with_clusters(feed_with_posts):
     )
     cluster1.members.set([emb1, emb2])
 
+
+    # cluster1 contains both posts; cluster2 contains only post2
+    cluster1_but_hidden = Cluster.objects.create(
+        id=CLUSTER_HIDDEN_ID,
+        label="",
+        description="Iran-aligned cyber operations",
+    )
+    cluster1_but_hidden.members.set([emb1, emb2])
+
     cluster2 = Cluster.objects.create(
         id=CLUSTER_2_ID,
         label="Ransomware Campaigns",
@@ -65,6 +75,7 @@ def posts_with_clusters(feed_with_posts):
         emb2=emb2,
         cluster1=cluster1,
         cluster2=cluster2,
+        cluster_hidden=cluster1_but_hidden,
     )
 
 
@@ -177,6 +188,14 @@ def test_retrieve_topic_not_found(client, api_schema):
         Transport.get_st_response(resp)
     )
 
+@pytest.mark.django_db
+def test_retrieve_topic__does_not_return_clusters_with_empty_label(client, posts_with_clusters, api_schema):
+    # cluster1_but_hidden has an empty label and should not be returned by retrieve either
+    resp = client.get(f"/api/v1/topics/{CLUSTER_HIDDEN_ID}/")
+    assert resp.status_code == 404
+    api_schema["/api/v1/topics/{topic_id}/"]["GET"].validate_response(
+        Transport.get_st_response(resp)
+    )
 
 @pytest.mark.django_db
 def test_build_clusters_action(client, celery_always_eager):
