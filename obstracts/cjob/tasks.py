@@ -487,10 +487,11 @@ def mark_old_jobs_as_failed(**kwargs):
     models.Job.objects.filter(state=models.JobState.RETRIEVING).update(
         state=models.JobState.RETRIEVE_FAILED
     )
-    models.Job.objects.filter(
+    models.Job.objects.exclude(
         state__in=[
-            models.JobState.RETRIEVING,
-            models.JobState.QUEUED,
-            models.JobState.PROCESSING,
+            models.JobState.RETRIEVE_FAILED,
+            models.JobState.CANCELLED,
+            models.JobState.PROCESS_FAILED,
+            models.JobState.PROCESSED,
         ]
     ).update(state=models.JobState.CANCELLED)
