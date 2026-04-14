@@ -1030,7 +1030,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
 
             The response will return the Job information responsible for getting the requested data you can track using the `id` returned via the GET Jobs by ID endpoint.
 
-            _Note: We do have a proof-of-concept to scrape a site for all blog post urls, titles, and pubdate called [sitemap2posts](https://github.com/muchdogesec/sitemap2posts) which can help form the request body needed for this endpoint._
+            Note, the number of posts that can be passed in the request is controlled by the `CREATE_POSTS_MAX_LENGTH` setting.
             """
         ),
     ),
