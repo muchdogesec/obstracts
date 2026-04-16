@@ -151,7 +151,7 @@ class Command(BaseCommand):
         for feed, profile_id, posts in self._iter_feed_batches(matches, posts_per_job):
             try:
                 # Create one reprocessing job for each feed batch.
-                _, job = cjob_tasks.create_reprocessing_job(
+                job = cjob_tasks.create_reprocessing_job(
                     feed=feed,
                     posts=posts,
                     options={

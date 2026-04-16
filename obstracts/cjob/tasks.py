@@ -119,8 +119,8 @@ def create_reprocessing_job(feed, posts: list[models.h4f_models.Post], options: 
     t = chain(tasks)
     t.stamp(obstracts_id=str(job.id))
     t |= job_completed_with_error.si(job.id)
-    result = t.apply_async()
-    return result, job
+    t.apply_async()
+    return job
 
 @shared_task(bind=True)
 def start_processing(self, job_id):
