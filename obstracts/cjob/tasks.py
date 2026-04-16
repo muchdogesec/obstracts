@@ -344,7 +344,6 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
             )
         )
 
-        print("ksajjhsjhs", file.pdf_file)
         if profile.generate_pdf and (job.type != models.JobType.REPROCESS_POSTS or not file.pdf_file):
             add_pdf_to_post.delay(job_id, post_id)
         
