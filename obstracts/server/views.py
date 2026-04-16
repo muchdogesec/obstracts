@@ -1130,7 +1130,7 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
     ):
         options = options.copy()
         options["posts"] = [str(p.id) for p in posts]
-        job = tasks.create_reprocessing_job(feed, posts, options)
+        _, job = tasks.create_reprocessing_job(feed, posts, options)
         return Response(
             serializers.ObstractsJobSerializer(job).data, status=status.HTTP_201_CREATED
         )

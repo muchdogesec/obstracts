@@ -119,8 +119,8 @@ def create_reprocessing_job(feed, posts: list[models.h4f_models.Post], options: 
     t = chain(tasks)
     t.stamp(obstracts_id=str(job.id))
     t |= job_completed_with_error.si(job.id)
-    t.apply_async()
-    return job
+    result = t.apply_async()
+    return result, job
 
 @shared_task(bind=True)
 def start_processing(self, job_id):
@@ -344,7 +344,6 @@ def process_post(self, job_id, post_id, profile_id=None, *args):
             )
         )
 
-        print("ksajjhsjhs", file.pdf_file)
         if profile.generate_pdf and (job.type != models.JobType.REPROCESS_POSTS or not file.pdf_file):
             add_pdf_to_post.delay(job_id, post_id)
         
