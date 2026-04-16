@@ -111,6 +111,7 @@ sco_value_map = {
 s2e_sdo_map = {
     "weakness": dict(values=["name"]),
     "exploit": dict(values=["name", "proof_of_concept"]),
+    "procedure": dict(values=["name", "context", "objective"]),
 }
 # mitre ATT&CK TTP types can be identified by their x_mitre_domains property or specific external references
 MITRE_VALUE_MAP = {
