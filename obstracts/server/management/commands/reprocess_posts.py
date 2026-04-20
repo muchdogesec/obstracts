@@ -94,7 +94,7 @@ class Command(BaseCommand):
             "--only-empty",
             dest="only_empty",
             action="store_true",
-            help="Only process posts with fewer than 4 object_values (skip_extraction=False)",
+            help="Only process posts with <= 2 object_values (skip_extraction=False)",
         )
 
     def handle(self, *args, **options):
@@ -126,8 +126,8 @@ class Command(BaseCommand):
             # Filter for posts with existing txt2stix_data
             qs = qs.filter(txt2stix_data__isnull=False)
         elif only_empty:
-            # Filter for posts with fewer than 4 object_values
-            qs = qs.annotate(object_count=Count('object_values')).filter(object_count__lte=2)
+            # Filter for posts with <= 2 object_values
+            qs = qs.annotate(object_count=Count('object_values')).filter(object_count__lte=2, ai_describes_incident=False)
         
         qs = qs.select_related('post', 'feed').order_by('feed_id', 'post__pubdate')
         if limit:

@@ -1,3 +1,5 @@
+from collections import defaultdict
+from datetime import UTC, datetime
 from typing import Callable
 import logging
 
@@ -290,16 +292,21 @@ def process_uploaded_objects_hook(instance, collection_name, objects, **kwargs):
         created = ObjectValue.objects.bulk_create(
             object_values_to_create, ignore_conflicts=True
         )
-        new_dupes = ObjectValue.objects.filter(
-            stix_id__in=[obj.stix_id for obj in created],
-            is_dupe=False,
-        ).exclude(
-            file_id__in=[obj.file_id for obj in created],
-        )
+        existing = ObjectValue.objects.filter(stix_id__in=[obj.stix_id for obj in created], is_dupe=False)
+        groups = defaultdict(list)
+        for obj in existing:
+            groups[obj.stix_id].append(obj)
+        pks = []
+        MIN_DT = datetime(1970, 1, 1, tzinfo=UTC)
+        for _, objs in groups.items():
+            objs.sort(key=lambda o: (o.modified or o.created or MIN_DT, o.pk), reverse=True)
+            for obj in objs[1:]:
+                pks.append(obj.pk)
+        new_dupes = ObjectValue.objects.filter(pk__in=pks)
         new_dupes.update(is_dupe=True)
         logging.info(
             f"Created {len(created)} ObjectValue records for {len(object_values_to_create)} objects"
         )
-        logging.info(f"Marked {new_dupes.count()} ObjectValue records as duplicates")
+        logging.info(f"Marked {len(pks)} ObjectValue records as duplicates")
     else:
         logging.info("No ObjectValue records to create")
