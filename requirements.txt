@@ -318,7 +318,7 @@ llama-index-llms-openrouter==0.4.4
     # via txt2stix
 llama-index-workflows==2.14.2
     # via llama-index-core
-lxml[html-clean]==6.0.2
+lxml[html-clean]==6.1.0
     # via
     #   lxml-html-clean
     #   readability-lxml
