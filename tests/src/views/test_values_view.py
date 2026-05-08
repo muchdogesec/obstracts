@@ -160,7 +160,7 @@ class TestSCOValueView:
         assert 'values' in data
         
         # Should return all unique SCO objects (5 unique IPs/domains/URLs)
-        assert data['total_results_count'] == 5
+        assert data['size'] == 5
         
         # Check that results are deduplicated by stix_id
         stix_ids = [obj['id'] for obj in data['values']]
@@ -178,7 +178,7 @@ class TestSCOValueView:
         data = response.json()
         
         # Should return only IPv4 addresses (2 unique)
-        assert data['total_results_count'] == 2
+        assert data['size'] == 2
         for obj in data['values']:
             assert obj['type'] == 'ipv4-addr'
         
@@ -194,7 +194,7 @@ class TestSCOValueView:
         data = response.json()
         
         # Should return IPv4 (2) + domain-name (2) = 4 objects
-        assert data['total_results_count'] == 4
+        assert data['size'] == 4
         types = [obj['type'] for obj in data['values']]
         assert all(t in ['ipv4-addr', 'domain-name'] for t in types)
         
@@ -210,7 +210,7 @@ class TestSCOValueView:
         data = response.json()
         
         # Should return the 192.168.1.1 IP using substring matching
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert data['values'][0]['values']['value'] == '192.168.1.1'
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
@@ -225,7 +225,7 @@ class TestSCOValueView:
         data = response.json()
         
         # Should return the IP with exact value match
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert data['values'][0]['values']['value'] == '192.168.1.1'
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
@@ -240,7 +240,7 @@ class TestSCOValueView:
         data = response.json()
         
         # Should return nothing since '192.168' is not an exact match for any individual value
-        assert data['total_results_count'] == 0
+        assert data['size'] == 0
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
             Transport.get_st_response(response)
@@ -261,7 +261,7 @@ class TestSCOValueView:
         
         # Should return objects from first post (4 SCOs in first post, but 1 IP is duplicated)
         # So we should have 4 unique objects (2 IPs, 1 domain, 1 URL)
-        assert data['total_results_count'] == 4
+        assert data['size'] == 4
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
             Transport.get_st_response(response)
@@ -278,7 +278,7 @@ class TestSCOValueView:
         data = response.json()
         
         # Should return all SCOs from this feed
-        assert data['total_results_count'] == 5
+        assert data['size'] == 5
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
             Transport.get_st_response(response)
@@ -293,7 +293,7 @@ class TestSCOValueView:
         assert response.status_code == 200
         data = response.json()
         
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert data['values'][0]['id'] == stix_id
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
@@ -339,7 +339,7 @@ class TestSCOValueView:
         data = response.json()
         
         assert len(data['values']) == 2
-        assert data['total_results_count'] == 5
+        assert data['next'], "there should be more data to fetch"
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
             Transport.get_st_response(response)
@@ -381,7 +381,7 @@ class TestSDOValueView:
         
         # Should return all unique SDO objects (4 unique)
         assert len({obj['id'] for obj in data['values']}) == len(data['values'])  # All unique
-        assert data['total_results_count'] == 4
+        assert data['size'] == 4
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
             Transport.get_st_response(response)
@@ -395,7 +395,7 @@ class TestSDOValueView:
         data = response.json()
         
         # Should return only attack-pattern (1 unique)
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert data['values'][0]['type'] == 'attack-pattern'
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
@@ -410,7 +410,7 @@ class TestSDOValueView:
         data = response.json()
         
         # Should return only enterprise-attack objects (1)
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert data['values'][0]["knowledgebase"] == 'enterprise-attack'
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
@@ -425,7 +425,7 @@ class TestSDOValueView:
         data = response.json()
         
         # Should return CVE (1) + location (1) = 2 objects
-        assert data['total_results_count'] == 2
+        assert data['size'] == 2
         knowledgebases = [obj["knowledgebase"] for obj in data['values']]
         assert all(t in ['cve', 'location'] for t in knowledgebases)
         
@@ -441,7 +441,7 @@ class TestSDOValueView:
         data = response.json()
         
         # Should find the WannaCry malware
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert 'WannaCry' in data['values'][0]['values']['name']
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
@@ -456,7 +456,7 @@ class TestSDOValueView:
         data = response.json()
         
         # Should find the Spearphishing attack pattern
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert data['values'][0]['type'] == 'attack-pattern'
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
@@ -470,7 +470,7 @@ class TestSDOValueView:
         assert response.status_code == 200
         data = response.json()
         
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert 'CVE-2021-44228' in data['values'][0]['values']['name']
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
@@ -492,7 +492,7 @@ class TestSDOValueView:
         data = response.json()
         
         # Should return SDOs from second post (2: malware, location)
-        assert data['total_results_count'] == 2
+        assert data['size'] == 2
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
             Transport.get_st_response(response)
@@ -509,7 +509,7 @@ class TestSDOValueView:
         data = response.json()
         
         # Should return all SDOs from this feed
-        assert data['total_results_count'] == 4
+        assert data['size'] == 4
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
             Transport.get_st_response(response)
@@ -524,7 +524,7 @@ class TestSDOValueView:
         assert response.status_code == 200
         data = response.json()
         
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert data['values'][0]['id'] == stix_id
         
         api_schema['/api/v1/values/sdos/']['GET'].validate_response(
@@ -554,7 +554,7 @@ class TestSDOValueView:
         assert response.status_code == 200
         data = response.json()
         
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         assert "knowledgebase" in data['values'][0]
         assert data['values'][0]["knowledgebase"] == 'cve'
         
@@ -628,7 +628,7 @@ class TestSDOValueView:
         assert response.status_code == 200
         data = response.json()
         
-        assert data['total_results_count'] == 1
+        assert data['size'] == 1
         obj = data['values'][0]
         assert obj['type'] == 'vulnerability'
         assert obj["knowledgebase"] == 'cve'
@@ -663,7 +663,7 @@ class TestValuesViewEdgeCases:
         
         assert response.status_code == 200
         data = response.json()
-        assert data['total_results_count'] == 0
+        assert data['size'] == 0
         assert data['values'] == []
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
@@ -689,7 +689,7 @@ class TestValuesViewEdgeCases:
         
         assert response.status_code == 200
         data = response.json()
-        assert data['total_results_count'] == 0
+        assert data['size'] == 0
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
             Transport.get_st_response(response)
@@ -701,7 +701,7 @@ class TestValuesViewEdgeCases:
         
         assert response.status_code == 200
         data = response.json()
-        assert data['total_results_count'] == 0
+        assert data['size'] == 0
         
         api_schema['/api/v1/values/scos/']['GET'].validate_response(
             Transport.get_st_response(response)
