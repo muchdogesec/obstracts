@@ -19,11 +19,12 @@ from django.contrib.postgres.aggregates import ArrayAgg
 
 
 from obstracts.server.models import ObjectValue
-from obstracts.server.utils import Pagination
+import dogesec_commons.utils.pagination as dsc_pagination
 from obstracts.server.values.values import sco_value_map, sdo_value_map, KB_TYPES
 from .serializers import ObjectValueSerializer
 from dogesec_commons.utils.ordering import Ordering
 from .filters import DictFirstValue
+
 
 TTP_TYPES = [
     "cve",
@@ -108,7 +109,7 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     queryset = ObjectValue.objects.all()
     serializer_class = ObjectValueSerializer
-    pagination_class = Pagination("values")
+    pagination_class = dsc_pagination.CompositeCursorPagination('values')
     filter_backends = [
         DjangoFilterBackend,
         Ordering
@@ -128,10 +129,8 @@ class BaseObjectValueView(mixins.ListModelMixin, viewsets.GenericViewSet):
         if self.allowed_types:
             queryset = queryset.filter(type__in=self.allowed_types)
 
-
-
         from django.db.models import F
-        queryset = queryset.alias(value=F('values_concat'))
+        queryset = queryset.alias(value=F('values_sort'))
         queryset = queryset.filter(
             is_dupe=False
         )
@@ -225,7 +224,14 @@ class SDOValueView(BaseObjectValueView):
     """View for STIX Domain Objects (SDOs) only."""
 
     allowed_types = list(sdo_value_map.keys())
-    ordering_fields = ["value", "created", "modified"]
+    ordering_fields = {
+        "value_descending": "-value",
+        "value_ascending": "value",
+        "created_descending": ("-created", "-id"),
+        "created_ascending": ("created", "id"),
+        "modified_descending": ("-modified", "-id"),
+        "modified_ascending": ("modified", "id")
+    }
     ordering = "modified_descending"
 
     class filterset_class(ObjectValueFilterSet):

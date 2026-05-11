@@ -408,24 +408,33 @@ class ObjectValue(models.Model):
         output_field=ArrayField(base_field=models.TextField()),
         db_persist=True, null=True, blank=True,
     )
+    values_sort = models.GeneratedField(
+        expression=models.Func(models.F("values"), models.functions.Cast(models.F('id'), models.TextField()), function="jsonb_sort_value"),
+        output_field=models.CharField(max_length=48),
+        db_persist=True, null=True, blank=True,
+    )
 
     class Meta:
         indexes = [
             models.Index(fields=['type', 'stix_id'], name='obstracts_ov_type_stix_idx', condition=models.Q(is_dupe=False)),
-            models.Index(fields=['created', 'knowledgebase'], name='obstracts_ov_kbase_c_idx', condition=models.Q(is_dupe=False)),
-            models.Index(fields=['modified', 'knowledgebase'], name='obstracts_ov_kbase_m_idx', condition=models.Q(is_dupe=False)),
-            models.Index(fields=['created', 'type'], name='obstracts_ov_created_type_idx', condition=models.Q(is_dupe=False)),
-            models.Index(fields=['modified', 'type'], name='obstracts_ov_modified_type_idx', condition=models.Q(is_dupe=False)),
+            models.Index(fields=['created', 'id', 'knowledgebase'], name='obstracts_ov_kbase_c_idx', condition=models.Q(is_dupe=False)),
+            models.Index(fields=['modified', 'id', 'knowledgebase'], name='obstracts_ov_kbase_m_idx', condition=models.Q(is_dupe=False)),
+            models.Index(fields=['created', 'id', 'type'], name='obstracts_ov_created_type_idx', condition=models.Q(is_dupe=False)),
+            models.Index(fields=['modified', 'id', 'type'], name='obstracts_ov_modified_type_idx', condition=models.Q(is_dupe=False)),
             models.Index(KeyTextTransform('kb_type', 'values'), 'type', name='obstracts_ov_kb_type_idx', condition=models.Q(is_dupe=False)),
-            models.Index('created', Upper(KeyTextTransform('kb_id', 'values')), 'type', name='obstracts_ov_kb_id_cidx', condition=models.Q(is_dupe=False)),
-            models.Index('modified', Upper(KeyTextTransform('kb_id', 'values')), 'type', name='obstracts_ov_kb_id_midx', condition=models.Q(is_dupe=False)),
-            models.Index('values_concat', 'type', name='obstracts_ov_values_concat_idx', condition=models.Q(is_dupe=False)),
-            models.Index('values_concat', 'knowledgebase', name='obstracts_ov_values_c_kbidx', condition=models.Q(is_dupe=False)),
+            models.Index('created', 'id', Upper(KeyTextTransform('kb_id', 'values')), 'type', name='obstracts_ov_kb_id_cidx', condition=models.Q(is_dupe=False)),
+            models.Index('modified', 'id', Upper(KeyTextTransform('kb_id', 'values')), 'type', name='obstracts_ov_kb_id_midx', condition=models.Q(is_dupe=False)),
+            models.Index('values_sort', 'type', name='obstracts_ov_values_concat_idx', condition=models.Q(is_dupe=False)),
+            models.Index('values_sort', 'knowledgebase', name='obstracts_ov_values_c_kbidx', condition=models.Q(is_dupe=False)),
         ]
         unique_together = [['stix_id', 'file']]
 
     def __str__(self):
         return f'ObjectValue(stix_id={self.stix_id}, knowledgebase={self.knowledgebase})'
+    
+    @property
+    def value(self):
+        return self.values_sort
 
 class Job(models.Model):
     id = models.UUIDField(primary_key=True, editable=False)
