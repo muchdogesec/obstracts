@@ -231,6 +231,7 @@ def start_job(sender, instance: h4f_models.Job, **kwargs):
         job.update_state(JobState.RETRIEVE_FAILED)
     if instance.is_cancelled():
         job.cancel()
+    job.has_h4f_failures = instance.has_failures
     job.save()
 
 
@@ -460,6 +461,7 @@ class Job(models.Model):
     extra = models.JSONField(default=None, null=True)
     errors = ArrayField(base_field=models.CharField(max_length=1024), default=list)
     completion_time = models.DateTimeField(default=None, null=True)
+    has_h4f_failures = models.BooleanField(default=False)
 
     def is_cancelled(self):
         obj = Job.objects.get(pk=self.pk)
