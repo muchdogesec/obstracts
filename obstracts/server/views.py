@@ -28,6 +28,7 @@ from .utils import (
     Response,
 )
 from django_filters.rest_framework import (
+    BooleanFilter,
     DjangoFilterBackend,
     FilterSet,
     Filter,
@@ -1206,6 +1207,14 @@ class JobView(
             label="Filter by state.",
             lookup_expr="in",
         )
+        has_processes = BooleanFilter(
+            label="Only show feeds with `processed_items > 0` or `failed_processes > 0`",
+            method="filter_has_process",
+        )
+        has_h4f_failures = BooleanFilter(
+            label="Only show feeds with history4feed failures",
+            method="filter_has_h4f_failures",
+        )
         post_id = UUIDFilter(
             label="Filter by Post ID",
             field_name="history4feed_job__fulltext_jobs__post_id",
@@ -1213,6 +1222,18 @@ class JobView(
         type = ChoiceFilter(
             help_text="Select `type` of job", choices=models.JobType.choices
         )
+
+        def filter_has_process(self, queryset, name, value):
+            q_filter = Q(
+                    Q(state='processed') &
+                    (Q(processed_items__gt=0) | Q(failed_processes__gt=0))
+                )
+            if not value:
+                q_filter = ~q_filter
+            return queryset.filter(q_filter)
+        
+        def filter_has_h4f_failures(self, queryset, name, value):
+            return queryset.filter(has_h4f_failures=value, history4feed_job__isnull=False)
 
     def get_queryset(self):
         return models.Job.objects
