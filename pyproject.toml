@@ -27,7 +27,7 @@ dependencies = [
     "redis",
     "history4feed",
     "stix2arango>=1.2.0",
-    "dogesec-commons[stixifier]>='1.4.8'",
+    "dogesec-commons[stixifier]>=1.4.8",
     "txt2stix[llms]",
     "hyperlink",
     "django>=5.2.1",
