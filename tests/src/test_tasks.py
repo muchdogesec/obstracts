@@ -558,6 +558,7 @@ def test_update_knowledgebase_task_success():
         from obstracts.cjob.tasks import update_knowledgebase
         update_knowledgebase(job.id)
     job.refresh_from_db()
+    assert job.completion_time != None
     assert job.state == models.JobState.PROCESSED
 
 
@@ -579,6 +580,7 @@ def test_update_knowledgebase_task_failure():
         update_knowledgebase(job.id)
     job.refresh_from_db()
     assert job.state == models.JobState.PROCESS_FAILED
+    assert job.completion_time != None
     assert "boom" in job.errors[0]
 
 
