@@ -147,7 +147,7 @@ djangorestframework==3.16.1
     #   obstracts (pyproject.toml)
 docstring-parser==0.17.0
     # via anthropic
-dogesec-commons[stixifier]==1.4.1
+dogesec-commons[stixifier]==1.4.8
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
