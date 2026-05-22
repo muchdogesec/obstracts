@@ -74,7 +74,7 @@ class JobState(models.TextChoices):
 class JobType(models.TextChoices):
     FEED_INDEX = "feed_index"
     PDF_INDEX = "pdf_index"
-    SYNC_VULNERABILITIES = "sync-vulnerabilities"
+    SYNC_KNOWLEDGEBASE = "sync-knowledgebase"
     REPROCESS_POSTS = "reprocess-posts"
     BUILD_EMBEDDINGS = "build-embeddings"
     BUILD_CLUSTERS = "build-clusters"

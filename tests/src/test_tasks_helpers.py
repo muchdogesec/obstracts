@@ -45,125 +45,38 @@ VULNS = [
     ("CVE-2020-26919", "vulnerability--0957b9de-2d8b-5f8b-817d-6a34b7b7f10a"),
 ]
 FAKE_VULNERABILITIES = [
-    dict(_key="dummy__" + id, name=name, type="vulnerability", id=random.random())
+    dict(_key="dummy__" + id, name=name, type="vulnerability", id=id, _record_md5_hash=random.random(), removed=True)
     for name, id in VULNS
 ]
 
 @pytest.fixture
 def fake_retriever():
-    def fake_retrieve(url):
+    def fake_retrieve(url, *kwargs):
         qs = parse_qs(urlparse(url).query)
-        cve_list = qs.get("cve_id", [""])[0].split(",") if qs.get("cve_id") else []
+        cve_list = qs.get("stix_id", [""])[0].split(",") if qs.get("stix_id") else []
         return [
-            {"name": name, "dummy": "info", "extra": "extra"}
-            for name in cve_list
-            if name
+            {"id": id, "dummy": "info", "extra": "extra", "type": "vulnerability"}
+            for id in cve_list
+            if id
         ]
 
     with patch(
-        "obstracts.cjob.helpers.STIXObjectRetriever._retrieve_objects",
+        "dogesec_commons.objects.kb_sync.sync.STIXObjectRetriever.retrieve_objects",
         side_effect=fake_retrieve,
     ):
         yield
-
-
-
-@pytest.mark.django_db
-def test_get_vulnerabilities(obstracts_db, feeds, fake_retriever):
-    r1 = helpers.get_vulnerabilities(
-        "threat_intelligence_with_misp_0dfccb58158c4436b338163e3662943c_vertex_collection",
-        1,
-    ) == [
-        {
-            "_key": "dummy__vulnerability--74ebaaf5-7210-5422-94f5-3464d0db6e1a",
-            "name": "CVE-2011-2462",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 1,
-        },
-        {
-            "_key": "dummy__vulnerability--0d92bd85-e2f0-51ec-9773-6cf161498e25",
-            "name": "CVE-2015-0816",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 1,
-        },
-        {
-            "_key": "dummy__vulnerability--71706d20-55df-5004-b315-7d696842447e",
-            "name": "CVE-2018-15982",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 1,
-        },
-        {
-            "_key": "dummy__vulnerability--59a383f8-f6a6-5871-9fe0-75abbdf676c8",
-            "name": "CVE-2024-38475",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 1,
-        },
-    ]
-    r2 = helpers.get_vulnerabilities(
-        "indicators_of_compromise_dd3ea54c3a9d4f9fa690983e2fd8f235_vertex_collection",
-        2764,
-    )
-    assert r2 == [
-        {
-            "_key": "dummy__vulnerability--48ac0edb-984a-55e3-94aa-017c696366b5",
-            "name": "CVE-2020-25506",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 2764,
-        },
-        {
-            "_key": "dummy__vulnerability--0957b9de-2d8b-5f8b-817d-6a34b7b7f10a",
-            "name": "CVE-2020-26919",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 2764,
-        },
-        {
-            "_key": "dummy__vulnerability--906fd5ca-f2a6-5dfc-8f4a-2b493c3650ac",
-            "name": "CVE-2020-7961",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 2764,
-        },
-        {
-            "_key": "dummy__vulnerability--def77e14-20ca-557f-9757-cc0c4147dcd3",
-            "name": "CVE-2020-8515",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 2764,
-        },
-        {
-            "_key": "dummy__vulnerability--0039762d-8523-514e-bce6-3103e1724b4f",
-            "name": "CVE-2020-8644",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 2764,
-        },
-        {
-            "_key": "dummy__vulnerability--75a5ba93-b53c-5abf-9c88-75846041cffe",
-            "name": "CVE-2022-26318",
-            "dummy": "info",
-            "extra": "extra",
-            "_obstract_updated_on": 2764,
-        },
-    ]
-    assert helpers.get_vulnerabilities(feeds[0].obstracts_feed.vertex_collection, 3) == []
-
+  
 @pytest.mark.django_db
 def test_run_on_collections(obstracts_db, feeds, fake_retriever):
     job = ob_models.Job.objects.create(
         id=uuid.uuid4(),
-        type=ob_models.JobType.SYNC_VULNERABILITIES,
+        type=ob_models.JobType.SYNC_KNOWLEDGEBASE,
         state=ob_models.JobState.PROCESSING,
     )
-    r1 = helpers.run_on_collections(job)
+    r1 = helpers.run_on_collections(job, 'cve')
     assert r1 is None
     f = obstracts_db.collection(feeds[1].obstracts_feed.vertex_collection).find(dict(type='vulnerability'))
-    assert all(x.get('dummy') == 'info' for x in f)
+    assert all(x.get('dummy') == 'info' and 'removed' not in x for x in f)
     assert len(f) == 4
     g = obstracts_db.collection(feeds[2].obstracts_feed.vertex_collection).find(dict(type='vulnerability'))
     assert all(x.get('dummy') == 'info' for x in g)

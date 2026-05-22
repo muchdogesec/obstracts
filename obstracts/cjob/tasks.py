@@ -184,11 +184,11 @@ def download_pdf(url, is_demo=False, cookie_consent_mode=None):
     return response.content
 
 @shared_task
-def update_vulnerabilities(job_id):
+def update_knowledgebase(job_id):
     job = models.Job.objects.get(pk=job_id)
     state = models.JobState.PROCESSED
     try:
-        helpers.run_on_collections(job)
+        helpers.run_on_collections(job, job.extra['knowledgebase'])
     except Exception as e:
         job.errors.append(str(e))
         job.save(update_fields=["errors"])
