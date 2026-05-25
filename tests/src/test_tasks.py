@@ -544,41 +544,43 @@ def test_create_pdf_reindex_job__skips_no_pdf(
 
 
 @pytest.mark.django_db
-def test_update_vulnerabilities_task_success():
+def test_update_knowledgebase_task_success():
     import uuid
-
     job = models.Job.objects.create(
         id=uuid.uuid4(),
-        type=models.JobType.SYNC_VULNERABILITIES,
+        type=models.JobType.SYNC_KNOWLEDGEBASE,
         state=models.JobState.PROCESSING,
+        extra=dict(knowledgebase='capec'),
     )
     with patch("obstracts.cjob.tasks.helpers.run_on_collections") as mock_run:
         # no exception -> should set state to PROCESSED
         mock_run.return_value = None
-        from obstracts.cjob.tasks import update_vulnerabilities
-
-        update_vulnerabilities(job.id)
+        from obstracts.cjob.tasks import update_knowledgebase
+        update_knowledgebase(job.id)
     job.refresh_from_db()
+    assert job.completion_time != None
     assert job.state == models.JobState.PROCESSED
 
 
 @pytest.mark.django_db
-def test_update_vulnerabilities_task_failure():
+def test_update_knowledgebase_task_failure():
     import uuid
 
     job = models.Job.objects.create(
         id=uuid.uuid4(),
-        type=models.JobType.SYNC_VULNERABILITIES,
+        type=models.JobType.SYNC_KNOWLEDGEBASE,
         state=models.JobState.PROCESSING,
+        extra=dict(knowledgebase='cve'),
     )
     with patch(
         "obstracts.cjob.tasks.helpers.run_on_collections", side_effect=Exception("boom")
     ):
-        from obstracts.cjob.tasks import update_vulnerabilities
+        from obstracts.cjob.tasks import update_knowledgebase
 
-        update_vulnerabilities(job.id)
+        update_knowledgebase(job.id)
     job.refresh_from_db()
     assert job.state == models.JobState.PROCESS_FAILED
+    assert job.completion_time != None
     assert "boom" in job.errors[0]
 
 

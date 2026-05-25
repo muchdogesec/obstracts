@@ -1,54 +1,26 @@
-import itertools
-import os
 import time
-from urllib.parse import urljoin
 from dogesec_commons.objects.helpers import ArangoDBHelper
-from txt2stix.retriever import STIXObjectRetriever
 from obstracts.server.models import FeedProfile, Job
+from dogesec_commons.objects.kb_sync import sync
 
 
-def batched(iterable, n):
-    """Yield lists of size n from iterable."""
-    it = iter(iterable)
-    while True:
-        batch = list(itertools.islice(it, n))
-        if not batch:
-            return
-        yield batch
-
-def get_vulnerabilities(collection_name, update_time):
-    helper = ArangoDBHelper(collection_name, None)
-    binds = {'@collection': collection_name}
-    vulnerabilities = helper.execute_query("""
-FOR doc IN @@collection
-FILTER doc.type == "vulnerability"
-COLLECT name = doc.name INTO prim_key = doc._key
-RETURN [name, prim_key]
-    """, bind_vars=binds, paginate=False)
-    vulnerabilities = dict(vulnerabilities)
-    retriever = STIXObjectRetriever("vulmatch")
-    updates = []
-    for chunk in batched(vulnerabilities, 50):
-        chunk = ','.join(chunk)
-        for v in retriever._retrieve_objects(urljoin(retriever.api_root, f"v1/cve/objects/?cve_id={chunk}")):
-            primary_keys = vulnerabilities[v['name']]
-            for _key in primary_keys:
-                updates.append({'_key': _key, **v, '_obstract_updated_on': update_time})
-    return updates
-
-def run_on_collections(job: Job):
+def run_on_collections(job: Job, knowledgebase):
     update_time = time.time()
-    db = ArangoDBHelper('', None).db
     feeds = FeedProfile.objects.all()
+    if job:
+        job.extra = job.extra or {}
+        job.extra.update(
+            feeds=len(feeds),
+            processed_feeds=0,
+            unique_objects=0,
+        )
+        job.save(update_fields=['extra'])
     for feed in feeds:
         collection_name = feed.vertex_collection
         print(f"Processing {collection_name}")
-        updates = get_vulnerabilities(collection_name, update_time)
-        if not updates:
-            continue
-        collection = db.collection(collection_name)
-        for chunk in batched(updates, 500):
-            collection.update_many(chunk, raise_on_document_error=True)
-            if job:
-                job.processed_items += len(chunk)
-                job.save(update_fields=['processed_items'])
+        processed_count, updated_count = sync.run_on_kb_and_collection(collection_name, knowledgebase, update_time=update_time)
+        if job:
+            job.processed_items += updated_count
+            job.extra['processed_feeds'] += 1
+            job.extra['unique_objects'] += processed_count
+            job.save(update_fields=["processed_items", "extra"])

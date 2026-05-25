@@ -1259,6 +1259,19 @@ class JobView(
             404: api_schema.DEFAULT_404_ERROR,
         },
     ),
+    update_any=extend_schema(
+        summary="Update local vulnerabilities",
+        description=textwrap.dedent(
+            """
+            Connect to remote vulmatch/ctibutler server and update all values from specified knowledgebase
+            """
+        ),
+        request=None,
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+        },
+    ),
 )
 class TasksView(viewsets.GenericViewSet):
     schema = ObstractsAutoSchema()
@@ -1269,15 +1282,41 @@ class TasksView(viewsets.GenericViewSet):
     ordering_fields = ["created"]
     ordering = "created_descending"
     pagination_class = Pagination("jobs")
+    valid_knowledge_bases = [
+        "cve",
+        "capec",
+        "ics-attack",
+        "mobile-attack",
+        "cwe",
+        "location",
+        "enterprise-attack",
+        "atlas",
+        "disarm",
+    ]
+    openapi_path_params = [
+        OpenApiParameter(
+            name="knowledgebase",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.PATH,
+            enum=valid_knowledge_bases,
+            required=True,
+        )
+    ]
+    
+    @decorators.action(methods=["PATCH"], detail=False, url_path="sync-knowledgebases/<str:knowledgebase>")
+    def update_any(self, request, *args, knowledgebase=None, **kwargs):
+        return self._sync_kb(knowledgebase)
 
-    @decorators.action(methods=["PATCH"], detail=False, url_path="sync-vulnerabilities")
-    def update_vulnerabilities(self, request, *args, **kwargs):
+    def _sync_kb(self, kb):
+        if kb not in self.valid_knowledge_bases:
+            raise exceptions.NotFound({"error": "unknown knowledgebase"})
         job = models.Job.objects.create(
             id=uuid.uuid4(),
-            type=models.JobType.SYNC_VULNERABILITIES,
+            type=models.JobType.SYNC_KNOWLEDGEBASE,
             state=models.JobState.PROCESSING,
+            extra=dict(knowledgebase=kb)
         )
-        t = tasks.update_vulnerabilities.si(job.id)
+        t = tasks.update_knowledgebase.si(job.id)
         t.apply_async()
         self.kwargs.update(job_id=job.id)
         obj = models.Job.objects.get(id=job.id)
