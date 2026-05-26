@@ -333,7 +333,7 @@ markupsafe==3.0.3
     # via jinja2
 marshmallow==3.26.2
     # via dataclasses-json
-mistune==3.2.0
+mistune==3.2.1
     # via
     #   file2txt
     #   txt2stix
