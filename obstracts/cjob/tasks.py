@@ -500,3 +500,4 @@ def mark_old_jobs_as_failed(**kwargs):
             models.JobState.PROCESSED,
         ]
     ).update(state=models.JobState.CANCELLED)
+    auto_refresh_statistics_data.delay()
