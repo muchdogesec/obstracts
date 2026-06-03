@@ -20,7 +20,7 @@ import sys
 import uuid
 from dotenv import load_dotenv
 import stix2
-from datetime import datetime
+from datetime import datetime, timedelta
 
 load_dotenv()
 

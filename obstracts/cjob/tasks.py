@@ -6,6 +6,7 @@ from celery import shared_task, chain, current_task, Task as CeleryTask
 from django.db import transaction
 import typing
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
+from django.utils import timezone
 
 from dogesec_commons.stixifier.stixifier import StixifyProcessor, ReportProperties
 from txt2stix.txt2stix import Txt2StixData
@@ -14,6 +15,7 @@ import requests
 from obstracts.cjob import helpers
 from obstracts.classifier.models import DocumentEmbedding
 import obstracts.classifier.tasks as classifier_tasks
+from obstracts.server.statistics import build_data_and_add_to_cache
 from ..server.models import Job
 from ..server import models
 from django.core.cache import cache
@@ -477,6 +479,10 @@ def reindex_pdf_for_post(job_id, post_id):
             ]
         )
 
+
+@shared_task
+def auto_refresh_statistics_data():
+    build_data_and_add_to_cache(timezone.now())
 
 from celery import signals
 
