@@ -1,15 +1,17 @@
+import logging
 import textwrap
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from django.utils import timezone
-from django.db.models import Count
+from django.db.models import Count, Subquery
 
 from rest_framework import serializers, viewsets, exceptions
 from rest_framework.response import Response
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_serializer
-from obstracts.server.models import ObjectValue
+from obstracts.server.models import ObjectValue, File, h4f_models
 from obstracts.server import autoschema as api_schema
+from django.core.cache import cache
 
 
 STATISTICS_KNOWLEDGEBASES = {
@@ -25,7 +27,9 @@ STATISTICS_KNOWLEDGEBASES = {
     "atlas": "Top 10 ATLAS Objects",
     "sector": "Top 10 Sectors",
 }
-
+CACHE_KEY = "statistics-cache"
+EXPIRE_MINUTES = 60
+MAX_TIME_BEFORE_REFRESH = 45
 
 def _top10(knowledgebase: str, since: datetime, until: datetime):
     """Return top 10 stix_ids for a given knowledgebase and time window, ranked by occurrence count."""
@@ -34,6 +38,7 @@ def _top10(knowledgebase: str, since: datetime, until: datetime):
             knowledgebase=knowledgebase,
             file__post__pubdate__gte=since,
             file__post__pubdate__lt=until,
+            file__post__deleted_manually=False,
         )
         .values("stix_id", "values")
         .annotate(count=Count("file__post_id", distinct=True))
@@ -52,11 +57,38 @@ def _build_category(category_label: str, knowledgebase: str, now: datetime, days
     }
 
 def _build_categories(now: datetime, days: int, category_labels=STATISTICS_KNOWLEDGEBASES):
-    return [
-        _build_category(STATISTICS_KNOWLEDGEBASES[knowledgebase], knowledgebase, now, days)
-        for knowledgebase in category_labels
+    data = cache.get(CACHE_KEY)
+    if not data:
+        build_data_and_add_to_cache(now)
+        return _build_categories(now, days, category_labels)
+    return data['time'], [
+        data[days][knowledgebase] for knowledgebase in category_labels
     ]
 
+def ensure_statistics_data(now: datetime):
+    now_ts = now.timestamp()
+    data = cache.get(CACHE_KEY)
+    if not data:
+        build_data_and_add_to_cache(now)
+        return ensure_statistics_data(now)
+    if data['time'] - now_ts > (60 * MAX_TIME_BEFORE_REFRESH):
+        build_data_and_add_to_cache(now)
+        return ensure_statistics_data(now)
+    return data
+    
+
+def _build_data_for_categories(now, days, category_labels):
+    return {
+        knowledgebase: _build_category(STATISTICS_KNOWLEDGEBASES[knowledgebase], knowledgebase, now, days)
+        for knowledgebase in category_labels
+    }
+
+def build_data_and_add_to_cache(now: datetime):
+    logging.info("re-Building statistics cache")
+    data_7_days = _build_data_for_categories(now, 7, STATISTICS_KNOWLEDGEBASES)
+    data_30_days = _build_data_for_categories(now, 30, STATISTICS_KNOWLEDGEBASES)
+    cache.set(CACHE_KEY, {7: data_7_days, 30: data_30_days, "time": now.timestamp()}, timeout=60*EXPIRE_MINUTES)
+    return 
 
 class TrendingEntrySerializer(serializers.Serializer):
     stix_id = serializers.CharField()
@@ -127,16 +159,18 @@ class StatisticsView(viewsets.ViewSet):
             knowledgebases = [kb_filter]
 
 
-        def _period(days):
+        def _period(now, days):
+            now, value = _build_categories(now, days, category_labels=knowledgebases)
+            now = datetime.fromtimestamp(now, tz=UTC)
             return {
                 "period_days": days,
                 "period_start": now - timedelta(days=days),
                 "period_end": now,
-                "categories": _build_categories(now, days, category_labels=knowledgebases),
+                "categories": value,
             }
 
         data = {
-            "last_7_days": _period(7),
-            "last_30_days": _period(30),
+            "last_7_days": _period(now, 7),
+            "last_30_days": _period(now, 30),
         }
         return Response(StatisticsResponseSerializer(data).data)

@@ -40,6 +40,18 @@ services:
         volumes:
             - clusters:/opt/clusters/
 
+    celery-beat:
+        extends: env_django
+        command: >
+                bash -c "
+                  celery -A obstracts.cjob beat -l INFO
+                  "
+        depends_on:
+            redis:
+                condition: service_started
+            env_django:
+                condition: service_completed_successfully
+
     redis:
         image: "redis:alpine"
 
