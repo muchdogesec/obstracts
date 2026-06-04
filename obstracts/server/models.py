@@ -427,6 +427,7 @@ class ObjectValue(models.Model):
             models.Index('modified', 'id', Upper(KeyTextTransform('kb_id', 'values')), 'type', name='obstracts_ov_kb_id_midx', condition=models.Q(is_dupe=False)),
             models.Index('values_sort', 'type', name='obstracts_ov_values_concat_idx', condition=models.Q(is_dupe=False)),
             models.Index('values_sort', 'knowledgebase', name='obstracts_ov_values_c_kbidx', condition=models.Q(is_dupe=False)),
+            models.Index('file_id', 'knowledgebase', name='obstracts_kb_stats'),
         ]
         unique_together = [['stix_id', 'file']]
 
