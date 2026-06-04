@@ -176,6 +176,7 @@ def poll_jobs(
     while True:
         if feed_ids and (len(in_queue) <= max_in_queue - 1):
             feed_id = feed_ids.pop()
+            print(f"running {args.mode} on feed {feed_id}")
             job = args.function(session, base_url, feed_id, args)
             job = get_real_job(session, base_url, job)
             results[feed_id] = job
