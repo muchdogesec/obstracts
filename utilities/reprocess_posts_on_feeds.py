@@ -2,15 +2,40 @@ from __future__ import annotations
 
 import argparse
 import time
+from dataclasses import dataclass, field
 from urllib.parse import urlparse
-from typing import List, Optional, Dict, Any
+from typing import Any, Callable, Literal, TypeAlias, cast
 
 import requests
 
-def fetch_feed_ids(session: requests.Session, base_url: str) -> List[str]:
-    url = f"{base_url.rstrip('/')}/v1/feeds/"
+ModeName: TypeAlias = Literal["reprocess", "reextract", "refetch", "reindex"]
+JobResponse: TypeAlias = dict[str, Any]
+ArgsHandler: TypeAlias = Callable[[requests.Session, str, str, "Args"], JobResponse]
+
+@dataclass(slots=True, kw_only=True)
+class Args:
+    mode: ModeName
+    base_url: str
+    api_key: str
+    feed_ids: list[str] | None = None
+    ignore_feeds: list[str] | None = None
+    dry_run: bool = False
+    max_in_queue: int = 3
+    status_file: str = "reindex_status.md"
+    poll_interval: int = 10
+    max_wait: int = 3600
+    profile_id: str | None = None
+    all: bool = False
+    include_remote_blogs: bool = False
+    force_full_fetch: bool = False
+    no_archive: bool = False
+    function: ArgsHandler
+
+
+def fetch_feed_ids(session: requests.Session, base_url: str) -> list[str]:
+    url = f"{base_url}/v1/feeds/"
     params = {"page": 1}
-    feed_ids = []
+    feed_ids: list[str] = []
     while True:
         resp = session.get(url, params=params, timeout=30)
         resp.raise_for_status()
@@ -22,8 +47,12 @@ def fetch_feed_ids(session: requests.Session, base_url: str) -> List[str]:
     return feed_ids
 
 
-def fetch_feed_details(session: requests.Session, base_url: str, feed_id: str) -> dict:
-    url = f"{base_url.rstrip('/')}/v1/feeds/{feed_id}/"
+def fetch_feed_details(
+    session: requests.Session,
+    base_url: str,
+    feed_id: str,
+) -> dict[str, Any]:
+    url = f"{base_url}/v1/feeds/{feed_id}/"
     resp = session.get(url, timeout=30)
     resp.raise_for_status()
     return resp.json()
@@ -33,14 +62,11 @@ def reprocess(
     session: requests.Session,
     base_url: str,
     feed_id: str,
-    all: bool,
-    **kw,
-) -> dict:
-    url = f"{base_url.rstrip('/')}/v1/feeds/{feed_id}/reprocess-posts/"
-    payload = {
+    args: Args,
+) -> JobResponse:
+    url = f"{base_url}/v1/feeds/{feed_id}/reprocess-posts/"
+    payload: dict[str, Any] = {
         "skip_extraction": True,
-        # The feed reprocess endpoint validates only_hidden_posts with profile_id,
-        # so keep this false for the skip_extraction=true path.
         "only_hidden_posts": False,
     }
     resp = session.patch(url, json=payload)
@@ -52,15 +78,13 @@ def reextract(
     session: requests.Session,
     base_url: str,
     feed_id: str,
-    profile_id,
-    all,
-    **kw,
-) -> dict:
-    url = f"{base_url.rstrip('/')}/v1/feeds/{feed_id}/reprocess-posts/"
-    payload = {
+    args: Args,
+) -> JobResponse:
+    url = f"{base_url}/v1/feeds/{feed_id}/reprocess-posts/"
+    payload: dict[str, Any] = {
         "skip_extraction": False,
-        "only_hidden_posts": not all,
-        "profile_id": profile_id, 
+        "only_hidden_posts": not args.all,
+        "profile_id": args.profile_id,
     }
     resp = session.patch(url, json=payload)
     resp.raise_for_status()
@@ -70,32 +94,38 @@ def refetch(
     session: requests.Session,
     base_url: str,
     feed_id: str,
-    profile_id,
-    all: bool,
-    **kw,
-) -> dict:
-    raise NotImplementedError("not implemented")
-    url = f"{base_url.rstrip('/')}/v1/feeds/{feed_id}/reprocess-posts/"
-    payload = {
-        "skip_extraction": False,
-        "only_hidden_posts": not all,
-        "profile_id": profile_id, 
+    args: Args,
+) -> JobResponse:
+    url = f"{base_url}/v1/feeds/{feed_id}/fetch/"
+    payload: dict[str, Any] = {
+        "profile_id": args.profile_id,
+        "include_remote_blogs": args.include_remote_blogs,
+        "force_full_fetch": args.force_full_fetch,
+        "use_feed_url_only": args.no_archive,
     }
     resp = session.patch(url, json=payload)
     resp.raise_for_status()
     return resp.json()
 
 
-## FUNCTION, HELP, REQUIRES_PROFILE
-MODES = dict(
-    reprocess=(reprocess, "Reprocess and update STIX objects without going through the extraction phase again", False),
-    refetch=(refetch, "Refetch, Re-extract, and Reprocess post. NOT AVAILABLE", True),
-    reextract=(reextract, "Re-extract and reprocess posts", True),
-)
+def reindex(
+    session: requests.Session,
+    base_url: str,
+    feed_id: str,
+    args: Args,
+) -> JobResponse:
+    url = f"{base_url}/v1/feeds/{feed_id}/posts/reindex/"
+    payload: dict[str, Any] = {
+        "profile_id": args.profile_id,
+        "only_hidden_posts": not args.all,
+    }
+    resp = session.patch(url, json=payload)
+    resp.raise_for_status()
+    return resp.json()
 
 
-def write_status_file(results: dict, status_file: str) -> None:
-    lines = []
+def write_status_file(results: dict[str, JobResponse], status_file: str) -> None:
+    lines: list[tuple[str, str, str, str, str]] = []
     for feed_id, job in results.items():
         status = job["state"]
         job_id = job["id"]
@@ -127,25 +157,25 @@ def poll_jobs(
     status_file: str,
     poll_interval: int,
     max_wait: int,
-    args,
-) -> dict:
-    results: dict[str, dict] = {}
-    in_queue = set()
+    args: Args,
+) -> dict[str, JobResponse]:
+    results: dict[str, JobResponse] = {}
+    in_queue: set[str] = set()
     start = time.time()
 
     while True:
         if feed_ids and (len(in_queue) <= max_in_queue - 1):
             feed_id = feed_ids.pop()
-            job = args.function(session, base_url, feed_id, all=args.all, profile_id=args.profile_id)
+            job = args.function(session, base_url, feed_id, args)
             results[feed_id] = job
             in_queue.add(job["id"])
 
         for job_id in list(in_queue):
             try:
-                url = f"{base_url.rstrip('/')}/v1/jobs/{job_id}/"
+                url = f"{base_url}/v1/jobs/{job_id}/"
                 resp = session.get(url)
                 resp.raise_for_status()
-                job = resp.json()
+                job: JobResponse = resp.json()
 
                 status = job["state"]
                 feed_id = job["feed_id"]
@@ -157,7 +187,6 @@ def poll_jobs(
                 write_status_file(results, status_file)
             except Exception as exc:
                 print(f"Error fetching job {job_id}: {exc}")
-                job = None
 
         if not in_queue and not feed_ids:
             print("All jobs processed")
@@ -173,66 +202,133 @@ def poll_jobs(
     return results
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Reindex feeds")
+def parse_args() -> Args:
+    parser = argparse.ArgumentParser(description="Reprocess feeds")
 
-    modes_help = ["`{}`: {}, requires profile: {}".format(mode, help, requires_profile) for (mode, (_, help, requires_profile)) in MODES.items()]
-
-    parser.add_argument(
-        "--mode",
-        required=True,
-        choices=MODES,
-        help=' ||| '.join(modes_help)
-    )
-    parser.add_argument(
-        "--all",
-        action='store_true',
-        help="default: false. include all eligible posts instead of only hidden posts when the selected mode supports that distinction",
-    )
-    parser.add_argument(
-        "--profile-id",
-        help="profile to use for the extraction, required in modes: re-extract, refetch.",
-    )
-    parser.add_argument(
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument(
         "--base-url",
         required=True,
         help="Management API base URL, for example https://management.obstracts.com/obstracts_api/admin/api/",
+        type=lambda url: url.rstrip('/'),
     )
-    parser.add_argument(
+    common.add_argument("--api-key", required=True)
+    common.add_argument(
         "--feed-ids",
         nargs="+",
         default=None,
-        help="List of feed IDs to reindex (maximum 5)",
+        help="List of feed IDs to process (if omitted, all feeds are fetched from the API)",
     )
-    parser.add_argument(
+    common.add_argument(
         "--ignore-feeds",
         nargs="+",
         default=None,
         help="List of feed IDs to ignore/exclude from processing",
     )
-    parser.add_argument(
+    common.add_argument(
         "--dry-run",
         action="store_true",
         help="Print feeds that will be processed without actually processing them",
     )
-    parser.add_argument("--api-key", required=True)
+    common.add_argument("--max-in-queue", type=int, default=3)
+    common.add_argument("--status-file", default="reindex_status.md")
+    common.add_argument("--poll-interval", type=int, default=10)
+    common.add_argument("--max-wait", type=int, default=3600)
 
-    parser.add_argument("--max-in-queue", type=int, default=3)
-    parser.add_argument("--status-file", default="reindex_status.md")
-    parser.add_argument("--poll-interval", type=int, default=10)
-    parser.add_argument("--max-wait", type=int, default=3600)
+    subparsers = parser.add_subparsers(dest="mode", required=True)
 
-    args = parser.parse_args()
-    _, args.function, requires_profile = MODES[args.mode]
-    if args.mode == "refetch":
-        parser.error("--mode refetch is not implemented yet")
-    if requires_profile and not args.profile_id:
-        parser.error(f"--profile-id is required for mode: {args.mode}")
+    reprocess_parser = subparsers.add_parser(
+        "reprocess",
+        parents=[common],
+        help="Reprocess posts without running extraction again",
+    )
+    reprocess_parser.set_defaults(function=reprocess)
+
+    reextract_parser = subparsers.add_parser(
+        "reextract",
+        parents=[common],
+        help="Re-run extraction and reprocess posts",
+    )
+    reextract_parser.add_argument(
+        "--profile-id",
+        required=True,
+        help="Profile to use for extraction",
+    )
+    reextract_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run on all eligible posts instead of only hidden posts",
+    )
+    reextract_parser.set_defaults(function=reextract)
+
+    reindex_parser = subparsers.add_parser(
+        "reindex",
+        parents=[common],
+        help="Re-index the content of posts already in the feed",
+    )
+    reindex_parser.add_argument(
+        "--profile-id",
+        required=True,
+        help="Profile to use for re-indexing",
+    )
+    reindex_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run on all eligible posts instead of only hidden posts",
+    )
+    reindex_parser.set_defaults(function=reindex)
+
+    refetch_parser = subparsers.add_parser(
+        "refetch",
+        parents=[common],
+        help="Check for new posts since the last fetch",
+    )
+    refetch_parser.add_argument(
+        "--profile-id",
+        required=True,
+        help="Profile to use for the fetch job",
+    )
+    refetch_parser.add_argument(
+        "--include-remote-blogs",
+        action="store_true",
+        help="Allow history4feed to include remote posts from other domains",
+    )
+    refetch_parser.add_argument(
+        "--force-full-fetch",
+        action="store_true",
+        help="Fetch all URLs from the earliest search date instead of only new posts since the last fetch",
+    )
+    refetch_parser.add_argument(
+        "--no-archive",
+        action="store_true",
+        help="Only check the live feed URL instead of considering archived URLs too",
+    )
+    refetch_parser.set_defaults(function=refetch)
+
+    ns = parser.parse_args()
+    args = Args(
+        mode=cast(ModeName, ns.mode),
+        base_url=ns.base_url,
+        api_key=ns.api_key,
+        feed_ids=ns.feed_ids,
+        ignore_feeds=ns.ignore_feeds,
+        dry_run=ns.dry_run,
+        max_in_queue=ns.max_in_queue,
+        status_file=ns.status_file,
+        poll_interval=ns.poll_interval,
+        max_wait=ns.max_wait,
+        profile_id=getattr(ns, "profile_id", None),
+        all=getattr(ns, "all", False),
+        include_remote_blogs=getattr(ns, "include_remote_blogs", False),
+        force_full_fetch=getattr(ns, "force_full_fetch", False),
+        no_archive=getattr(ns, "no_archive", False),
+        function=cast(ArgsHandler, ns.function),
+    )
     return args
 
 
 def main() -> int:
-    args = parse_args()
+    args: Args = parse_args()
 
     session = requests.Session()
     session.headers["Accept"] = "application/json"
@@ -251,7 +347,7 @@ def main() -> int:
         if ignored_count > 0:
             print(f"Ignoring {ignored_count} feed(s)")
 
-    args.feed_ids = list(set(args.feed_ids))
+    args.feed_ids = list(dict.fromkeys(args.feed_ids))
 
     print(f"Processing {len(args.feed_ids)} feed(s): {', '.join(args.feed_ids)}")
 
@@ -270,7 +366,7 @@ def main() -> int:
         print(f"\nTotal feeds to process: {len(args.feed_ids)}")
         return 0
 
-    print("\nStarting reindexing of feeds...\n")
+    print("\nStarting processing of feeds...\n")
     print("Writing status to:", args.status_file)
     results = poll_jobs(
         session,
@@ -283,9 +379,7 @@ def main() -> int:
         args=args,
     )
 
-    failed = [jid for jid, job in results.items() if job["state"] != "processed"]
-
-    print(f"\nReindexing complete. Results written to {args.status_file}\n")
+    print(f"\nProcessing complete. Results written to {args.status_file}\n")
 
     print("All jobs processed")
     return 0
