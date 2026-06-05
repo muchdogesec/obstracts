@@ -124,6 +124,16 @@ def reindex(
     return resp.json()
 
 
+def get_real_job(session, base_url, job_data):
+    if active_job_id := job_data.get('active_job_id'):
+        url = f"{base_url}/v1/jobs/{active_job_id}/"
+        resp = session.get(url)
+        resp.raise_for_status()
+        return resp.json()
+    return job_data
+
+
+
 def write_status_file(results: dict[str, JobResponse], status_file: str) -> None:
     lines: list[tuple[str, str, str, str, str]] = []
     for feed_id, job in results.items():
@@ -166,7 +176,9 @@ def poll_jobs(
     while True:
         if feed_ids and (len(in_queue) <= max_in_queue - 1):
             feed_id = feed_ids.pop()
+            print(f"running {args.mode} on feed {feed_id}")
             job = args.function(session, base_url, feed_id, args)
+            job = get_real_job(session, base_url, job)
             results[feed_id] = job
             in_queue.add(job["id"])
 
