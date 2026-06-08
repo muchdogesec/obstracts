@@ -1,4 +1,6 @@
+from collections import defaultdict
 from datetime import UTC, datetime
+import itertools
 import json
 import logging
 import os
@@ -18,7 +20,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.contrib.postgres.search import SearchVectorField
 
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from dogesec_commons.objects.helpers import ArangoDBHelper
 from history4feed.app import models as h4f_models
@@ -362,6 +364,10 @@ class File(models.Model):
             file.save(update_fields=["embedding"])
 
 
+@receiver(pre_delete, sender=File)
+def delete_ovs(sender, instance: FeedProfile, **kwargs):
+    ObjectValue.objects.filter(file_id=instance.pk)._raw_delete()
+
 @receiver(post_delete, sender=FeedProfile)
 def delete_collections(sender, instance: FeedProfile, **kwargs):
     db = ArangoDBHelper(instance.collection_name, None).db
@@ -394,7 +400,7 @@ class ObjectValue(models.Model):
     type = models.CharField(max_length=256)
     knowledgebase = models.CharField(max_length=64, null=True, blank=True)
     values = models.JSONField()
-    file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='object_values')
+    file = models.ForeignKey(File, on_delete=models.DO_NOTHING, related_name='object_values')
     created = models.DateTimeField(default=None, null=True)
     modified = models.DateTimeField(default=None, null=True)
     is_dupe = models.BooleanField(default=False)
