@@ -366,7 +366,8 @@ class File(models.Model):
 
 @receiver(pre_delete, sender=File)
 def delete_ovs(sender, instance: FeedProfile, **kwargs):
-    ObjectValue.objects.filter(file_id=instance.pk)._raw_delete()
+    ovs = ObjectValue.objects.filter(file_id=instance.pk)
+    ovs._raw_delete(ovs.db)
 
 @receiver(post_delete, sender=FeedProfile)
 def delete_collections(sender, instance: FeedProfile, **kwargs):
