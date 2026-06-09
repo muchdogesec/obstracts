@@ -39,7 +39,7 @@ attrs==25.4.0
     #   aiohttp
     #   jsonschema
     #   referencing
-banks==2.4.1
+banks==2.4.2
     # via llama-index-core
 base58==2.1.1
     # via txt2stix
@@ -243,7 +243,7 @@ hyperlink==21.0.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
-idna==3.11
+idna==3.15
     # via
     #   anyio
     #   httpx
