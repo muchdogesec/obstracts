@@ -1,3 +1,4 @@
+from datetime import datetime
 from functools import lru_cache
 import logging
 import typing
@@ -407,6 +408,8 @@ class FeedView(h4f_views.FeedView):
             posts = posts.filter(
                 Q(obstracts_post=None) | Q(obstracts_post__processed=False)
             )
+        if pubdate_after := s.validated_data.get("pubdate_after"):
+            posts = posts.filter(pubdate__gt=pubdate_after)
         return FeedPostView.reprocess_posts(feed, list(posts), s.validated_data)
 
 
@@ -1142,6 +1145,9 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
         feed: models.FeedProfile, posts: list[models.h4f_models.Post], options: dict
     ):
         options = options.copy()
+        for k, v in options.items():
+            if isinstance(v, datetime):
+                options[k] = v.isoformat()
         options["posts"] = [str(p.id) for p in posts]
         job = tasks.create_reprocessing_job(feed, posts, options)
         return Response(
