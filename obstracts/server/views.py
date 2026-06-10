@@ -608,6 +608,10 @@ class PostOnlyView(h4f_views.PostOnlyView):
             "indicator_of_compromise",
             "ttp",
         ]
+        stix_id = filters.CharFilter(
+            method='contains_stix_id',
+            help_text="Show only posts that have this stix_id in their reports",
+        )
         show_hidden_posts = filters.BooleanFilter(
             method="show_hidden_posts_filter",
             help_text="Show only posts that have been processed (where `visible` property is `true`. This is different to `job_state` which considers state of entire job, whereas this considers state of post within job.",
@@ -635,6 +639,14 @@ class PostOnlyView(h4f_views.PostOnlyView):
             method="semantic_search",
             help_text="Search in a Posts Title, Description and Summary. Similar to `title` and `description` filters, but allows you to run in one query and includes Summary search to.",
         )
+
+        def contains_stix_id(self, queryset, name, value):
+            matching_posts_id = models.ObjectValue.objects.filter(
+                stix_id=value
+            ).values('file_id')
+            return queryset.filter(
+                id__in=matching_posts_id
+            )
 
         def semantic_search(self, queryset, name, text):
             from django.contrib.postgres.search import SearchQuery
