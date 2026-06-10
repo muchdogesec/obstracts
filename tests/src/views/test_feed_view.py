@@ -466,3 +466,30 @@ def test_reprocess_posts__with_hidden_posts(client, feed_with_posts, stixifier_p
         ],
     }
     assert data["profile_id"] == str(stixifier_profile.id)
+
+
+@pytest.mark.django_db
+def test_reprocess_posts__uses_pubdate_after(client, feed_with_posts, stixifier_profile):
+    resp = client.patch(
+        f"/api/v1/feeds/{feed_with_posts.feed_id}/reprocess-posts/",
+        data={
+            "profile_id": stixifier_profile.id,
+            "skip_extraction": False,
+            "only_hidden_posts": False,
+            "pubdate_after": "2020-01-02"
+        },
+        content_type="application/json",
+    )
+    assert resp.status_code == 201, resp.content
+    data = resp.json()
+    assert data["type"] == models.JobType.REPROCESS_POSTS
+    data["extra"]["posts"].sort()
+    assert data["extra"] == {
+        "skip_extraction": False,
+        "only_hidden_posts": False,
+        "posts": [
+            "42a5d042-26fa-41f3-8850-307be3f330cf",
+        ],
+        "pubdate_after": "2020-01-02T00:00:00+00:00"
+    }
+    assert data["profile_id"] == str(stixifier_profile.id)

@@ -174,6 +174,11 @@ class ReprocessFeedPostsSerializer(ReprocessSinglePostSerializer):
         default=True,
         help_text="default true; if true, only reprocess posts that are not visible",
     )
+    pubdate_after = serializers.DateTimeField(
+        write_only=True,
+        required=False,
+        help_text="only process posts that have `pubdate` greater than passed value",
+    )
 
     def validate(self, attrs):
         if attrs["only_hidden_posts"] and not attrs.get("profile_id", None):

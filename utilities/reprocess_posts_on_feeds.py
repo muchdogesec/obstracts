@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import time
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
@@ -19,6 +20,7 @@ class Args:
     api_key: str
     feed_ids: list[str] | None = None
     ignore_feeds: list[str] | None = None
+    pubdate_after: datetime = None
     dry_run: bool = False
     max_in_queue: int = 3
     status_file: str = "reindex_status.md"
@@ -69,6 +71,8 @@ def reprocess(
         "skip_extraction": True,
         "only_hidden_posts": False,
     }
+    if args.pubdate_after:
+        payload['pubdate_after'] = args.pubdate_after.isoformat()
     resp = session.patch(url, json=payload)
     resp.raise_for_status()
     return resp.json()
@@ -255,6 +259,11 @@ def parse_args() -> Args:
         help="Reprocess posts without running extraction again",
     )
     reprocess_parser.set_defaults(function=reprocess)
+    reprocess_parser.add_argument(
+        "--pubdate-after",
+        type=datetime.fromisoformat,
+        help="Only reprocess posts that were updated after this time",
+    )
 
     reextract_parser = subparsers.add_parser(
         "reextract",
@@ -335,6 +344,7 @@ def parse_args() -> Args:
         force_full_fetch=getattr(ns, "force_full_fetch", False),
         no_archive=getattr(ns, "no_archive", False),
         function=cast(ArgsHandler, ns.function),
+        pubdate_after=ns.pubdate_after,
     )
     return args
 
