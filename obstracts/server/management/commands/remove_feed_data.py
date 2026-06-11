@@ -78,7 +78,7 @@ class Command(BaseCommand):
                     raise DryRun(would_delete=deleted)
                 feed.id = feed_id
                 feed.save()
-                sys.stdout.write("DELETED SUCCESSFULLY:", deleted)
+                self.stdout.write(self.style.SUCCESS(f"DELETED SUCCESSFULLY: {deleted}"))
         except DryRun as e:
             self.stdout.write(self.style.WARNING(e))
             sys.exit(0)
