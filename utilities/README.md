@@ -25,6 +25,7 @@ Mode-specific highlights:
 - `refetch`: Check for new posts since the last fetch.
 - `--profile-id`: Required for `reextract`, `reindex`, and `refetch`.
 - `--no-archive`: `refetch` only. Limits the fetch to the live feed URL and skips archive-aware URL discovery.
+- `--pubdate-after`: `reprocess` only. Limits reprocessing to posts updated after the given timestamp.
 
 ## Usage
 
@@ -41,6 +42,14 @@ python utilities/reprocess_posts_on_feeds.py reprocess \
   --base-url https://management.obstracts.staging.signalscorps.com/obstracts_api/admin/api/ \
   --api-key your_api_key \
   --feed-ids <feed-id-1> <feed-id-2>
+```
+
+```bash
+python utilities/reprocess_posts_on_feeds.py reprocess \
+  --base-url https://management.obstracts.staging.signalscorps.com/obstracts_api/admin/api/ \
+  --api-key your_api_key \
+  --feed-ids <feed-id-1> \
+  --pubdate-after 2026-06-16T12:00:00
 ```
 
 ```bash
@@ -94,6 +103,7 @@ Important behavior:
 - Uses `PATCH /v1/feeds/<feed_id>/reprocess-posts/`
 - Sends `skip_extraction: true`
 - Sends `only_hidden_posts: false`
+- Supports `--pubdate-after` to limit reprocessing to posts updated after the given timestamp
 
 This mode is for regenerating STIX objects from existing extraction data.
 
@@ -215,6 +225,14 @@ Use this when you want to process a broad set of feeds but skip a few specific o
 Prints the feed names and post counts that would be processed, then exits without creating any jobs.
 
 This is the safest way to validate your feed selection before doing a real run.
+
+### `--pubdate-after`
+
+`reprocess` only.
+
+Limit reprocessing to posts updated after the given timestamp.
+
+The value must be in ISO 8601 format. The script sends it to the API as `pubdate_after`.
 
 ### `--max-in-queue`
 
