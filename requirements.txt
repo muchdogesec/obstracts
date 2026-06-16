@@ -429,7 +429,7 @@ pydantic==2.12.5
     #   stix2extensions
 pydantic-core==2.41.5
     # via pydantic
-pyjwt==2.11.0
+pyjwt==2.13.0
     # via python-arango
 python-arango==8.3.0
     # via
