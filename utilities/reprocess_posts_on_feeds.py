@@ -344,7 +344,7 @@ def parse_args() -> Args:
         force_full_fetch=getattr(ns, "force_full_fetch", False),
         no_archive=getattr(ns, "no_archive", False),
         function=cast(ArgsHandler, ns.function),
-        pubdate_after=ns.pubdate_after,
+        pubdate_after=getattr(ns, "pubdate_after", None),
     )
     return args
 
