@@ -319,7 +319,7 @@ def add_pdf_to_post(job_id, post_id):
         post_file.save(update_fields=["pdf_file"])
     except Exception as e:
         logging.exception(f"process file to pdf failed for {post_file.pk}")
-        job.errors.append(f"process file to pdf failed for {post_file.pk}")
+        job.errors.append(f"process file to pdf failed for {post_file.pk}: {str(e)}")
         job.save()
 
 
