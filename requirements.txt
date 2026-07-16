@@ -593,7 +593,7 @@ tqdm==4.67.3
     #   openai
     #   stix2arango
     #   transformers
-transformers==5.5.0
+transformers==4.57.6
     # via llama-index-llms-openai-like
 txt2stix[llms]==1.6.0
     # via
