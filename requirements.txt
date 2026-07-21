@@ -119,7 +119,7 @@ distro==1.9.0
     #   anthropic
     #   google-genai
     #   openai
-django==5.2.11
+django==5.2.15
     # via
     #   django-cors-headers
     #   django-filter
@@ -275,7 +275,7 @@ joblib==1.5.3
     #   hdbscan
     #   nltk
     #   scikit-learn
-json-repair==0.58.0
+json-repair==0.60.1
     # via txt2stix
 jsonpointer==3.0.0
     # via jsonschema
@@ -333,7 +333,7 @@ markupsafe==3.0.3
     # via jinja2
 marshmallow==3.26.2
     # via dataclasses-json
-mistune==3.2.1
+mistune==3.3.0
     # via
     #   file2txt
     #   txt2stix
@@ -347,7 +347,7 @@ nest-asyncio==1.6.0
     # via llama-index-core
 networkx==3.6.1
     # via llama-index-core
-nltk==3.9.4
+nltk==3.10.0
     # via llama-index-core
 numpy==2.4.2
     # via
@@ -544,7 +544,7 @@ sniffio==1.3.1
     #   anthropic
     #   google-genai
     #   openai
-soupsieve==2.8.3
+soupsieve==2.8.4
     # via beautifulsoup4
 sqlalchemy[asyncio]==2.0.47
     # via llama-index-core
