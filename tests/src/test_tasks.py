@@ -8,7 +8,10 @@ from obstracts.cjob.tasks import (
     build_topic_clusters,
     create_pdf_reindex_job,
     download_pdf,
+    ProcessPostRequest,
     process_post,
+    process_post_hard_timeout,
+    process_posts_from_index,
     run_topic_clusters_job,
     run_topic_embeddings_job,
     start_processing,
@@ -83,11 +86,22 @@ def test_start_processing(obstracts_job):
         patch("celery.result.assert_will_not_block"),
     ):
         start_processing.si(obstracts_job.id).delay()
-        mock_wait_in_queue.assert_called_once_with(obstracts_job.id)
+        mock_wait_in_queue.assert_called_once_with(job_id=obstracts_job.id)
         mock_process_post.assert_has_calls(
-            [call(obstracts_job.id, post_id) for post_id in post_ids], any_order=True
+            [
+                call(
+                    job_id=obstracts_job.id,
+                    post_id=post_id,
+                    profile_id=None,
+                    post_ids=post_ids,
+                    post_index=index,
+                    profile_ids=[None] * len(post_ids),
+                )
+                for index, post_id in enumerate(post_ids)
+            ],
+            any_order=True,
         )
-        mock_job_completed_with_error.assert_called_once_with(obstracts_job.id)
+        mock_job_completed_with_error.assert_called_once_with(job_id=obstracts_job.id)
 
 
 @pytest.mark.django_db
@@ -165,6 +179,108 @@ def test_process_post_job__time_limit_exceeded(obstracts_job):
         assert "task timed out" in obstracts_job.errors[0]
         assert post_id in obstracts_job.errors[0]
         assert obstracts_job.failed_processes == 6
+
+
+@pytest.mark.django_db
+def test_process_post_hard_timeout_finishes_job(obstracts_job):
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+
+    with patch(
+        "obstracts.cjob.tasks.job_completed_with_error.delay"
+    ) as mock_job_completed:
+        process_post_hard_timeout.run(
+            obstracts_job.id, post_id, 120, "failed-task-id"
+        )
+
+    obstracts_job.refresh_from_db()
+    assert obstracts_job.failed_processes == 1
+    assert obstracts_job.errors == [
+        f"task hard timed out for post {post_id} after 120 seconds"
+    ]
+    mock_job_completed.assert_called_once_with(job_id=str(obstracts_job.id))
+
+
+def test_process_post_request_schedules_hard_timeout_handler():
+    request = object.__new__(ProcessPostRequest)
+    request.id = "failed-task-id"
+    request._kwargs = {
+        "job_id": "job-id",
+        "post_id": "post-id",
+        "profile_id": None,
+        "post_ids": ["post-id", "next-post-id"],
+        "post_index": 0,
+        "profile_ids": [None, None],
+    }
+
+    with (
+        patch("celery.worker.request.Request.on_timeout") as mock_on_timeout,
+        patch(
+            "obstracts.cjob.tasks.process_post_hard_timeout.delay"
+        ) as mock_hard_timeout,
+    ):
+        request.on_timeout(soft=False, timeout=120)
+
+    mock_on_timeout.assert_called_once_with(False, 120)
+    mock_hard_timeout.assert_called_once_with(
+        job_id="job-id",
+        post_id="post-id",
+        timeout=120,
+        failed_task_id="failed-task-id",
+        post_ids=["post-id", "next-post-id"],
+        post_index=0,
+        profile_ids=[None, None],
+    )
+
+
+@pytest.mark.django_db
+def test_process_post_hard_timeout_continues_from_next_post(obstracts_job):
+    post_ids = ["failed-post-id", "next-post-id", "last-post-id"]
+    continuation = MagicMock()
+
+    with patch(
+        "obstracts.cjob.tasks.process_posts_from_index",
+        return_value=continuation,
+    ) as mock_process_posts:
+        process_post_hard_timeout.run(
+            obstracts_job.id,
+            post_ids[0],
+            120,
+            "failed-task-id",
+            post_ids,
+            0,
+        )
+
+    mock_process_posts.assert_called_once_with(
+        str(obstracts_job.id), post_ids, 1, profile_ids=None
+    )
+    continuation.apply_async.assert_called_once_with(task_id="failed-task-id")
+
+
+@pytest.mark.django_db
+def test_process_post_hard_timeout_stops_after_max_failures(
+    obstracts_job, settings
+):
+    settings.MAX_FAILED_PROCESSES = 2
+    obstracts_job.failed_processes = 2
+    obstracts_job.save(update_fields=["failed_processes"])
+
+    with (
+        patch("obstracts.cjob.tasks.process_posts_from_index") as mock_process_posts,
+        patch(
+            "obstracts.cjob.tasks.job_completed_with_error.delay"
+        ) as mock_job_completed,
+    ):
+        process_post_hard_timeout.run(
+            obstracts_job.id,
+            "failed-post-id",
+            120,
+            "failed-task-id",
+            ["failed-post-id", "next-post-id"],
+            0,
+        )
+
+    mock_process_posts.assert_not_called()
+    mock_job_completed.assert_called_once_with(job_id=str(obstracts_job.id))
 
 
 @pytest.fixture

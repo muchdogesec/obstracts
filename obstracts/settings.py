@@ -286,6 +286,7 @@ HISTORY4FEED_SETTINGS = {
     "CREATE_POSTS_MAX_LENGTH": int(os.getenv("CREATE_POSTS_MAX_LENGTH", 100)), # max length of posts to accept in one batch when creating posts from urls list
 }
 PROCESSING_TIMEOUT_SECONDS = int(os.getenv("PROCESSING_TIMEOUT_SECONDS", 300))  # time limit for processing tasks
+MAX_FAILED_PROCESSES = int(os.getenv("MAX_FAILED_PROCESSES", 10))  # max number of failed processes before giving up on a task
 # stixifier settings
 STIXIFIER_NAMESPACE = uuid.UUID("a1f2e3ed-6241-5f05-ac2e-3394213b8e08")
 TXT2STIX_INCLUDE_URL = "https://github.com/muchdogesec/txt2stix/blob/obstracts/includes/"
