@@ -3,6 +3,7 @@ import logging
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from celery import shared_task, chain, current_task, Task as CeleryTask
+from celery.worker.request import Request
 from django.db import transaction
 import typing
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
@@ -112,17 +113,49 @@ def create_reprocessing_job(feed, posts: list[models.h4f_models.Post], options: 
         state=models.JobState.QUEUED,
         extra=options,
     )
-    tasks = [wait_in_queue.si(job.id)]
+    post_ids = []
+    profile_ids = []
     profile_id = job.profile_id
     for post in posts:
         if options['skip_extraction'] and getattr(post, 'obstracts_post', None):
             profile_id = post.obstracts_post.profile_id
-        tasks.append(process_post.si(str(job.id), str(post.id), profile_id=str(profile_id)))
-    t = chain(tasks)
+        post_ids.append(str(post.id))
+        profile_ids.append(str(profile_id))
+
+    t = chain(
+        wait_in_queue.si(job_id=job.id),
+        process_posts_from_index(
+            job.id,
+            post_ids,
+            0,
+            profile_ids=profile_ids,
+        ),
+    )
     t.stamp(obstracts_id=str(job.id))
-    t |= job_completed_with_error.si(job.id)
     t.apply_async()
     return job
+
+
+def process_posts_from_index(job_id, post_ids, index, profile_ids=None):
+    """Build the remaining post-processing chain, including job finalization."""
+    post_ids = [str(post_id) for post_id in post_ids]
+    profile_ids = profile_ids or [None] * len(post_ids)
+    tasks = [
+        process_post.si(
+            job_id=job_id,
+            post_id=post_id,
+            profile_id=profile_ids[post_index],
+            post_ids=post_ids,
+            post_index=post_index,
+            profile_ids=profile_ids,
+        )
+        for post_index, post_id in enumerate(post_ids[index:], start=index)
+    ]
+    tasks.append(job_completed_with_error.si(job_id=job_id))
+    processing_chain = chain(tasks)
+    processing_chain.stamp(obstracts_id=str(job_id))
+    return processing_chain
+
 
 @shared_task(bind=True)
 def start_processing(self, job_id):
@@ -138,17 +171,16 @@ def start_processing(self, job_id):
     ]
 
     logging.info("processing %d posts for job %s", len(posts), job_id)
-    tasks = [wait_in_queue.si(job_id)] + [
-        process_post.si(job_id, str(post_id)) for post_id in posts
-    ]
-    t = chain(tasks)
+    t = chain(
+        wait_in_queue.si(job_id=job_id),
+        process_posts_from_index(job_id, posts, 0),
+    )
     t.stamp(obstracts_id=str(job.id))
-    t |= job_completed_with_error.si(job_id)
     return self.replace(t)
 
 @shared_task(bind=True, default_retry_delay=10)
 def wait_in_queue(self: CeleryTask, job_id):
-    logging.info("job with id %s completed processing", job_id)
+    logging.info("job with id %s waiting in queue", job_id)
     job = Job.objects.get(pk=job_id)
     if job.is_cancelled():
         job.errors.append("job cancelled while in queue")
@@ -323,8 +355,91 @@ def add_pdf_to_post(job_id, post_id):
         job.save()
 
 
-@shared_task(bind=True, soft_time_limit=settings.PROCESSING_TIMEOUT_SECONDS, time_limit=settings.PROCESSING_TIMEOUT_SECONDS + 20)
-def process_post(self, job_id, post_id, profile_id=None, *args):
+@shared_task
+def process_post_hard_timeout(
+    job_id,
+    post_id,
+    timeout,
+    failed_task_id,
+    post_ids=None,
+    post_index=None,
+    profile_ids=None,
+):
+    """Record a hard timeout and resume after the post whose process was killed."""
+    msg = f"task hard timed out for post {post_id} after {timeout} seconds"
+    logging.error(msg)
+
+    with transaction.atomic():
+        job = Job.objects.select_for_update().get(pk=job_id)
+        errors = list(job.errors or [])
+        if msg not in errors:
+            errors.append(msg)
+            job.errors = errors
+            job.failed_processes += 1
+            job.save(update_fields=["errors", "failed_processes"])
+        can_continue = job.failed_processes <= settings.MAX_FAILED_PROCESSES
+
+    if can_continue and post_ids is not None and post_index is not None:
+        continuation = process_posts_from_index(
+            job_id,
+            post_ids,
+            post_index + 1,
+            profile_ids=profile_ids,
+        )
+        continuation.apply_async(task_id=failed_task_id)
+    else:
+        job_completed_with_error.delay(job_id=job_id)
+
+
+class ProcessPostRequest(Request):
+    """Handle hard limits in the main worker, which survives the SIGKILL."""
+
+    def on_timeout(self, soft, timeout):
+        super().on_timeout(soft, timeout)
+        if soft:
+            return
+
+        try:
+            job_id = self.kwargs["job_id"]
+            post_id = self.kwargs["post_id"]
+            post_ids = self.kwargs.get("post_ids")
+            post_index = self.kwargs.get("post_index")
+            profile_ids = self.kwargs.get("profile_ids")
+            process_post_hard_timeout.delay(
+                job_id=job_id,
+                post_id=post_id,
+                timeout=timeout,
+                failed_task_id=self.id,
+                post_ids=post_ids,
+                post_index=post_index,
+                profile_ids=profile_ids,
+            )
+        except Exception:
+            logging.exception(
+                "failed to schedule hard-timeout handling for task %s", self.id
+            )
+
+
+class ProcessPostTask(CeleryTask):
+    Request = ProcessPostRequest
+
+
+@shared_task(
+    bind=True,
+    base=ProcessPostTask,
+    soft_time_limit=settings.PROCESSING_TIMEOUT_SECONDS,
+    time_limit=settings.PROCESSING_TIMEOUT_SECONDS + 20,
+)
+def process_post(
+    self,
+    job_id,
+    post_id,
+    profile_id=None,
+    post_ids=None,
+    post_index=None,
+    profile_ids=None,
+    *args,
+):
     from obstracts.server.views import PostOnlyView
 
     job = Job.objects.get(pk=job_id)

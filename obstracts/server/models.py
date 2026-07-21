@@ -376,7 +376,7 @@ def delete_collections(sender, instance: FeedProfile, **kwargs):
         graph.delete_vertex_collection(
             instance.collection_name + "_vertex_collection", purge=True
         )
-    except BaseException as e:
+    except Exception as e:
         logging.error(f"cannot delete collection `{instance.collection_name}`: {e}")
 
 
