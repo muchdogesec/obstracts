@@ -376,7 +376,7 @@ pgvector==0.4.2
     # via obstracts (pyproject.toml)
 phonenumbers==9.0.25
     # via txt2stix
-pillow==12.2.0
+pillow==12.3.0
     # via
     #   file2txt
     #   llama-index-core
