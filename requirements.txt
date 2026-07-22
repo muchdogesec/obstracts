@@ -4,9 +4,9 @@
 #
 #    pip-compile --output-file=requirements.txt pyproject.toml
 #
-aiohappyeyeballs==2.6.1
+aiohappyeyeballs==2.7.1
     # via aiohttp
-aiohttp==3.14.1
+aiohttp==3.14.2
     # via llama-index-core
 aiosignal==1.4.0
     # via aiohttp
@@ -16,45 +16,45 @@ amqp==5.3.1
     # via kombu
 annotated-types==0.7.0
     # via pydantic
-anthropic[bedrock,vertex]==0.84.0
+anthropic[bedrock,vertex]==0.117.1
     # via llama-index-llms-anthropic
 antlr4-python3-runtime==4.13.2
     # via stix2-patterns
-anyio==4.12.1
+anyio==4.14.2
     # via
     #   anthropic
     #   google-genai
     #   httpx
     #   openai
-apscheduler==3.10.4
+apscheduler==3.11.3
     # via obstracts (pyproject.toml)
 arrow==1.4.0
     # via isoduration
-asgiref==3.11.1
+asgiref==3.12.1
     # via
     #   django
     #   django-cors-headers
-attrs==25.4.0
+attrs==26.1.0
     # via
     #   aiohttp
     #   jsonschema
     #   referencing
-banks==2.4.2
+banks==2.4.5
     # via llama-index-core
 base58==2.1.1
     # via txt2stix
-beautifulsoup4==4.14.3
+beautifulsoup4==4.15.0
     # via
     #   bs4
     #   markdownify
     #   txt2stix
 billiard==4.2.4
     # via celery
-boto3==1.42.58
+boto3==1.43.53
     # via
     #   anthropic
     #   django-storages
-botocore==1.42.58
+botocore==1.43.53
     # via
     #   anthropic
     #   boto3
@@ -63,24 +63,24 @@ brotlipy==0.7.0
     # via history4feed
 bs4==0.0.2
     # via file2txt
-celery==5.6.2 ; python_version >= "3.8"
+celery==5.6.3 ; python_version >= "3.8"
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
-certifi==2026.2.25
+certifi==2026.7.22
     # via
     #   httpcore
     #   httpx
     #   requests
-cffi==2.0.0
+cffi==2.1.0
     # via
     #   brotlipy
     #   cryptography
-chardet==6.0.0.post1
+chardet==7.4.3
     # via readability-lxml
-charset-normalizer==3.4.4
+charset-normalizer==3.4.9
     # via requests
-click==8.3.1
+click==8.4.2
     # via
     #   celery
     #   click-didyoumean
@@ -99,14 +99,16 @@ colorama==0.4.6
     #   stix2-validator
 cpe==1.3.1
     # via stix2-validator
-cryptography==48.0.1
+cryptography==49.0.0
     # via google-auth
 cssselect==1.4.0
     # via readability-lxml
 dataclasses-json==0.6.7
     # via llama-index-core
-dateparser==1.3.0
+dateparser==1.4.1
     # via history4feed
+defusedxml==0.7.1
+    # via nltk
 deprecated==1.3.1
     # via
     #   banks
@@ -119,7 +121,7 @@ distro==1.9.0
     #   anthropic
     #   google-genai
     #   openai
-django==5.2.15
+django==5.2.16
     # via
     #   django-cors-headers
     #   django-filter
@@ -132,35 +134,35 @@ django-cleanup==9.0.0
     # via obstracts (pyproject.toml)
 django-cors-headers==4.9.0
     # via obstracts (pyproject.toml)
-django-filter==25.2
+django-filter==26.1
     # via
     #   dogesec-commons
     #   history4feed
     #   obstracts (pyproject.toml)
 django-storages[s3]==1.14.6
     # via obstracts (pyproject.toml)
-djangorestframework==3.16.1
+djangorestframework==3.17.1
     # via
     #   dogesec-commons
     #   drf-spectacular
     #   history4feed
     #   obstracts (pyproject.toml)
-docstring-parser==0.17.0
+docstring-parser==0.18.0
     # via anthropic
 dogesec-commons[stixifier]==1.5.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
-drf-spectacular==0.29.0
+drf-spectacular==0.30.0
     # via
     #   dogesec-commons
     #   history4feed
     #   obstracts (pyproject.toml)
 fake-useragent==2.2.0
     # via history4feed
-file2txt==1.0.10
+file2txt==1.0.13
     # via dogesec-commons
-filelock==3.24.3
+filelock==3.32.0
     # via
     #   huggingface-hub
     #   tldextract
@@ -176,54 +178,54 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-fsspec==2026.2.0
+fsspec==2026.6.0
     # via
     #   huggingface-hub
     #   llama-index-core
-google-api-core[grpc]==2.30.0
+google-api-core[grpc]==2.32.0
     # via google-cloud-vision
-google-auth[requests]==2.48.0
+google-auth[requests]==2.56.2
     # via
     #   anthropic
     #   google-api-core
     #   google-cloud-vision
     #   google-genai
-google-cloud-vision==3.12.1
+google-cloud-vision==3.15.0
     # via file2txt
-google-genai==1.65.0
+google-genai==2.13.0
     # via llama-index-llms-google-genai
-googleapis-common-protos==1.72.0
+googleapis-common-protos==1.75.0
     # via
     #   google-api-core
     #   grpcio-status
-greenlet==3.3.2
+greenlet==3.5.4
     # via sqlalchemy
-griffe==2.0.0
+griffe==2.1.0
     # via banks
-griffecli==2.0.0
+griffecli==2.1.0
     # via griffe
-griffelib==2.0.0
+griffelib==2.1.0
     # via
     #   griffe
     #   griffecli
-grpcio==1.78.0
+grpcio==1.82.1
     # via
     #   google-api-core
     #   google-cloud-vision
     #   grpcio-status
-grpcio-status==1.78.0
+grpcio-status==1.82.1
     # via
     #   file2txt
     #   google-api-core
-gunicorn==25.1.0
+gunicorn==26.0.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
 h11==0.16.0
     # via httpcore
-hdbscan==0.8.41
+hdbscan==0.8.44
     # via obstracts (pyproject.toml)
-hf-xet==1.3.1
+hf-xet==1.5.2
     # via huggingface-hub
 history4feed==1.2.11
     # via obstracts (pyproject.toml)
@@ -243,7 +245,7 @@ hyperlink==21.0.0
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
-idna==3.15
+idna==3.18
     # via
     #   anyio
     #   httpx
@@ -252,9 +254,9 @@ idna==3.15
     #   requests
     #   tldextract
     #   yarl
-ijson==3.5.0
+ijson==3.5.1
     # via stix2arango
-importlib-resources==6.5.2
+importlib-resources==7.1.0
     # via schwifty
 inflection==0.5.1
     # via drf-spectacular
@@ -262,7 +264,7 @@ isoduration==20.11.0
     # via jsonschema
 jinja2==3.1.6
     # via banks
-jiter==0.13.0
+jiter==0.16.0
     # via
     #   anthropic
     #   openai
@@ -275,9 +277,9 @@ joblib==1.5.3
     #   hdbscan
     #   nltk
     #   scikit-learn
-json-repair==0.60.1
+json-repair==0.61.7
     # via txt2stix
-jsonpointer==3.0.0
+jsonpointer==3.1.1
     # via jsonschema
 jsonschema[format-nongpl]==4.26.0
     # via
@@ -290,7 +292,7 @@ kombu==5.6.2
     # via celery
 lark==1.3.1
     # via rfc3987-syntax
-llama-index-core==0.14.15
+llama-index-core==0.14.23
     # via
     #   llama-index-llms-anthropic
     #   llama-index-llms-google-genai
@@ -298,15 +300,15 @@ llama-index-core==0.14.15
     #   llama-index-llms-openai-like
     #   llama-index-llms-openrouter
     #   txt2stix
-llama-index-instrumentation==0.4.2
+llama-index-instrumentation==0.5.0
     # via llama-index-workflows
-llama-index-llms-anthropic==0.10.10
+llama-index-llms-anthropic==0.11.8
     # via txt2stix
-llama-index-llms-deepseek==0.2.2
+llama-index-llms-deepseek==0.3.0
     # via txt2stix
-llama-index-llms-google-genai==0.8.7
+llama-index-llms-google-genai==0.9.6
     # via txt2stix
-llama-index-llms-openai==0.6.21
+llama-index-llms-openai==0.6.26
     # via
     #   llama-index-llms-openai-like
     #   txt2stix
@@ -314,26 +316,26 @@ llama-index-llms-openai-like==0.5.3
     # via
     #   llama-index-llms-deepseek
     #   llama-index-llms-openrouter
-llama-index-llms-openrouter==0.4.4
+llama-index-llms-openrouter==0.5.0
     # via txt2stix
-llama-index-workflows==2.14.2
+llama-index-workflows==2.22.2
     # via llama-index-core
-lxml[html-clean]==6.1.0
+lxml[html-clean]==6.1.1
     # via
     #   lxml-html-clean
     #   readability-lxml
-lxml-html-clean==0.4.4
+lxml-html-clean==0.4.5
     # via
     #   file2txt
     #   history4feed
     #   lxml
-markdownify==1.2.2
+markdownify==1.2.3
     # via file2txt
 markupsafe==3.0.3
     # via jinja2
 marshmallow==3.26.2
     # via dataclasses-json
-mistune==3.3.0
+mistune==3.3.4
     # via
     #   file2txt
     #   txt2stix
@@ -343,24 +345,25 @@ multidict==6.7.1
     #   yarl
 mypy-extensions==1.1.0
     # via typing-inspect
+narwhals==2.24.0
+    # via scikit-learn
 nest-asyncio==1.6.0
     # via llama-index-core
 networkx==3.6.1
     # via llama-index-core
 nltk==3.10.0
     # via llama-index-core
-numpy==2.4.2
+numpy==2.4.6
     # via
     #   hdbscan
     #   llama-index-core
     #   pandas
-    #   pgvector
     #   scikit-learn
     #   scipy
     #   transformers
-openai==2.24.0
+openai==2.46.0
     # via llama-index-llms-openai
-packaging==26.0
+packaging==26.2
     # via
     #   gunicorn
     #   huggingface-hub
@@ -368,56 +371,54 @@ packaging==26.0
     #   marshmallow
     #   python-arango
     #   transformers
-pandas==3.0.1
+pandas==3.0.3
     # via file2txt
 pathvalidate==3.3.1
     # via txt2stix
-pgvector==0.4.2
+pgvector==0.5.0
     # via obstracts (pyproject.toml)
-phonenumbers==9.0.25
+phonenumbers==9.0.34
     # via txt2stix
 pillow==12.3.0
     # via
     #   file2txt
     #   llama-index-core
     #   llama-index-llms-google-genai
-platformdirs==4.9.2
+platformdirs==4.11.0
     # via
     #   banks
     #   llama-index-core
 prompt-toolkit==3.0.52
     # via click-repl
-propcache==0.4.1
+propcache==0.5.2
     # via
     #   aiohttp
     #   yarl
-proto-plus==1.27.1
+proto-plus==1.28.1
     # via
     #   google-api-core
     #   google-cloud-vision
-protobuf==6.33.5
+protobuf==7.35.1
     # via
     #   google-api-core
     #   google-cloud-vision
     #   googleapis-common-protos
     #   grpcio-status
     #   proto-plus
-psycopg2-binary==2.9.11
+psycopg2-binary==2.9.12
     # via
     #   dogesec-commons
     #   history4feed
     #   obstracts (pyproject.toml)
-pyasn1==0.6.3
-    # via
-    #   pyasn1-modules
-    #   rsa
+pyasn1==0.6.4
+    # via pyasn1-modules
 pyasn1-modules==0.4.2
     # via google-auth
 pycountry==26.2.16
     # via schwifty
 pycparser==3.0
     # via cffi
-pydantic==2.12.5
+pydantic==2.13.4
     # via
     #   anthropic
     #   banks
@@ -427,11 +428,11 @@ pydantic==2.12.5
     #   llama-index-workflows
     #   openai
     #   stix2extensions
-pydantic-core==2.41.5
+pydantic-core==2.46.4
     # via pydantic
 pyjwt==2.13.0
     # via python-arango
-python-arango==8.3.0
+python-arango==8.3.3
     # via
     #   dogesec-commons
     #   stix2arango
@@ -449,9 +450,8 @@ python-dotenv==1.2.2
     #   history4feed
     #   stix2arango
     #   txt2stix
-pytz==2025.2
+pytz==2026.2
     # via
-    #   apscheduler
     #   dateparser
     #   stix2
 pyyaml==6.0.3
@@ -464,7 +464,7 @@ readability-lxml==0.8.4.1
     # via
     #   file2txt
     #   history4feed
-redis==7.2.1
+redis==8.0.1
     # via
     #   history4feed
     #   obstracts (pyproject.toml)
@@ -472,13 +472,13 @@ referencing==0.37.0
     # via
     #   jsonschema
     #   jsonschema-specifications
-regex==2026.2.19
+regex==2026.7.19
     # via
     #   dateparser
     #   nltk
     #   tiktoken
     #   transformers
-requests==2.33.0
+requests==2.34.2
     # via
     #   file2txt
     #   google-api-core
@@ -509,33 +509,30 @@ rfc3986-validator==0.1.1
     # via jsonschema
 rfc3987-syntax==1.1.0
     # via jsonschema
-rpds-py==0.30.0
+rpds-py==2026.6.3
     # via
     #   jsonschema
     #   referencing
-rsa==4.9.1
-    # via google-auth
 rstr==3.2.2
     # via schwifty
-s3transfer==0.16.0
+s3transfer==0.19.1
     # via boto3
-safetensors==0.7.0
+safetensors==0.8.0
     # via transformers
-schwifty==2026.1.0
+schwifty==2026.7.1
     # via txt2stix
-scikit-learn==1.8.0
+scikit-learn==1.9.0
     # via hdbscan
 scipy==1.17.1
     # via
     #   hdbscan
     #   scikit-learn
-simplejson==3.20.2
+simplejson==4.1.1
     # via
     #   stix2
     #   stix2-validator
 six==1.17.0
     # via
-    #   apscheduler
     #   markdownify
     #   python-dateutil
     #   rfc3339-validator
@@ -544,9 +541,9 @@ sniffio==1.3.1
     #   anthropic
     #   google-genai
     #   openai
-soupsieve==2.8.4
+soupsieve==2.9.1
     # via beautifulsoup4
-sqlalchemy[asyncio]==2.0.47
+sqlalchemy[asyncio]==2.0.51
     # via llama-index-core
 sqlparse==0.5.5
     # via django
@@ -559,15 +556,15 @@ stix2-patterns==2.1.2
     # via
     #   stix2
     #   stix2-validator
-stix2-validator==3.2.0
+stix2-validator==3.3.1
     # via txt2stix
-stix2arango==1.2.0
+stix2arango==2.0.0
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)
-stix2extensions==2.2.0
+stix2extensions==2.3.3
     # via txt2stix
-tabulate==0.9.0
+tabulate==0.10.0
     # via file2txt
 tenacity==9.1.4
     # via
@@ -575,17 +572,17 @@ tenacity==9.1.4
     #   llama-index-core
 threadpoolctl==3.6.0
     # via scikit-learn
-tiktoken==0.12.0
+tiktoken==0.13.0
     # via llama-index-core
 tinytag==2.2.1
     # via llama-index-core
-tld==0.13.1
+tld==0.13.2
     # via txt2stix
 tldextract==5.3.1
     # via txt2stix
 tokenizers==0.22.2
     # via transformers
-tqdm==4.67.3
+tqdm==4.69.0
     # via
     #   huggingface-hub
     #   llama-index-core
@@ -599,7 +596,7 @@ txt2stix[llms]==1.6.2
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   aiohttp
     #   aiosignal
@@ -624,11 +621,11 @@ typing-inspect==0.9.0
     #   llama-index-core
 typing-inspection==0.4.2
     # via pydantic
-tzdata==2025.3
+tzdata==2026.3
     # via
     #   arrow
     #   kombu
-tzlocal==5.3.1
+tzlocal==5.4.4
     # via
     #   apscheduler
     #   celery
@@ -649,21 +646,21 @@ vine==5.1.0
     #   amqp
     #   celery
     #   kombu
-wcwidth==0.6.0
+wcwidth==0.8.2
     # via prompt-toolkit
 webcolors==25.10.0
     # via jsonschema
-websockets==16.0
+websockets==16.1.1
     # via google-genai
 whitenoise==6.7.0
     # via history4feed
-wrapt==2.1.1
+wrapt==2.2.2
     # via
     #   deprecated
     #   llama-index-core
 xlrd==2.0.2
     # via file2txt
-yarl==1.22.0
+yarl==1.24.5
     # via aiohttp
 
 # The following packages are considered to be unsafe in a requirements file:
