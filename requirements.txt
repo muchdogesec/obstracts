@@ -227,7 +227,7 @@ hdbscan==0.8.44
     # via obstracts (pyproject.toml)
 hf-xet==1.5.2
     # via huggingface-hub
-history4feed==1.2.11
+history4feed==1.2.12
     # via obstracts (pyproject.toml)
 httpcore==1.0.9
     # via httpx
