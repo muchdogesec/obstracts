@@ -123,14 +123,14 @@ def test_process_post_job__fails(obstracts_job):
     post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
     with (
         patch(
-            "obstracts.cjob.tasks.StixifyProcessor", side_effect=ValueError
+            "obstracts.cjob.tasks.StixifyProcessor", side_effect=ValueError("bad value")
         ) as mock_stixify_processor_cls,
     ):
         process_post.si(obstracts_job.id, post_id).delay()
         obstracts_job.refresh_from_db()
         assert (
             obstracts_job.errors[0]
-            == "processing failed for post 72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+            == "processing failed for post 72e1ad04-8ce9-413d-b620-fe7c75dc0a39: ValueError(bad value)"
         )
         assert obstracts_job.failed_processes == 9
 
