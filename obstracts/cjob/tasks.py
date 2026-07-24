@@ -84,8 +84,14 @@ def create_job_entry(h4f_job: h4f_models.Job, profile_id, **extra):
         profile_id=profile_id,
         type=models.JobType.FEED_INDEX,
     )
-    if extra and extra.get('pdfshift_cookie_settings'):
-        job.feed.pdfshift_cookie_settings = extra['pdfshift_cookie_settings']
+    feed_fields = [
+        "pdfshift_cookie_settings",
+        "admiralty_source_reliability",
+    ]
+    update_fields = [f for f in feed_fields if extra.get(f)]
+    if update_fields:
+        for field in update_fields:
+            setattr(job.feed, field, extra[field])
         job.feed.save()
     return job
 
@@ -494,7 +500,8 @@ def process_post(
                         source_name="obstracts_profile_id",
                         external_id=str(profile.id),
                     ),
-                ]
+                ],
+                admiralty_source_reliability=job.feed.admiralty_source_reliability,
             ),
         )
         processor.setup(

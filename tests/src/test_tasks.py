@@ -378,6 +378,29 @@ def test_process_post_job(obstracts_job, fake_stixifier_processor):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("admiralty_source_reliability", ["A", "B", "C", "D", "E", "F", None])
+def test_process_post_admiralty_source_reliability(
+    obstracts_job, fake_stixifier_processor, admiralty_source_reliability, settings
+):
+    post_id = "72e1ad04-8ce9-413d-b620-fe7c75dc0a39"
+    obstracts_job.feed.admiralty_source_reliability = admiralty_source_reliability
+    obstracts_job.feed.save()
+    settings.CREATE_EMBEDDING_INCLUDE_NON_INCIDENT = True  # ensure consistent test environment
+
+    with (
+        patch("obstracts.cjob.tasks.StixifyProcessor") as mock_stixify_processor_cls,
+        patch("obstracts.server.models.File.create_embedding") as mock_create_embedding,
+        patch("obstracts.cjob.tasks.add_pdf_to_post.run"),
+    ):
+        mock_stixify_processor_cls.return_value = fake_stixifier_processor
+        process_post.si(obstracts_job.id, post_id).delay()
+        assert mock_stixify_processor_cls.return_value.setup.call_args[0][0].kwargs['admiralty_source_reliability'] == obstracts_job.feed.admiralty_source_reliability
+        file = models.File.objects.get(pk=post_id)
+        assert file.processed == True
+        mock_create_embedding.assert_called_once_with(include_non_incident=True)
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("generate_pdf", [True, False])
 def test_process_post_generate_pdf(
     obstracts_job, fake_stixifier_processor, generate_pdf, settings
