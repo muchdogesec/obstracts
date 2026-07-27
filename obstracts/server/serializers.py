@@ -5,7 +5,15 @@ from rest_framework import serializers
 
 from history4feed.app import serializers as h4fserializers
 
-from .models import File, PDFCookieConsentMode, Profile, Job, FileImage
+from .models import (
+    AdmiraltyInformationCredibility,
+    AdmiraltySourceReliability,
+    File,
+    PDFCookieConsentMode,
+    Profile,
+    Job,
+    FileImage,
+)
 from obstracts.classifier.models import Cluster
 
 from drf_spectacular.utils import extend_schema_field
@@ -104,6 +112,13 @@ class FeedCreateSerializer(CreateTaskSerializer, h4fserializers.FeedSerializer):
         default=PDFCookieConsentMode.disable_all_js,
         source="obstracts_feed.pdfshift_cookie_settings",
     )
+    admiralty_source_reliability = serializers.ChoiceField(
+        choices=AdmiraltySourceReliability.choices,
+        default=None,
+        allow_null=True,
+        required=False,
+        source="obstracts_feed.admiralty_source_reliability",
+    )
 
 
 class SkeletonFeedSerializer(h4fserializers.SkeletonFeedSerializer):
@@ -121,10 +136,17 @@ class PatchFeedSerializer(h4fserializers.FeedPatchSerializer):
         choices=PDFCookieConsentMode.choices,
         default=PDFCookieConsentMode.disable_all_js,
     )
+    admiralty_source_reliability = serializers.ChoiceField(
+        choices=AdmiraltySourceReliability.choices,
+        default=None,
+        allow_null=True,
+        required=False,
+    )
 
     class Meta(h4fserializers.FeedPatchSerializer.Meta):
         fields = h4fserializers.FeedPatchSerializer.Meta.fields + [
-            "pdfshift_cookie_settings"
+            "pdfshift_cookie_settings",
+            "admiralty_source_reliability",
         ]
 
 

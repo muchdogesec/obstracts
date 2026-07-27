@@ -87,6 +87,24 @@ class PDFCookieConsentMode(models.TextChoices):
     remove_cookie_elements = "remove_cookie_elements"
 
 
+class AdmiraltySourceReliability(models.TextChoices):
+    A = "A", "A - Completely reliable"
+    B = "B", "B - Usually reliable"
+    C = "C", "C - Fairly reliable"
+    D = "D", "D - Not usually reliable"
+    E = "E", "E - Unreliable"
+    F = "F", "F - Reliability cannot be judged"
+
+
+class AdmiraltyInformationCredibility(models.TextChoices):
+    ONE = "1", "1 - Confirmed by other sources"
+    TWO = "2", "2 - Probably true"
+    THREE = "3", "3 - Possibly true"
+    FOUR = "4", "4 - Doubtful"
+    FIVE = "5", "5 - Improbable"
+    SIX = "6", "6 - Truth cannot be judged"
+
+
 class FeedProfile(models.Model):
     feed = models.OneToOneField(
         h4f_models.Feed,
@@ -100,6 +118,12 @@ class FeedProfile(models.Model):
     pdfshift_cookie_settings = models.CharField(
         choices=PDFCookieConsentMode.choices,
         default=PDFCookieConsentMode.disable_all_js,
+    )
+    admiralty_source_reliability = models.CharField(
+        choices=AdmiraltySourceReliability.choices,
+        max_length=1,
+        null=True,
+        default=None,
     )
 
     def save(self, *args, **kwargs) -> None:

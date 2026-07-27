@@ -29,7 +29,18 @@ def test_class_variables():
 
     assert history4feed_views.FeedView in FeedView.mro()
 
-
+@pytest.mark.parametrize(
+    "admiralty_source_reliability",
+    [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        None,
+    ],
+)
 @pytest.mark.parametrize(
     "pdfshift_cookie_settings",
     [
@@ -39,7 +50,7 @@ def test_class_variables():
 )
 @pytest.mark.django_db
 def test_create(
-    client, feed_with_posts, stixifier_profile, pdfshift_cookie_settings, api_schema
+    client, feed_with_posts, stixifier_profile, pdfshift_cookie_settings, api_schema, admiralty_source_reliability
 ):
     job = make_h4f_job(feed_with_posts)
 
@@ -50,6 +61,8 @@ def test_create(
     }
     if pdfshift_cookie_settings:
         payload["pdfshift_cookie_settings"] = pdfshift_cookie_settings
+    if admiralty_source_reliability:
+        payload["admiralty_source_reliability"] = admiralty_source_reliability
     mocked_job = make_h4f_job(feed_with_posts)
     with (
         patch.object(
@@ -76,6 +89,7 @@ def test_create(
             mocked_job,
             uuid.UUID(str(stixifier_profile.id)),
             pdfshift_cookie_settings=pdfshift_cookie_settings,
+            admiralty_source_reliability=admiralty_source_reliability,
         )
         assert resp.data["id"] == str(mocked_job.id)
         api_schema["/api/v1/feeds/"]["POST"].validate_response(
@@ -85,7 +99,22 @@ def test_create(
         if pdfshift_cookie_settings:
             assert feed_obj.pdfshift_cookie_settings == pdfshift_cookie_settings
 
+        if admiralty_source_reliability:
+            assert feed_obj.admiralty_source_reliability == admiralty_source_reliability
 
+
+@pytest.mark.parametrize(
+    "admiralty_source_reliability",
+    [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        None,
+    ],
+)
 @pytest.mark.parametrize(
     "pdfshift_cookie_settings",
     [
@@ -95,11 +124,13 @@ def test_create(
 )
 @pytest.mark.django_db
 def test_update_feed_metadata_view(
-    client, feed_with_posts, pdfshift_cookie_settings, api_schema
+    client, feed_with_posts, pdfshift_cookie_settings, api_schema, admiralty_source_reliability
 ):
     payload = dict(
         title="very new title", pdfshift_cookie_settings=pdfshift_cookie_settings
     )
+    if admiralty_source_reliability:
+        payload["admiralty_source_reliability"] = admiralty_source_reliability
     resp = client.patch(
         f"/api/v1/feeds/{feed_with_posts.id}/",
         data=payload,
@@ -108,6 +139,7 @@ def test_update_feed_metadata_view(
     assert resp.status_code == 201, resp.content
     assert resp.json()["title"] == "very new title"
     assert resp.json()["pdfshift_cookie_settings"] == pdfshift_cookie_settings
+    assert resp.json()["admiralty_source_reliability"] == admiralty_source_reliability
 
 
 @pytest.mark.django_db
