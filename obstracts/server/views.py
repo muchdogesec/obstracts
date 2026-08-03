@@ -140,6 +140,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             * `pdfshift_cookie_settings` (optional, only required if profile has `generate_pdf` = `true`, default is `disable_all_js`): either `disable_all_js` which will disable javascript on the page when generating the PDF file, or `remove_cookie_elements` which will try and surpress cookie messages. Generally you should disable all javascript (`disable_all_js`), unless you find the resulting PDFs are errounous because of no javascript in which case you should be less harsh on javascript surpression (`remove_cookie_elements`).
             * `source_category` (optional, default is `uncategorized`, list): can be used to categories the feed. Options available are: `analyst`, `community`, `government`, `media`, or `vendor`.
             * `use_scrapfly_asp` (optional, boolean, default `false`): set this to true to [enable Scrapfly ASP](https://scrapfly.io/docs/scrape-api/anti-scraping-protection). This is useful when the website is identifying and blocking bots. Only applies when Scrapfly proxy is enabled. Setting to `true` will enable ASP on all Scrapfly requests for this blog (be warned, this is chargeable).
+            * `admiralty_source_reliability` (optional, default is unset): the [Admiralty Code](https://en.wikipedia.org/wiki/Admiralty_code) source reliability rating (`A` to `F`) to apply to Reports generated for posts in this feed.
 
             The `id` of a Feed is generated using a UUIDv5. The namespace used is `6c6e6448-04d4-42a3-9214-4f0f7d02694e` (history4feed) and the value used is `<FEED_URL>` (e.g. `https://muchdogesec.github.io/fakeblog123/feeds/rss-feed-encoded.xml` would have the id `d1d96b71-c687-50db-9d2b-d0092d1d163a`). Therefore, you cannot add a URL that already exists, you must first delete it to add it with new settings.
 
@@ -208,6 +209,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             * `pdfshift_cookie_settings` (optional, only required if profile has `generate_pdf` = `true`, default is `disable_all_js`): either `disable_all_js` which will disable javascript on the page when generating the PDF file, or `remove_cookie_elements` which will try and surpress cookie messages. Generally you should disable all javascript (`disable_all_js`), unless you find the resulting PDFs are errounous because of no javascript in which case you should be less harsh on javascript surpression (`remove_cookie_elements`). Once this setting is applied, all future PDF generation for this feed will use this setting. If you need to apply the change retrospectively (to old posts), you should regenerate PDFs for the old posts using the reindex-pdf endpoints after this setting has been changed.
             * `source_category` (optional, default is `uncategorized`, list): can be used to categories the feed. Options available are: `analyst`, `community`, `government`, `media`, or `vendor`.
             * `use_scrapfly_asp` (optional, boolean, default `false`): set this to true to [enable Scrapfly ASP](https://scrapfly.io/docs/scrape-api/anti-scraping-protection). This is useful when the website is identifying and blocking bots. Only applies when Scrapfly proxy is enabled. Setting to `true` will enable ASP on all Scrapfly requests for this blog (be warned, this is chargeable).
+            * `admiralty_source_reliability` (optional): the [Admiralty Code](https://en.wikipedia.org/wiki/Admiralty_code) source reliability rating (`A` to `F`) to apply to Reports generated for posts in this feed. Once this setting is applied, all future processing for this feed will use this setting. It is not applied retrospectively to already processed posts unless they are reprocessed.
 
             Only one/key value is required in the request. For those not passed, the current value will remain unchanged.
 
@@ -321,11 +323,15 @@ class FeedView(h4f_views.FeedView):
         s = serializers.FeedCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         h4f_job = self.new_create_job(request)
+        obstracts_feed_data = s.validated_data.get("obstracts_feed", {})
         job = tasks.create_job_entry(
             h4f_job,
             s.validated_data["profile_id"],
-            pdfshift_cookie_settings=s.validated_data.get("obstracts_feed", {}).get(
+            pdfshift_cookie_settings=obstracts_feed_data.get(
                 "pdfshift_cookie_settings"
+            ),
+            admiralty_source_reliability=obstracts_feed_data.get(
+                "admiralty_source_reliability"
             ),
         )
         return Response(
@@ -344,12 +350,17 @@ class FeedView(h4f_views.FeedView):
         feed_obj = self.get_object()
         s = serializers.PatchFeedSerializer(data=request.data, partial=True)
         s.is_valid(raise_exception=True)
-        print(s.validated_data)
-        if "pdfshift_cookie_settings" in s.validated_data:
-            feed_obj.obstracts_feed.pdfshift_cookie_settings = s.validated_data[
-                "pdfshift_cookie_settings"
-            ]
-            feed_obj.obstracts_feed.save()
+        modifiable_fields = [
+            "pdfshift_cookie_settings",
+            "admiralty_source_reliability",
+        ]
+        modified_fields = []
+        for k, v in s.validated_data.items():
+            if k in modifiable_fields:
+                setattr(feed_obj.obstracts_feed, k, v)
+                modified_fields.append(k)
+        if modified_fields:
+            feed_obj.obstracts_feed.save(update_fields=modified_fields)
         return super().partial_update(request, *args, **kwargs)
 
     @decorators.action(methods=["PATCH"], detail=True, url_path="reindex-pdfs")
