@@ -561,7 +561,7 @@ stix2-patterns==2.1.2
     #   stix2-validator
 stix2-validator==3.2.0
     # via txt2stix
-stix2arango==1.2.0
+stix2arango==2.0.0
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)
