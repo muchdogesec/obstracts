@@ -6,7 +6,7 @@
 #
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.14.1
+aiohttp==3.14.3
     # via llama-index-core
 aiosignal==1.4.0
     # via aiohttp
@@ -376,7 +376,7 @@ pgvector==0.4.2
     # via obstracts (pyproject.toml)
 phonenumbers==9.0.25
     # via txt2stix
-pillow==12.2.0
+pillow==12.3.0
     # via
     #   file2txt
     #   llama-index-core
@@ -407,7 +407,7 @@ psycopg2-binary==2.9.11
     #   dogesec-commons
     #   history4feed
     #   obstracts (pyproject.toml)
-pyasn1==0.6.3
+pyasn1==0.6.4
     # via
     #   pyasn1-modules
     #   rsa
@@ -561,7 +561,7 @@ stix2-patterns==2.1.2
     #   stix2-validator
 stix2-validator==3.2.0
     # via txt2stix
-stix2arango==1.2.0
+stix2arango==2.0.0
     # via
     #   dogesec-commons
     #   obstracts (pyproject.toml)
