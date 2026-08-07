@@ -55,6 +55,6 @@ test = [
   "pytest",
   "pytest-subtests",
   "pytest-cov",
-  "pytest-django",
+  "pytest-django==4.12.0",
   "schemathesis",
 ]
