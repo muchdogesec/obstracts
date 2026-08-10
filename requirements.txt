@@ -99,7 +99,7 @@ colorama==0.4.6
     #   stix2-validator
 cpe==1.3.1
     # via stix2-validator
-cryptography==48.0.1
+cryptography==50.0.0
     # via google-auth
 cssselect==1.4.0
     # via readability-lxml
@@ -119,7 +119,7 @@ distro==1.9.0
     #   anthropic
     #   google-genai
     #   openai
-django==5.2.15
+django==5.2.16
     # via
     #   django-cors-headers
     #   django-filter
