@@ -4,7 +4,11 @@ import pytest
 import os
 from django.conf import settings
 from arango.client import ArangoClient
-from pytest_django.fixtures import SettingsWrapper
+try:
+    from pytest_django.fixtures import SettingsWrapper
+except ImportError:
+    from pytest_django.fixtures import Settings as SettingsWrapper
+
 from pytest_django.lazy_django import skip_if_no_django
 from dogesec_commons.stixifier.models import Profile
 
