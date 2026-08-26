@@ -1,0 +1,53 @@
+name: Branch policy
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - main
+
+jobs:
+  validate:
+    name: Validate branch flow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce promotion flow
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -eu
+
+          case "${BASE_REF}" in
+            develop)
+              if [ "${HEAD_REF}" = "main" ] || [ "${HEAD_REF}" = "staging" ]; then
+                echo "Pull requests into develop must not come from protected release branches."
+                exit 1
+              fi
+              ;;
+            staging)
+              case "${HEAD_REF}" in
+                develop|hotfix/*)
+                  ;;
+                *)
+                  echo "Pull requests into staging must come from develop or hotfix/*."
+                  exit 1
+                  ;;
+              esac
+              ;;
+            main)
+              case "${HEAD_REF}" in
+                staging|hotfix/*)
+                  ;;
+                *)
+                  echo "Pull requests into main must come from staging or hotfix/*."
+                  exit 1
+                  ;;
+              esac
+              ;;
+            *)
+              echo "No branch policy defined for base branch ${BASE_REF}."
+              exit 1
+              ;;
+          esac
