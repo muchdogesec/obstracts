@@ -3,6 +3,7 @@ name: Create and publish the Docker image for Obstracts Web Staging
 on:
   push:
     branches: ['staging']
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -18,6 +19,11 @@ jobs:
       attestations: write
       id-token: write 
     steps:
+      - name: Verify staging ref
+        if: github.ref != 'refs/heads/staging'
+        run: |
+          echo "Staging images may only be published from the staging branch." >&2
+          exit 1
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Log in to the Container registry
