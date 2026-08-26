@@ -6,8 +6,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}_web_test
-  PACKAGE_NAME: ${{ github.event.repository.name }}_web_test
+  IMAGE_NAME: ${{ github.repository }}
+  PACKAGE_NAME: ${{ github.event.repository.name }}
 
 jobs:
   build-and-push-image:
@@ -32,6 +32,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=test
+            type=sha,prefix=test-sha-
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6
