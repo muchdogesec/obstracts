@@ -2,12 +2,12 @@ name: Create and publish the Docker image for Obstracts Web Staging
 
 on:
   push:
-    branches: ['main']
+    branches: ['staging']
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}_web_staging
-  PACKAGE_NAME: ${{ github.event.repository.name }}_web_staging
+  IMAGE_NAME: ${{ github.repository }}
+  PACKAGE_NAME: ${{ github.event.repository.name }}
 
 jobs:
   build-and-push-image:
@@ -31,6 +31,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=staging
+            type=sha,prefix=sha-
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6

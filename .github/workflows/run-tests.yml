@@ -5,11 +5,17 @@ permissions:
 on:
   push:
     branches:
+      - staging
       - main
   pull_request:
+    branches:
+      - develop
+      - staging
+      - main
     types:
       - opened
       - synchronize
+      - reopened
 
 jobs:
   test-pipeline:
