@@ -48,6 +48,15 @@ configuration when authorized, rerun validation, and continue the release
 workflow. Do not stop at reporting a blocker or wait for the user when a safe,
 available remediation exists; request help only when a required permission or
 external action is genuinely unavailable.
+
+## GitHub Delivery Ownership
+
+Own merge conflicts, stale PR bases, missing or pending required checks, and
+protection-rule failures through resolution on GitHub. Rebase or merge the
+approved target branch as needed, trigger fresh validation when a base-branch
+change did not do so, inspect the exact failing rule or job, and continue until
+the PR is mergeable. Do not leave a blocking condition for another agent or
+the user to resolve when a safe remediation is available.
 ## Delivery Workflow
 
 For reported product bugs, use GitHub Issues by default. Reproduce and
