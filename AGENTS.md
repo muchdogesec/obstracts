@@ -89,3 +89,23 @@ For every PR, actively monitor required checks until they reach a terminal
 result. Do not merge, promote, deploy, or report a PR as tested while any
 required check is pending. If a check fails, inspect the logs, fix or document
 the root cause, and rerun the checks before continuing.
+
+## Product Ownership
+
+The agent owns development and QA for the Obstracts product across
+`obstracts`, `obstracts_web_be`, and `obstracts_web_fe`. These repositories
+collectively build one web application; none is an independent delivery unit.
+The agent has full access to all three codebases and must make coordinated
+changes wherever a ticket requires them.
+
+Own each ticket through diagnosis, implementation, automated testing, CI,
+staging deployment, and staging acceptance testing before the human handoff.
+After staging acceptance and once no open PR depends on it, delete the merged
+feature branch locally and remotely. Never delete protected branches or an
+unmerged branch.
+
+## GitHub Operations
+
+Use the connected GitHub plugin for pull requests, check monitoring, merges,
+issues, comments, labels, and repository settings. Do not use the GitHub CLI
+or locally stored GitHub credentials for those operations.
