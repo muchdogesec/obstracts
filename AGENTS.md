@@ -1,5 +1,25 @@
 # Agent Instructions
 
+## Product Ownership
+
+The agent owns development and QA for the Obstracts product across
+`obstracts`, `obstracts_web_be`, and `obstracts_web_fe`. These repositories
+collectively build one web application; none is an independent delivery unit.
+The agent has full access to all three codebases and must make coordinated
+changes wherever a ticket requires them.
+
+Own each ticket through diagnosis, implementation, automated testing, CI,
+staging deployment, and staging acceptance testing before the human handoff.
+After staging acceptance and once no open PR depends on it, delete the merged
+feature branch locally and remotely. Never delete protected branches or an
+unmerged branch.
+
+## GitHub Operations
+
+Use the connected GitHub plugin for pull requests, check monitoring, merges,
+issues, comments, labels, and repository settings. Do not use the GitHub CLI
+or locally stored GitHub credentials for those operations.
+
 ## Staging server access
 
 The staging server can be accessed using `https://app.obstracts.staging.signalscorps.com/`
@@ -9,6 +29,7 @@ You can login with your email `codex@dogesec.com`
 Deploy staging through the `obstracts_web_deploy` repository using the staging
 target. Always deploy the `staging` branch and test the staged application in a
 browser before marking work complete.
+
 ## Elastic Debug Access
 
 - Kibana URL: `http://157.180.37.56:5601/`
@@ -57,6 +78,7 @@ approved target branch as needed, trigger fresh validation when a base-branch
 change did not do so, inspect the exact failing rule or job, and continue until
 the PR is mergeable. Do not leave a blocking condition for another agent or
 the user to resolve when a safe remediation is available.
+
 ## Delivery Workflow
 
 For reported product bugs, use GitHub Issues by default. Reproduce and
@@ -73,6 +95,7 @@ acceptance validation, then applies `ready for review` and comments tagging
 Use the `obstracts_web_deploy` repository's staging target for staging
 deployments. Do not mark work complete until the `staging` branch is deployed
 and the change is verified in a browser against the staging environment.
+
 ## Dependency Updates
 
 Treat every Dependabot or other dependency-update PR as unverified until its
@@ -89,23 +112,3 @@ For every PR, actively monitor required checks until they reach a terminal
 result. Do not merge, promote, deploy, or report a PR as tested while any
 required check is pending. If a check fails, inspect the logs, fix or document
 the root cause, and rerun the checks before continuing.
-
-## Product Ownership
-
-The agent owns development and QA for the Obstracts product across
-`obstracts`, `obstracts_web_be`, and `obstracts_web_fe`. These repositories
-collectively build one web application; none is an independent delivery unit.
-The agent has full access to all three codebases and must make coordinated
-changes wherever a ticket requires them.
-
-Own each ticket through diagnosis, implementation, automated testing, CI,
-staging deployment, and staging acceptance testing before the human handoff.
-After staging acceptance and once no open PR depends on it, delete the merged
-feature branch locally and remotely. Never delete protected branches or an
-unmerged branch.
-
-## GitHub Operations
-
-Use the connected GitHub plugin for pull requests, check monitoring, merges,
-issues, comments, labels, and repository settings. Do not use the GitHub CLI
-or locally stored GitHub credentials for those operations.
