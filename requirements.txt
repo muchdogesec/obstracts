@@ -347,7 +347,7 @@ nest-asyncio==1.6.0
     # via llama-index-core
 networkx==3.6.1
     # via llama-index-core
-nltk==3.10.0
+nltk==3.10.3
     # via llama-index-core
 numpy==2.4.2
     # via
@@ -548,7 +548,7 @@ soupsieve==2.8.4
     # via beautifulsoup4
 sqlalchemy[asyncio]==2.0.47
     # via llama-index-core
-sqlparse==0.5.5
+sqlparse==0.6.0
     # via django
 stix2==3.0.2
     # via
