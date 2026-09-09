@@ -27,6 +27,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from django.conf import settings
 import dogesec_commons.objects.views as arango_views
 from dogesec_commons.stixifier.views import ExtractorsView
+from obstracts.server.objects import ObjectsWithReportsView
 from obstracts.server.profiles import ProfileView
 from django.http import JsonResponse
 
@@ -57,7 +58,7 @@ router.register('h4f_jobs', views.h4f_views.JobView, "h4f-job-view")
 ## objects
 regex_router = routers.SimpleRouter(use_regex_path=True)
 regex_router.register('identities', IdentityView, "identity-view")
-regex_router.register("objects", arango_views.ObjectsWithReportsView, "object-view-orig")
+regex_router.register("objects", ObjectsWithReportsView, "object-view-orig")
 regex_router.register('objects/smos', arango_views.SMOView, "object-view-smo")
 regex_router.register('objects/scos', arango_views.SCOView, "object-view-sco")
 regex_router.register('objects/sros', arango_views.SROView, "object-view-sro")
