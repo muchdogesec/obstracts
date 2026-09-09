@@ -121,6 +121,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
         responses={
             201: ObstractsJobSerializer,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
             406: FEED_406_ERROR,
         },
         summary="Create a New Feed",
@@ -1169,6 +1170,14 @@ class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
 class RSSView(h4f_views.RSSView):
     class filterset_class(PostOnlyView.filterset_class):
         feed_id = None
+
+    def filter_queryset(self, queryset):
+        queryset = queryset.annotate(
+            threat_score=F(
+                "obstracts_post__txt2stix_data__content_check__threat_score"
+            )
+        )
+        return super().filter_queryset(queryset)
     
     def get_queryset(self):
         return PostOnlyView.get_queryset(self).filter(feed_id=self.kwargs.get("feed_id"))
