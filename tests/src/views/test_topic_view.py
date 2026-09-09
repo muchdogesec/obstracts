@@ -210,3 +210,17 @@ def test_build_clusters_action(client, celery_always_eager):
         assert job.type == ob_models.JobType.BUILD_CLUSTERS
         assert job.state == ob_models.JobState.PROCESSING
         mock_task.assert_called_once_with(uuid.UUID(job_id), force=False)
+
+
+@pytest.mark.django_db
+def test_build_clusters_rejects_unsupported_media_type(client, api_schema):
+    resp = client.patch(
+        "/api/v1/topics/build_clusters/",
+        data=b"unsupported",
+        content_type="application/octet-stream",
+    )
+
+    assert resp.status_code == 415
+    api_schema["/api/v1/topics/build_clusters/"]["PATCH"].validate_response(
+        Transport.get_st_response(resp)
+    )

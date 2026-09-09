@@ -236,6 +236,16 @@ def test_count_of_post_considers_processed(client, feed_with_posts, rf):
 
 
 @pytest.mark.django_db
+def test_rss_feed_supports_min_confidence_filter(client, feed_with_posts):
+    resp = client.get(
+        f"/api/v1/feeds/{feed_with_posts.pk}/rss/",
+        query_params={"min_confidence": 50},
+    )
+
+    assert resp.status_code == 200, resp.content
+
+
+@pytest.mark.django_db
 def test_reindex_pdfs_for_feed__empty_payload(
     client: APIClient, feed_with_posts, stixifier_profile_no_pdf
 ):
