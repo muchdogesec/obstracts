@@ -151,9 +151,13 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             """
         ),
     ),
-    create_skeleton=extend_schema(
+    skeleton=extend_schema(
         request=serializers.SkeletonFeedSerializer,
-        responses={201: FeedCreateSerializer, 400: api_schema.DEFAULT_400_ERROR},
+        responses={
+            201: FeedCreateSerializer,
+            400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
+        },
         summary="Create a New Skeleton Feed",
         description=textwrap.dedent(
             """
@@ -194,6 +198,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             201: serializers.FeedCreateSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         summary="Update a Feeds Metadata",
         description=textwrap.dedent(
@@ -224,6 +229,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             201: serializers.ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         summary="Fetch Updates for a Feed",
         description=textwrap.dedent(
@@ -253,6 +259,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         summary="Regenerate PDFs for all Posts in Feed",
         description=textwrap.dedent(
@@ -291,6 +298,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         request=serializers.ReprocessFeedPostsSerializer,
     ),
@@ -493,6 +501,7 @@ def get_retrieve_serializer_class(serializer_class):
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         summary="Update a Post in a Feed",
         description=textwrap.dedent(
@@ -537,6 +546,7 @@ def get_retrieve_serializer_class(serializer_class):
             201: serializers.PostWithFeedIDSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         request=serializers.PatchPostSerializer,
     ),
@@ -592,6 +602,7 @@ def get_retrieve_serializer_class(serializer_class):
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         request=serializers.ReprocessSinglePostSerializer,
     ),
@@ -1039,6 +1050,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         summary="Manually add a Post to A Feed",
         description=textwrap.dedent(
@@ -1088,6 +1100,7 @@ class PostOnlyView(h4f_views.PostOnlyView):
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         request=serializers.ReindexFeedSerializer,
     ),
@@ -1113,6 +1126,13 @@ class PostOnlyView(h4f_views.PostOnlyView):
             * if `skip_extraction=false` the data file will also be deleted before reprocessing. This request can also incur AI costs as will go back to AI for extractions, relationship, Attack Flow, etc generation.
             """
         ),
+        responses={
+            201: ObstractsJobSerializer,
+            404: api_schema.DEFAULT_404_ERROR,
+            400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
+        },
+        request=serializers.ReprocessSinglePostSerializer,
     ),
 )
 class FeedPostView(h4f_views.feed_post_view, PostOnlyView):
