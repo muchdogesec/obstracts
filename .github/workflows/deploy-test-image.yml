@@ -2,7 +2,7 @@ name: Create and publish the Docker image for Obstracts Web Test
 
 on:
   push:
-    branches: ['main']
+    branches: ['develop']
 
 env:
   REGISTRY: ghcr.io
