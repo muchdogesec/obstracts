@@ -121,6 +121,7 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
         responses={
             201: ObstractsJobSerializer,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
             406: FEED_406_ERROR,
         },
         summary="Create a New Feed",
