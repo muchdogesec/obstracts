@@ -1,5 +1,15 @@
 const CHANNELS = ["prod", "staging", "test"];
 const KEEP_PER_CHANNEL = 3;
+const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
+const INDEX_MEDIA_TYPES = new Set([
+  "application/vnd.oci.image.index.v1+json",
+  "application/vnd.docker.distribution.manifest.list.v2+json",
+]);
+const MANIFEST_MEDIA_TYPES = new Set([
+  "application/vnd.oci.image.manifest.v1+json",
+  "application/vnd.oci.artifact.manifest.v1+json",
+  "application/vnd.docker.distribution.manifest.v2+json",
+]);
 
 function immutableChannel(tag) {
   const match = /^sha-(prod|staging|test)-[0-9a-f]{40}$/i.exec(tag);
@@ -14,10 +24,35 @@ function isReferrerFallbackTag(tag) {
 }
 
 function normalizeVersions(versions) {
-  return versions.map((version) => ({
-    ...version,
-    tags: version.metadata?.container?.tags ?? [],
-  }));
+  if (!Array.isArray(versions)) {
+    throw new Error("package versions response is not an array");
+  }
+  const ids = new Set();
+  const digests = new Set();
+  return versions.map((version) => {
+    if (!version || typeof version !== "object" || !Number.isInteger(version.id)) {
+      throw new Error("package version has an invalid id");
+    }
+    if (ids.has(version.id)) {
+      throw new Error(`duplicate package version id ${version.id}`);
+    }
+    if (!DIGEST_PATTERN.test(version.name ?? "")) {
+      throw new Error(`package version ${version.id} has no valid digest`);
+    }
+    if (digests.has(version.name)) {
+      throw new Error(`multiple package versions have digest ${version.name}`);
+    }
+    const tags = version.metadata?.container?.tags;
+    if (!Array.isArray(tags) || tags.some((tag) => typeof tag !== "string")) {
+      throw new Error(`package version ${version.id} has invalid tag metadata`);
+    }
+    if (!Number.isFinite(Date.parse(version.created_at))) {
+      throw new Error(`package version ${version.id} has invalid created_at`);
+    }
+    ids.add(version.id);
+    digests.add(version.name);
+    return { ...version, tags };
+  });
 }
 
 export function selectReleaseRoots(versions) {
@@ -91,6 +126,38 @@ function descriptorDigests(document) {
   });
 }
 
+function inspectManifest(document, digest) {
+  if (
+    !document ||
+    typeof document !== "object" ||
+    Array.isArray(document) ||
+    document.schemaVersion !== 2 ||
+    typeof document.mediaType !== "string"
+  ) {
+    throw new Error(`manifest ${digest} is not a valid schema-version 2 manifest`);
+  }
+  if (!INDEX_MEDIA_TYPES.has(document.mediaType) && !MANIFEST_MEDIA_TYPES.has(document.mediaType)) {
+    throw new Error(`manifest ${digest} has unsupported media type ${document.mediaType}`);
+  }
+  const children = INDEX_MEDIA_TYPES.has(document.mediaType)
+    ? descriptorDigests(document)
+    : [];
+  if (
+    document.mediaType === "application/vnd.oci.artifact.manifest.v1+json" &&
+    !Array.isArray(document.blobs)
+  ) {
+    throw new Error(`artifact manifest ${digest} has no blobs array`);
+  }
+  let subject = null;
+  if (document.subject !== undefined) {
+    subject = document.subject?.digest;
+    if (!DIGEST_PATTERN.test(subject ?? "")) {
+      throw new Error(`manifest ${digest} has no valid subject digest`);
+    }
+  }
+  return { children, subject };
+}
+
 export async function planRetention(
   versions,
   { manifestForDigest },
@@ -100,12 +167,6 @@ export async function planRetention(
   const byDigest = new Map();
   const fallbackBySubject = new Map();
   for (const version of normalized) {
-    if (!/^sha256:[0-9a-f]{64}$/i.test(version.name ?? "")) {
-      throw new Error(`package version ${version.id} has no valid digest`);
-    }
-    if (byDigest.has(version.name)) {
-      throw new Error(`multiple package versions have digest ${version.name}`);
-    }
     byDigest.set(version.name, version);
     for (const tag of version.tags.filter(isReferrerFallbackTag)) {
       const subject = `sha256:${tag.slice("sha256-".length).toLowerCase()}`;
@@ -125,18 +186,16 @@ export async function planRetention(
   const referrersBySubject = new Map();
   for (const version of normalized) {
     const manifest = await manifestForDigest(version.name);
-    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
-      throw new Error(`registry returned a malformed manifest for ${version.name}`);
+    const inspected = inspectManifest(manifest, version.name);
+    if (
+      version.tags.some(isReferrerFallbackTag) &&
+      !INDEX_MEDIA_TYPES.has(manifest.mediaType)
+    ) {
+      throw new Error(`fallback referrer ${version.name} is not an index`);
     }
-    children.set(
-      version.name,
-      Array.isArray(manifest.manifests) ? descriptorDigests(manifest) : [],
-    );
-    if (manifest.subject !== undefined) {
-      const subject = manifest.subject?.digest;
-      if (!/^sha256:[0-9a-f]{64}$/i.test(subject ?? "")) {
-        throw new Error(`manifest ${version.name} has no valid subject digest`);
-      }
+    children.set(version.name, inspected.children);
+    if (inspected.subject !== null) {
+      const subject = inspected.subject;
       const referrers = referrersBySubject.get(subject) ?? [];
       referrers.push(version.name);
       referrersBySubject.set(subject, referrers);
@@ -255,13 +314,22 @@ async function registryResponse(owner, packageName, suffix, accept) {
   return response;
 }
 
-async function registryManifest(owner, packageName, digest) {
+export async function registryManifest(owner, packageName, digest) {
   const response = await registryResponse(
     owner,
     packageName,
     `manifests/${digest}`,
     MANIFEST_ACCEPT,
   );
+  const responseDigest = response.headers.get("docker-content-digest");
+  if (responseDigest === null) {
+    throw new Error(`GHCR returned no Docker-Content-Digest for ${digest}`);
+  }
+  if (responseDigest.toLowerCase() !== digest.toLowerCase()) {
+    throw new Error(
+      `GHCR returned manifest ${responseDigest} when ${digest} was requested`,
+    );
+  }
   return response.json();
 }
 

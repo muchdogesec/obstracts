@@ -5,6 +5,7 @@ import {
   deleteVersions,
   listVersions,
   planRetention,
+  registryManifest,
   selectReleaseRoots,
 } from "./cleanup-ghcr-versions.mjs";
 
@@ -27,7 +28,19 @@ function immutable(channel, character) {
 
 function emptyRegistry(overrides = {}) {
   return {
-    manifestForDigest: async (digest) => overrides.manifests?.[digest] ?? {},
+    manifestForDigest: async (digest) => overrides.manifests?.[digest] ?? {
+      schemaVersion: 2,
+      mediaType: "application/vnd.oci.image.manifest.v1+json",
+    },
+  };
+}
+
+function index(manifests, extra = {}) {
+  return {
+    schemaVersion: 2,
+    mediaType: "application/vnd.oci.image.index.v1+json",
+    manifests,
+    ...extra,
   };
 }
 
@@ -64,9 +77,14 @@ test("retains transitive manifest dependencies and OCI referrers", async () => {
   ];
   const plan = await planRetention(versions, emptyRegistry({
     manifests: {
-      [root]: { manifests: [{ digest: platform }] },
-      [platform]: { manifests: [{ digest: nested }] },
-      [attestation]: { subject: { digest: root } },
+      [root]: index([{ digest: platform }]),
+      [platform]: index([{ digest: nested }]),
+      [attestation]: {
+        schemaVersion: 2,
+        mediaType: "application/vnd.oci.artifact.manifest.v1+json",
+        blobs: [],
+        subject: { digest: root },
+      },
     },
   }));
 
@@ -86,7 +104,7 @@ test("retains a fallback referrer index and its children", async () => {
     version(13, "2025-01-01T00:00:00Z"),
   ], emptyRegistry({
     manifests: {
-      [fallback]: { manifests: [{ digest: attestation }] },
+      [fallback]: index([{ digest: attestation }]),
     },
   }));
   assert.deepEqual(plan.keep.map(({ id }) => id), [10, 11, 12]);
@@ -104,8 +122,8 @@ test("does not retain an obsolete parent merely because it shares a child", asyn
   ];
   const plan = await planRetention(versions, emptyRegistry({
     manifests: {
-      [kept]: { manifests: [{ digest: shared }] },
-      [obsolete]: { manifests: [{ digest: shared }] },
+      [kept]: index([{ digest: shared }]),
+      [obsolete]: index([{ digest: shared }]),
     },
   }));
   assert.deepEqual(plan.keep.map(({ id }) => id), [20, 21]);
@@ -203,7 +221,7 @@ test("fails closed when a dependency has no package version", async () => {
     planRetention([
       version(1, "2026-01-01T00:00:00Z", ["prod", immutable("prod", "a")], root),
     ], emptyRegistry({
-      manifests: { [root]: { manifests: [{ digest: missing }] } },
+      manifests: { [root]: index([{ digest: missing }]) },
     })),
     new RegExp(`unknown package version ${missing}`),
   );
@@ -221,6 +239,94 @@ test("fails closed on registry errors and malformed manifests", async () => {
     planRetention([root], {
       manifestForDigest: async () => null,
     }),
-    /malformed manifest/,
+    /not a valid schema-version 2 manifest/,
   );
+});
+
+test("fails closed for unsafe package metadata and manifest schemas", async () => {
+  const good = version(1, "2026-01-01T00:00:00Z", ["prod", immutable("prod", "a")]);
+  assert.throws(
+    () => selectReleaseRoots([{ ...good, id: "1" }]),
+    /invalid id/,
+  );
+  assert.throws(
+    () => selectReleaseRoots([{ ...good, name: "sha256:not-a-digest" }]),
+    /no valid digest/,
+  );
+  assert.throws(
+    () => selectReleaseRoots([{ ...good, metadata: undefined }]),
+    /invalid tag metadata/,
+  );
+  assert.throws(
+    () => selectReleaseRoots([good, { ...good }]),
+    /duplicate package version id/,
+  );
+  assert.throws(
+    () => selectReleaseRoots([good, { ...version(2, "2026-01-02T00:00:00Z"), name: good.name }]),
+    /multiple package versions have digest/,
+  );
+  assert.throws(
+    () => selectReleaseRoots([{ ...good, created_at: "not-a-date" }]),
+    /invalid created_at/,
+  );
+
+  const fallback = version(
+    2,
+    "2026-01-01T00:00:00Z",
+    [`sha256-${good.name.slice("sha256:".length)}`],
+  );
+  await assert.rejects(
+    planRetention([good, fallback], emptyRegistry()),
+    /fallback referrer .* is not an index/,
+  );
+  await assert.rejects(
+    planRetention([good], emptyRegistry({
+      manifests: {
+        [good.name]: {
+          schemaVersion: 2,
+          mediaType: "application/vnd.oci.artifact.manifest.v1+json",
+          subject: { digest: good.name },
+        },
+      },
+    })),
+    /has no blobs array/,
+  );
+});
+
+test("fails closed when GHCR omits the manifest digest header", async () => {
+  const requested = digest(40);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("{}", {
+    headers: { "content-type": "application/vnd.oci.image.manifest.v1+json" },
+  });
+
+  try {
+    await assert.rejects(
+      registryManifest("muchdogesec", "obstracts", requested),
+      new RegExp(`no Docker-Content-Digest for ${requested}`),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("fails closed when GHCR returns a different manifest digest", async () => {
+  const requested = digest(40);
+  const returned = digest(41);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("{}", {
+    headers: {
+      "content-type": "application/vnd.oci.image.manifest.v1+json",
+      "docker-content-digest": returned,
+    },
+  });
+
+  try {
+    await assert.rejects(
+      registryManifest("muchdogesec", "obstracts", requested),
+      new RegExp(`returned manifest ${returned} when ${requested} was requested`),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
