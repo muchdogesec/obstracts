@@ -57,6 +57,12 @@ To see more information about how to set the variables, and what they do, read t
 
 ### Build the Docker Image
 
+The root `Dockerfile` is intentionally limited to local Docker Compose
+development, where the source tree is bind-mounted into the container and
+Django runs with the development server. Published test, staging, and
+production images all use `Dockerfile.deploy` so those environments share the
+same image definition.
+
 ```shell
 sudo docker compose build
 ```
