@@ -160,9 +160,25 @@ function inspectManifest(document, digest) {
 
 export async function planRetention(
   versions,
-  { manifestForDigest },
+  { manifestForDigest, expectedChannel },
 ) {
   const normalized = normalizeVersions(versions);
+  if (!CHANNELS.includes(expectedChannel)) {
+    throw new Error(
+      `EXPECTED_CHANNEL must be one of ${CHANNELS.join(", ")}`,
+    );
+  }
+  // A package can legitimately predate one or more release channels, but the
+  // workflow that just published must be able to observe exactly one moving
+  // tag for its own channel before this process is allowed to plan deletions.
+  const activeRoots = normalized.filter((version) =>
+    version.tags.includes(expectedChannel),
+  );
+  if (activeRoots.length !== 1) {
+    throw new Error(
+      `expected exactly one package version carrying the active ${expectedChannel} tag; found ${activeRoots.length}`,
+    );
+  }
   const roots = selectReleaseRoots(normalized);
   const byDigest = new Map();
   const fallbackBySubject = new Map();
@@ -347,13 +363,15 @@ export async function deleteVersions(owner, packageName, versions, request = git
 async function main() {
   const owner = process.env.GITHUB_REPOSITORY_OWNER;
   const packageName = process.env.PACKAGE_NAME;
-  if (!owner || !packageName || !process.env.GITHUB_TOKEN || !process.env.GITHUB_ACTOR) {
-    throw new Error("GITHUB_REPOSITORY_OWNER, PACKAGE_NAME, GITHUB_ACTOR, and GITHUB_TOKEN are required");
+  const expectedChannel = process.env.EXPECTED_CHANNEL;
+  if (!owner || !packageName || !process.env.GITHUB_TOKEN || !process.env.GITHUB_ACTOR || !expectedChannel) {
+    throw new Error("GITHUB_REPOSITORY_OWNER, PACKAGE_NAME, GITHUB_ACTOR, GITHUB_TOKEN, and EXPECTED_CHANNEL are required");
   }
 
   const versions = await listVersions(owner, packageName);
   const plan = await planRetention(versions, {
     manifestForDigest: (digest) => registryManifest(owner, packageName, digest),
+    expectedChannel,
   });
   console.log(`Keeping ${plan.keep.length} package versions.`);
   await deleteVersions(owner, packageName, plan.remove);

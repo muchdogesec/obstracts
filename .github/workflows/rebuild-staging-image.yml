@@ -66,5 +66,6 @@ jobs:
           push-to-registry: true
       - name: Apply channel-aware GHCR retention
         env:
+          EXPECTED_CHANNEL: staging
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/cleanup-ghcr-versions.mjs
