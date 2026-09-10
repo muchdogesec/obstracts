@@ -4,6 +4,11 @@ on:
   push:
     branches: ['develop']
 
+concurrency:
+  group: package-publish-${{ github.repository }}
+  queue: max
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -34,28 +39,27 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=test
-            type=sha,prefix=test-sha-
+            type=sha,prefix=sha-test-,format=long
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.test
+          file: ./Dockerfile.deploy
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             DJANGO_DEBUG=True
+            USE_S3_STORAGE=0
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
-      - name: Cleanup old GHCR image versions (keep 5 newest)
-        uses: actions/delete-package-versions@v5
-        with:
-          owner: ${{ github.repository_owner }}
-          package-name: ${{ env.PACKAGE_NAME }}
-          package-type: container
-          min-versions-to-keep: 5
+      - name: Apply channel-aware GHCR retention
+        env:
+          EXPECTED_CHANNEL: test
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/cleanup-ghcr-versions.mjs
