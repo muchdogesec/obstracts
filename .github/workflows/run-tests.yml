@@ -39,7 +39,7 @@ jobs:
           python-version: "3.11"
          
       - name: Start docker-compose
-        uses: hoverkraft-tech/compose-action@v2.0.2
+        uses: hoverkraft-tech/compose-action@v3.1.0
         id: start_container
         with:
           compose-file: |
