@@ -26,8 +26,9 @@ function immutable(channel, character) {
   return `sha-${channel}-${character.repeat(40)}`;
 }
 
-function emptyRegistry(overrides = {}) {
+function emptyRegistry(overrides = {}, expectedChannel = "prod") {
   return {
+    expectedChannel,
     manifestForDigest: async (digest) => overrides.manifests?.[digest] ?? {
       schemaVersion: 2,
       mediaType: "application/vnd.oci.image.manifest.v1+json",
@@ -106,7 +107,7 @@ test("retains a fallback referrer index and its children", async () => {
     manifests: {
       [fallback]: index([{ digest: attestation }]),
     },
-  }));
+  }, "staging"));
   assert.deepEqual(plan.keep.map(({ id }) => id), [10, 11, 12]);
   assert.deepEqual(plan.remove.map(({ id }) => id), [13]);
 });
@@ -125,7 +126,7 @@ test("does not retain an obsolete parent merely because it shares a child", asyn
       [kept]: index([{ digest: shared }]),
       [obsolete]: index([{ digest: shared }]),
     },
-  }));
+  }, "test"));
   assert.deepEqual(plan.keep.map(({ id }) => id), [20, 21]);
   assert.deepEqual(plan.remove.map(({ id }) => id), [22]);
 });
@@ -138,7 +139,7 @@ test("deletes exact old tagged and untagged candidates", async () => {
     version(4, "2026-01-04T00:00:00Z", ["test", immutable("test", "d")]),
     version(5, "2026-01-05T00:00:00Z"),
   ];
-  const plan = await planRetention(versions, emptyRegistry());
+  const plan = await planRetention(versions, emptyRegistry({}, "test"));
 
   assert.deepEqual(plan.keep.map(({ id }) => id), [2, 3, 4]);
   assert.deepEqual(plan.remove.map(({ id }) => id), [1, 5]);
@@ -162,6 +163,55 @@ test("supports legacy current tags during migration", () => {
     version(4, "2025-12-01T00:00:00Z", ["sha-d4"]),
   ]);
   assert.deepEqual(roots.map(({ id }) => id), [1, 2, 3]);
+});
+
+test("rejects a missing active publishing channel before registry inspection or deletion planning", async () => {
+  let manifestReads = 0;
+  await assert.rejects(
+    planRetention([
+      version(1, "2026-01-01T00:00:00Z", ["staging", "sha-a1"]),
+    ], {
+      expectedChannel: "test",
+      manifestForDigest: async () => {
+        manifestReads += 1;
+        return {
+          schemaVersion: 2,
+          mediaType: "application/vnd.oci.image.manifest.v1+json",
+        };
+      },
+    }),
+    /exactly one package version carrying the active test tag; found 0/,
+  );
+  assert.equal(manifestReads, 0);
+});
+
+test("preserves a live legacy staging closure while publishing test", async () => {
+  const staging = digest(50);
+  const stagingPlatform = digest(51);
+  const currentTest = digest(52);
+  const obsolete = digest(53);
+  const plan = await planRetention([
+    version(50, "2026-01-01T00:00:00Z", ["staging", "sha-e1071ae"], staging),
+    version(51, "2026-01-01T00:00:00Z", [], stagingPlatform),
+    version(52, "2026-01-02T00:00:00Z", ["test", immutable("test", "a")], currentTest),
+    version(53, "2025-01-01T00:00:00Z", [], obsolete),
+  ], emptyRegistry({
+    manifests: {
+      [staging]: index([{ digest: stagingPlatform }]),
+    },
+  }, "test"));
+
+  assert.deepEqual(plan.keep.map(({ id }) => id), [50, 51, 52]);
+  assert.deepEqual(plan.remove.map(({ id }) => id), [53]);
+});
+
+test("allows an unrelated production channel to be absent", async () => {
+  const plan = await planRetention([
+    version(60, "2026-01-01T00:00:00Z", ["test", immutable("test", "b")]),
+  ], emptyRegistry({}, "test"));
+
+  assert.deepEqual(plan.keep.map(({ id }) => id), [60]);
+  assert.deepEqual(plan.remove, []);
 });
 
 test("paginates through more than 100 package versions", async () => {
@@ -231,12 +281,14 @@ test("fails closed on registry errors and malformed manifests", async () => {
   const root = version(1, "2026-01-01T00:00:00Z", ["prod", immutable("prod", "a")]);
   await assert.rejects(
     planRetention([root], {
+      expectedChannel: "prod",
       manifestForDigest: async () => { throw new Error("registry unavailable"); },
     }),
     /registry unavailable/,
   );
   await assert.rejects(
     planRetention([root], {
+      expectedChannel: "prod",
       manifestForDigest: async () => null,
     }),
     /not a valid schema-version 2 manifest/,
