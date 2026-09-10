@@ -11,8 +11,8 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}_test
-  PACKAGE_NAME: ${{ github.event.repository.name }}_test
+  IMAGE_NAME: ${{ github.repository_owner }}/obstracts_web_test
+  PACKAGE_NAME: obstracts_web_test
 
 jobs:
   build-and-push-image:
