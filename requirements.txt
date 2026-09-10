@@ -39,7 +39,7 @@ attrs==25.4.0
     #   aiohttp
     #   jsonschema
     #   referencing
-banks==2.4.2
+banks==2.4.5
     # via llama-index-core
 base58==2.1.1
     # via txt2stix
@@ -139,7 +139,7 @@ django-filter==25.2
     #   obstracts (pyproject.toml)
 django-storages[s3]==1.14.6
     # via obstracts (pyproject.toml)
-djangorestframework==3.16.1
+djangorestframework==3.17.2
     # via
     #   dogesec-commons
     #   drf-spectacular
@@ -333,7 +333,7 @@ markupsafe==3.0.3
     # via jinja2
 marshmallow==3.26.2
     # via dataclasses-json
-mistune==3.3.0
+mistune==3.3.3
     # via
     #   file2txt
     #   txt2stix
@@ -593,7 +593,7 @@ tqdm==4.67.3
     #   openai
     #   stix2arango
     #   transformers
-transformers==4.57.6
+transformers==5.10.1
     # via llama-index-llms-openai-like
 txt2stix[llms]==1.7.1
     # via
