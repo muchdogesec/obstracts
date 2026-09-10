@@ -2,19 +2,26 @@ const CHANNELS = ["prod", "staging", "test"];
 const KEEP_PER_CHANNEL = 3;
 
 function immutableChannel(tag) {
-  const match = /^sha-(prod|staging|test)-[0-9a-f]+$/i.exec(tag);
+  const match = /^sha-(prod|staging|test)-[0-9a-f]{40}$/i.exec(tag);
   if (match) return match[1].toLowerCase();
-
-  // Retain compatibility with images published before channel-qualified tags.
+  // Retain compatibility while old tags age out after this policy ships.
   if (/^test-sha-[0-9a-f]+$/i.test(tag)) return "test";
   return null;
 }
 
-export function planRetention(versions) {
-  const normalized = versions.map((version) => ({
+function isReferrerFallbackTag(tag) {
+  return /^sha256-[0-9a-f]{64}$/i.test(tag);
+}
+
+function normalizeVersions(versions) {
+  return versions.map((version) => ({
     ...version,
     tags: version.metadata?.container?.tags ?? [],
   }));
+}
+
+export function selectReleaseRoots(versions) {
+  const normalized = normalizeVersions(versions);
   const keep = new Set();
 
   for (const channel of CHANNELS) {
@@ -39,9 +46,7 @@ export function planRetention(versions) {
           /^sha-[0-9a-f]+$/i.test(tag),
       )
     ) {
-      throw new Error(
-        `${channel} tag has no corresponding immutable SHA tag`,
-      );
+      throw new Error(`${channel} tag has no corresponding immutable SHA tag`);
     }
 
     candidates
@@ -60,6 +65,7 @@ export function planRetention(versions) {
       (tag) =>
         !CHANNELS.includes(tag) &&
         immutableChannel(tag) === null &&
+        !isReferrerFallbackTag(tag) &&
         !/^sha-[0-9a-f]+$/i.test(tag),
     ),
   );
@@ -70,7 +76,95 @@ export function planRetention(versions) {
     throw new Error(`refusing to delete unrecognized tagged versions: ${details}`);
   }
 
-  const remove = normalized.filter((version) => !keep.has(version.id));
+  return normalized.filter((version) => keep.has(version.id));
+}
+
+function descriptorDigests(document) {
+  if (!document || !Array.isArray(document.manifests)) {
+    throw new Error("registry response does not contain a manifests array");
+  }
+  return document.manifests.map((descriptor) => {
+    if (!/^sha256:[0-9a-f]{64}$/i.test(descriptor.digest ?? "")) {
+      throw new Error("registry descriptor has no valid sha256 digest");
+    }
+    return descriptor.digest;
+  });
+}
+
+export async function planRetention(
+  versions,
+  { manifestForDigest },
+) {
+  const normalized = normalizeVersions(versions);
+  const roots = selectReleaseRoots(normalized);
+  const byDigest = new Map();
+  const fallbackBySubject = new Map();
+  for (const version of normalized) {
+    if (!/^sha256:[0-9a-f]{64}$/i.test(version.name ?? "")) {
+      throw new Error(`package version ${version.id} has no valid digest`);
+    }
+    if (byDigest.has(version.name)) {
+      throw new Error(`multiple package versions have digest ${version.name}`);
+    }
+    byDigest.set(version.name, version);
+    for (const tag of version.tags.filter(isReferrerFallbackTag)) {
+      const subject = `sha256:${tag.slice("sha256-".length).toLowerCase()}`;
+      if (fallbackBySubject.has(subject)) {
+        throw new Error(`multiple referrer fallback indexes exist for ${subject}`);
+      }
+      fallbackBySubject.set(subject, version);
+    }
+  }
+
+  // Inventory every manifest before deciding to delete anything. GHCR has used
+  // both OCI artifact subjects and the Distribution 1.0 sha256-<subject> tag
+  // convention for referrers, so registry inventory is the reliable source of
+  // both representations. Incoming parent-index edges are deliberately omitted:
+  // a platform manifest shared with an obsolete release must not retain that root.
+  const children = new Map();
+  const referrersBySubject = new Map();
+  for (const version of normalized) {
+    const manifest = await manifestForDigest(version.name);
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+      throw new Error(`registry returned a malformed manifest for ${version.name}`);
+    }
+    children.set(
+      version.name,
+      Array.isArray(manifest.manifests) ? descriptorDigests(manifest) : [],
+    );
+    if (manifest.subject !== undefined) {
+      const subject = manifest.subject?.digest;
+      if (!/^sha256:[0-9a-f]{64}$/i.test(subject ?? "")) {
+        throw new Error(`manifest ${version.name} has no valid subject digest`);
+      }
+      const referrers = referrersBySubject.get(subject) ?? [];
+      referrers.push(version.name);
+      referrersBySubject.set(subject, referrers);
+    }
+  }
+
+  // A retained release is unusable without its transitive platform manifests,
+  // provenance referrers, and fallback referrer indexes.
+  const keepDigests = new Set();
+  const pending = roots.map((version) => version.name);
+  while (pending.length > 0) {
+    const digest = pending.pop();
+    if (keepDigests.has(digest)) continue;
+    const version = byDigest.get(digest);
+    if (!version) {
+      throw new Error(`registry references unknown package version ${digest}`);
+    }
+    keepDigests.add(digest);
+    const fallback = fallbackBySubject.get(digest);
+    pending.push(
+      ...(children.get(digest) ?? []),
+      ...(referrersBySubject.get(digest) ?? []),
+      ...(fallback ? [fallback.name] : []),
+    );
+  }
+
+  const keep = normalized.filter((version) => keepDigests.has(version.name));
+  const remove = normalized.filter((version) => !keepDigests.has(version.name));
   const protectedMovingTag = remove.find((version) =>
     version.tags.some((tag) => CHANNELS.includes(tag)),
   );
@@ -79,28 +173,7 @@ export function planRetention(versions) {
       `retention plan would delete moving channel tag on version ${protectedMovingTag.id}`,
     );
   }
-
-  return {
-    keep: normalized.filter((version) => keep.has(version.id)),
-    remove,
-  };
-}
-
-export function assertNoKeptManifestReferencesRemoval(plan, manifestsByDigest) {
-  const removableByDigest = new Map(
-    plan.remove.map((version) => [version.name, version]),
-  );
-
-  for (const [digest, manifest] of manifestsByDigest) {
-    for (const descriptor of manifest.manifests ?? []) {
-      const removable = removableByDigest.get(descriptor.digest);
-      if (removable) {
-        throw new Error(
-          `refusing to delete untagged package version ${removable.id} (${descriptor.digest}); kept manifest ${digest} references it`,
-        );
-      }
-    }
-  }
+  return { keep, remove };
 }
 
 async function githubRequest(path, options = {}) {
@@ -119,25 +192,30 @@ async function githubRequest(path, options = {}) {
   return response.status === 204 ? null : response.json();
 }
 
-async function listVersions(owner, packageName) {
+export async function listVersions(owner, packageName, request = githubRequest) {
   const versions = [];
   for (let page = 1; ; page += 1) {
-    const batch = await githubRequest(
+    const batch = await request(
       `/orgs/${encodeURIComponent(owner)}/packages/container/${encodeURIComponent(packageName)}/versions?per_page=100&page=${page}`,
     );
+    if (!Array.isArray(batch)) {
+      throw new Error("GitHub package versions response is not an array");
+    }
     versions.push(...batch);
     if (batch.length < 100) return versions;
   }
 }
 
-async function registryManifest(owner, packageName, digest) {
-  const url = `https://ghcr.io/v2/${owner.toLowerCase()}/${packageName.toLowerCase()}/manifests/${digest}`;
-  const accept = [
-    "application/vnd.oci.image.index.v1+json",
-    "application/vnd.oci.image.manifest.v1+json",
-    "application/vnd.docker.distribution.manifest.list.v2+json",
-    "application/vnd.docker.distribution.manifest.v2+json",
-  ].join(", ");
+const MANIFEST_ACCEPT = [
+  "application/vnd.oci.image.index.v1+json",
+  "application/vnd.oci.image.manifest.v1+json",
+  "application/vnd.oci.artifact.manifest.v1+json",
+  "application/vnd.docker.distribution.manifest.list.v2+json",
+  "application/vnd.docker.distribution.manifest.v2+json",
+].join(", ");
+
+async function registryResponse(owner, packageName, suffix, accept) {
+  const url = `https://ghcr.io/v2/${owner.toLowerCase()}/${packageName.toLowerCase()}/${suffix}`;
   const basic = Buffer.from(
     `${process.env.GITHUB_ACTOR}:${process.env.GITHUB_TOKEN}`,
   ).toString("base64");
@@ -162,27 +240,40 @@ async function registryManifest(owner, packageName, digest) {
     if (!tokenResponse.ok) {
       throw new Error(`GHCR token request failed: ${tokenResponse.status}`);
     }
-    const { token } = await tokenResponse.json();
+    const tokenDocument = await tokenResponse.json();
+    if (typeof tokenDocument.token !== "string") {
+      throw new Error("GHCR token response has no token");
+    }
     response = await fetch(url, {
-      headers: { Accept: accept, Authorization: `Bearer ${token}` },
+      headers: { Accept: accept, Authorization: `Bearer ${tokenDocument.token}` },
     });
   }
 
   if (!response.ok) {
-    throw new Error(`reading GHCR manifest ${digest} failed: ${response.status}`);
+    throw new Error(`reading GHCR ${suffix} failed: ${response.status}`);
   }
+  return response;
+}
+
+async function registryManifest(owner, packageName, digest) {
+  const response = await registryResponse(
+    owner,
+    packageName,
+    `manifests/${digest}`,
+    MANIFEST_ACCEPT,
+  );
   return response.json();
 }
 
-async function validateRegistryReferences(owner, packageName, plan) {
-  const manifests = new Map();
-  for (const version of plan.keep) {
-    manifests.set(
-      version.name,
-      await registryManifest(owner, packageName, version.name),
+export async function deleteVersions(owner, packageName, versions, request = githubRequest) {
+  for (const version of versions) {
+    const tags = version.tags.length === 0 ? "untagged" : version.tags.join(",");
+    console.log(`Deleting package version ${version.id} (${tags}).`);
+    await request(
+      `/orgs/${encodeURIComponent(owner)}/packages/container/${encodeURIComponent(packageName)}/versions/${version.id}`,
+      { method: "DELETE" },
     );
   }
-  assertNoKeptManifestReferencesRemoval(plan, manifests);
 }
 
 async function main() {
@@ -193,18 +284,11 @@ async function main() {
   }
 
   const versions = await listVersions(owner, packageName);
-  const plan = planRetention(versions);
-  await validateRegistryReferences(owner, packageName, plan);
-  console.log(`Keeping ${plan.keep.length} tagged package versions.`);
-
-  for (const version of plan.remove) {
-    const tags = version.tags.length === 0 ? "untagged" : version.tags.join(",");
-    console.log(`Deleting package version ${version.id} (${tags}).`);
-    await githubRequest(
-      `/orgs/${encodeURIComponent(owner)}/packages/container/${encodeURIComponent(packageName)}/versions/${version.id}`,
-      { method: "DELETE" },
-    );
-  }
+  const plan = await planRetention(versions, {
+    manifestForDigest: (digest) => registryManifest(owner, packageName, digest),
+  });
+  console.log(`Keeping ${plan.keep.length} package versions.`);
+  await deleteVersions(owner, packageName, plan.remove);
 }
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
