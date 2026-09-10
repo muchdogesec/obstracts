@@ -11,8 +11,8 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-  PACKAGE_NAME: ${{ github.event.repository.name }}
+  IMAGE_NAME: ${{ github.repository }}_staging
+  PACKAGE_NAME: ${{ github.event.repository.name }}_staging
 
 jobs:
   build-and-push-image:
