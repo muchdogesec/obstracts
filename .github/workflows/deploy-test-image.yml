@@ -40,12 +40,13 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.test
+          file: ./Dockerfile.deploy
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             DJANGO_DEBUG=True
+            USE_S3_STORAGE=0
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
