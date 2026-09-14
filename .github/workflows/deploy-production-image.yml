@@ -3,6 +3,7 @@ name: Create and publish the Docker image for Obstracts Web Production
 on:
   push:
     branches: ['main']
+  workflow_dispatch:
 
 concurrency:
   group: package-publish-${{ github.repository }}
@@ -15,7 +16,23 @@ env:
   PACKAGE_NAME: obstracts_web_production
 
 jobs:
+  dispatch-channel-build:
+    if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch production build from main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-production-image.yml --repo "${{ github.repository }}" --ref main
+      - name: Summarize redirected build
+        run: |
+          echo '### Build redirected' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This run redirected the production image build to main. The actual build and attestation run separately.' >> "$GITHUB_STEP_SUMMARY"
+
   build-and-push-image:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       contents: read

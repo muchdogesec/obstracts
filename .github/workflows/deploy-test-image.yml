@@ -3,6 +3,7 @@ name: Create and publish the Docker image for Obstracts Web Test
 on:
   push:
     branches: ['develop']
+  workflow_dispatch:
 
 concurrency:
   group: package-publish-${{ github.repository }}
@@ -15,7 +16,23 @@ env:
   PACKAGE_NAME: obstracts_web_test
 
 jobs:
+  dispatch-channel-build:
+    if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch test build from develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-test-image.yml --repo "${{ github.repository }}" --ref develop
+      - name: Summarize redirected build
+        run: |
+          echo '### Build redirected' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This run redirected the test image build to develop. The actual build and attestation run separately.' >> "$GITHUB_STEP_SUMMARY"
+
   build-and-push-image:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop')
     runs-on: ubuntu-latest
     environment: ${{ github.event.repository.name }}_web_test
     permissions:

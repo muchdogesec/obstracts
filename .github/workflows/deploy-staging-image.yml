@@ -3,6 +3,7 @@ name: Create and publish the Docker image for Obstracts Web Staging
 on:
   push:
     branches: ['staging']
+  workflow_dispatch:
 
 concurrency:
   group: package-publish-${{ github.repository }}
@@ -15,7 +16,23 @@ env:
   PACKAGE_NAME: obstracts_web_staging
 
 jobs:
+  dispatch-channel-build:
+    if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch staging build from staging
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-staging-image.yml --repo "${{ github.repository }}" --ref staging
+      - name: Summarize redirected build
+        run: |
+          echo '### Build redirected' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This run redirected the staging image build to staging. The actual build and attestation run separately.' >> "$GITHUB_STEP_SUMMARY"
+
   build-and-push-image:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging')
     runs-on: ubuntu-latest
     permissions:
       contents: read
