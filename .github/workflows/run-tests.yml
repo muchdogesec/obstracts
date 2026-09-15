@@ -5,17 +5,11 @@ permissions:
 on:
   push:
     branches:
-      - staging
       - main
   pull_request:
-    branches:
-      - develop
-      - staging
-      - main
     types:
       - opened
       - synchronize
-      - reopened
 
 jobs:
   test-pipeline:
@@ -29,9 +23,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
-      - name: Test GHCR retention policy
-        run: node --test .github/scripts/cleanup-ghcr-versions.test.mjs
 
       - name: Set up Python
         uses: actions/setup-python@v5

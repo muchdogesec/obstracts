@@ -79,11 +79,7 @@ class TopicBuildSerializer(serializers.Serializer):
             """
         ),
         request=TopicBuildSerializer,
-        responses={
-            201: ObstractsJobSerializer,
-            400: api_schema.DEFAULT_400_ERROR,
-            415: api_schema.DEFAULT_415_ERROR,
-        },
+        responses={201: ObstractsJobSerializer, 400: api_schema.DEFAULT_400_ERROR},
     ),
 )
 class TopicView(
