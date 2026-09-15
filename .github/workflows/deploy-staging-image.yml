@@ -3,6 +3,7 @@ name: Create and publish the Docker image for Obstracts Web Staging
 on:
   push:
     branches: ['main']
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -10,7 +11,19 @@ env:
   PACKAGE_NAME: ${{ github.event.repository.name }}_web_staging
 
 jobs:
+  dispatch-on-channel:
+    if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Redispatch staging build on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-staging-image.yml --ref main --repo "$GITHUB_REPOSITORY"
+
   build-and-push-image:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
