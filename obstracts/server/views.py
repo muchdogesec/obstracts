@@ -252,7 +252,6 @@ class PlainMarkdownRenderer(renderers.BaseRenderer):
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
-            415: api_schema.DEFAULT_415_ERROR,
         },
         summary="Regenerate PDFs for all Posts in Feed",
         description=textwrap.dedent(
@@ -493,6 +492,7 @@ def get_retrieve_serializer_class(serializer_class):
             201: ObstractsJobSerializer,
             404: api_schema.DEFAULT_404_ERROR,
             400: api_schema.DEFAULT_400_ERROR,
+            415: api_schema.DEFAULT_415_ERROR,
         },
         summary="Update a Post in a Feed",
         description=textwrap.dedent(
