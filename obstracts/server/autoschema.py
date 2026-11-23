@@ -74,3 +74,18 @@ DEFAULT_404_ERROR = OpenApiResponse(
         )
     ],
 )
+
+
+DEFAULT_415_ERROR = OpenApiResponse(
+    ErrorSerializer,
+    "The request uses an unsupported media type",
+    [
+        OpenApiExample(
+            "http415",
+            {
+                "message": "Unsupported Media Type",
+                "code": 415,
+            },
+        )
+    ],
+)
