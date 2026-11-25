@@ -81,3 +81,6 @@ ArangoDB, worker, and seed feed.
 `web_commons`, `arango_taxii_server`, `ctibutler`, and `vulmatch`.
 
 Public positioning is maintained in `obstracts-website`.
+
+The `dogesec-obstracts` OpenCTI connector is a production-critical downstream
+API consumer. See [external API consumers](../components/external-api-consumers.md).

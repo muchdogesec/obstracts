@@ -70,3 +70,6 @@ indexes, REST/MCP/TAXII parity, and initial-backfill/rebuild behavior.
 `stix2arango`, `web_commons`, `arango_taxii_server`, and `ctibutler`.
 
 Public positioning is maintained in `vulmatch-website`.
+
+The `dogesec-vulmatch` OpenCTI connector is a production-critical downstream
+API consumer. See [external API consumers](../components/external-api-consumers.md).

@@ -118,9 +118,15 @@ Before changing a product or supporting component:
    guides explain boundaries but do not replace current code or stricter local
    instructions.
 4. If a request crosses a frontend, web backend, core, deployment repository,
-   shared package, or data generator, trace and validate the complete affected
-   path rather than treating the first repository encountered as the whole
-   product.
+   shared package, data generator, browser extension, or external integration,
+   trace and validate the complete affected path rather than treating the first
+   repository encountered as the whole product.
+
+Every public product API has a production OpenCTI connector, and Stixify also
+has a production Chrome extension. Before changing an API route, authentication
+header, pagination shape, response field, object schema, or rate/quota behavior,
+read [the external API consumer matrix](docs/components/external-api-consumers.md)
+and validate every affected consumer contract.
 
 The common platform architecture is documented in
 [docs/platform/architecture.md](docs/platform/architecture.md), and the current

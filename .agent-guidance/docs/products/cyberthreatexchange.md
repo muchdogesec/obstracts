@@ -75,3 +75,7 @@ upload-size enforcement, and REST/MCP/TAXII consistency.
 `web_commons`, and `arango_taxii_server`.
 
 Public positioning is maintained in `cyberthreatexchange-website`.
+
+The `dogesec-cyberthreatexchange` OpenCTI connector is a production-critical
+downstream API consumer. See
+[external API consumers](../components/external-api-consumers.md).

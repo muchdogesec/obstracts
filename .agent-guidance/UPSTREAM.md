@@ -1,7 +1,7 @@
 # Shared guidance upstream
 
 - Repository: https://github.com/muchdogesec/agent-guidance
-- Pinned commit: `e24fce9205a35594ba4e29840d528b0f96f942ff`
+- Pinned commit: `5d9af05a2df375f729ff028fc2dd7dcbfbde4680`
 - Vendored bootstrap: `.agent-guidance/AGENTS.md`
 - Vendored product/platform guidance: `.agent-guidance/docs/`
 

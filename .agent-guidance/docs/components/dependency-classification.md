@@ -55,6 +55,17 @@ repository, but it is not an application runtime package.
 The five deployment repositories are likewise production-critical control
 planes rather than libraries.
 
+## Production API consumers and integrations
+
+The five DOGESEC OpenCTI connectors and the Stixify Chrome extension are
+production-critical downstream consumers. They do not execute in the product
+Compose stacks and therefore do not appear in product `requirements.txt`
+files, but their compatibility is part of the supported public API contract.
+
+An API change is incomplete until affected downstream clients have been traced,
+tested, and either proven compatible or released in a coordinated migration.
+See [external API consumers](external-api-consumers.md).
+
 ## Adjacent and standalone repositories
 
 A repository that is absent from the dependency declarations, production
@@ -64,7 +75,9 @@ tool, an adjacent product, a website, a demo, a dataset, an experiment, or a
 legacy repository.
 
 Examples include unrelated `*2stix` converters, demos, marketing websites,
-sample feeds, media repositories, and tools for other DOGESEC products. Do not
+sample feeds, media repositories, and tools for other DOGESEC products. The
+OpenCTI connectors and Stixify Chrome extension are explicit exceptions because
+their production dependency is contractual rather than a package import. Do not
 delete, deprecate, or label one experimental solely because it is absent here;
 that requires a repository-specific review. The default classification only
 means it is outside the critical runtime and production-data path of these five

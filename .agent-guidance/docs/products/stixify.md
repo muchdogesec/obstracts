@@ -19,6 +19,7 @@ security engineers, and service providers processing large volumes of reports.
 | `stixify_web_be` | Hosted users/teams/plans, uploads/reports/dossiers presentation and proxy endpoints, MCP/TAXII, schemas and sitemaps |
 | `stixify_web_fe` | Upload, report, dossier, topic, observable/TTP and staff workflows |
 | `stixify_web_deploy` | Production services, upload limits, Nginx routes, backups and deployment |
+| `stixify_chrome_extension` | Captures webpages as MHTML, submits them to the public API, tracks jobs, and opens hosted results |
 
 ## Processing path
 
@@ -45,6 +46,8 @@ during extraction.
 - Hosted dossiers, team access, subscriptions, MCP/TAXII and proxy behavior:
   `stixify_web_be` and possibly `web_commons`.
 - Browser workflows: `stixify_web_fe`.
+- Webpage capture, API submission, job polling, and extension storage/UI:
+  `stixify_chrome_extension`.
 - Payload limits, routes, containers, backups: `stixify_web_deploy`.
 
 ## Important code surfaces
@@ -63,11 +66,18 @@ during extraction.
 
 Test each supported input mode, cleanup after failed/terminated jobs, reprocessing,
 profile compatibility, media/R2 behavior, team isolation, report/dossier access,
-STIX graph persistence, upload limits, and REST/MCP/TAXII contract parity.
+STIX graph persistence, upload limits, and REST/MCP/TAXII contract parity. API
+changes affecting `/v1/team/`, `/v1/reports/`, or `/v1/jobs/{id}/`, the
+`API-KEY` header, upload fields, job/report identifiers, or app URL construction
+must also build and exercise the Chrome extension.
 
 ## Supporting repositories
 
 `file2txt`, `txt2stix`, `dogesec_commons`, `stix2arango`, `web_commons`,
 `arango_taxii_server`, `ctibutler`, and `vulmatch`.
+
+Downstream compatibility consumers are `stixify_chrome_extension` and the
+`dogesec-stixify` OpenCTI connector. See
+[external API consumers](../components/external-api-consumers.md).
 
 Public positioning is maintained in `stixify-website`.
