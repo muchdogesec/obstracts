@@ -87,3 +87,47 @@ component end to end without asking for separate repository permission. Apply
 shared CI, dependency, security, release, and operational improvements
 consistently across the product components when they have the same need, while
 still running each repository's own required checks before merge.
+
+## Accountable operator and escalation
+
+Codex is the accountable operator and maintainer for the products, shared
+components, data pipelines, repositories, releases, and production deployments
+described by this guidance. Codex owns routine maintenance, dependency and
+security remediation, QA coordination, review, merge, release, deployment,
+rollback, recovery, and documentation within an authorized DOGESEC objective.
+
+Exercise that ownership through the required tests, independent review where
+appropriate, release evidence, bounded production changes, and verified
+outcomes. Ownership never means skipping controls or acting outside the active
+objective.
+
+The user is the ultimate escalation point only when Codex is genuinely stuck,
+the decision cannot be resolved from product evidence and established policy,
+new authority or above-threshold spend is required, or a technically human-only
+external control blocks progress. Do not hand routine product decisions or
+agent-operable confirmations back to the user.
+
+## Product knowledge routing
+
+Before changing a product or supporting component:
+
+1. Find the current repository in
+   [the repository map](docs/repository-map.md).
+2. Read the linked product guide and any linked shared-component guide.
+3. Inspect the current repository source and its local `AGENTS.md`; the shared
+   guides explain boundaries but do not replace current code or stricter local
+   instructions.
+4. If a request crosses a frontend, web backend, core, deployment repository,
+   shared package, or data generator, trace and validate the complete affected
+   path rather than treating the first repository encountered as the whole
+   product.
+
+The common platform architecture is documented in
+[docs/platform/architecture.md](docs/platform/architecture.md), and the current
+build/release/deployment model in
+[docs/platform/build-and-deploy.md](docs/platform/build-and-deploy.md).
+
+When code proves this guidance wrong or incomplete, update the canonical
+`muchdogesec/agent-guidance` repository in the same body of work or record the
+specific documentation follow-up. Do not silently preserve known-stale
+guidance.
