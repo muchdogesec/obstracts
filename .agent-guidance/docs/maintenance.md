@@ -29,10 +29,15 @@ unavoidable human-only action.
   build/deploy guide before deployment.
 - Quarterly: perform an end-to-end architecture review across all five products,
   including public websites, core/backend/frontend/deploy repositories, shared
-  package versions, external data generators, backups, and rollback paths.
+  package versions, external data generators, OpenCTI connectors, browser
+  extensions, backups, and rollback paths.
 - Immediately: update guidance after a repository rename, new service,
   replacement dependency, authentication/billing model change, new public
   surface, or production topology change.
+
+For every public API change, inspect the external-consumer matrix and update its
+route/schema evidence. Connector and extension compatibility is a release gate,
+not a documentation follow-up.
 
 Updating the review date without inspecting the current code is not a review.
 

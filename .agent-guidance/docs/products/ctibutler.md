@@ -74,3 +74,6 @@ across REST/MCP/TAXII/STIX/Navigator.
 `web_commons`, and `arango_taxii_server`.
 
 Public positioning is maintained in `ctibutler-website`.
+
+The `dogesec-ctibutler` OpenCTI connector is a production-critical downstream
+API consumer. See [external API consumers](../components/external-api-consumers.md).

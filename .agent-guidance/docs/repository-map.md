@@ -16,6 +16,7 @@ and shared/supporting components.
 | `stixify_web_be` | Stixify | Commercial web control plane, proxy API, MCP/TAXII, teams and subscriptions | [Stixify](products/stixify.md) |
 | `stixify_web_fe` | Stixify | Customer/staff Next.js interface | [Stixify](products/stixify.md) |
 | `stixify_web_deploy` | Stixify | Production Compose, Nginx routing, deployment and backup workflows | [Stixify](products/stixify.md) |
+| `stixify_chrome_extension` | Stixify | Chrome extension that submits webpages through the public API and tracks processing jobs | [Stixify](products/stixify.md) |
 | `vulmatch` | Vulmatch | CVE/CPE ingestion, enrichment, graph storage, and public core API | [Vulmatch](products/vulmatch.md) |
 | `vulmatch_web_be` | Vulmatch | Commercial web control plane, proxy API, MCP/TAXII, teams and subscriptions | [Vulmatch](products/vulmatch.md) |
 | `vulmatch_web_fe` | Vulmatch | Customer Next.js interface | [Vulmatch](products/vulmatch.md) |
@@ -62,6 +63,19 @@ the evidence-based criticality model.
 | `stix2extensions` | Custom STIX objects/extensions accepted by the exchange | Cyber Threat Exchange and producers |
 | `feeds2stix` | Convert public feeds to STIX and publish them through scheduled workflows | Cyber Threat Exchange supply |
 | `stixviewer` | Render STIX graphs and objects in browser workflows | Product frontends |
+
+## Downstream API consumers
+
+All five products have OpenCTI external-import connectors maintained in the
+upstream `OpenCTI-Platform/connectors` repository. `opencti-deploy` provides
+DOGESEC-oriented local OpenCTI deployment examples. Stixify additionally has
+the `stixify_chrome_extension` client.
+
+These are production-critical compatibility consumers: they are not services
+inside a product's production Compose stack, but public API changes can break
+customer ingestion or browser workflows. See the
+[external API consumer matrix](components/external-api-consumers.md) for exact
+routes, ownership, and release gates.
 
 ## Adjacent repositories
 
